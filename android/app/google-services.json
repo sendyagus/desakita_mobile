@@ -1,0 +1,48 @@
+{
+  "project_info": {
+    "project_number": "87902432541",
+    "project_id": "my-application222-4fe42",
+    "storage_bucket": "my-application222-4fe42.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:87902432541:android:9f2d24bf570a24969b85f4",
+        "android_client_info": {
+          "package_name": "com.example.desa_wisata"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyDinXmxbVK4KEeJFABKE09_7WJVpMlt1oY"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    },
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:87902432541:android:087c1cfdbdbecfb49b85f4",
+        "android_client_info": {
+          "package_name": "com.example.myapplication222"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyDinXmxbVK4KEeJFABKE09_7WJVpMlt1oY"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
