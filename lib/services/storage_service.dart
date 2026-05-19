@@ -1,5 +1,6 @@
 import 'dart:io';
 import 'package:firebase_storage/firebase_storage.dart';
+import 'package:flutter/foundation.dart' show kIsWeb, debugPrint;
 import 'package:image_picker/image_picker.dart';
 import 'package:path/path.dart' as path;
 
@@ -50,12 +51,40 @@ class StorageService {
       final fileName = '${DateTime.now().millisecondsSinceEpoch}_${path.basename(file.path)}';
       final ref = _storage.ref().child('$folder/$fileName');
       
-      final uploadTask = ref.putFile(File(file.path));
+      debugPrint('📤 Starting upload...');
+      debugPrint('📁 Folder: $folder');
+      debugPrint('📄 File name: $fileName');
+      debugPrint('🌐 Platform: ${kIsWeb ? "Web" : "Mobile"}');
+      
+      UploadTask uploadTask;
+      
+      if (kIsWeb) {
+        // For web, use bytes
+        debugPrint('🔄 Reading file as bytes...');
+        final bytes = await file.readAsBytes();
+        debugPrint('✅ File read: ${bytes.length} bytes');
+        
+        debugPrint('🔄 Uploading to Firebase Storage...');
+        uploadTask = ref.putData(
+          bytes,
+          SettableMetadata(contentType: 'image/jpeg'),
+        );
+      } else {
+        // For mobile, use file
+        debugPrint('🔄 Uploading file...');
+        uploadTask = ref.putFile(File(file.path));
+      }
+      
       final snapshot = await uploadTask.whenComplete(() {});
+      debugPrint('✅ Upload complete!');
+      
       final downloadUrl = await snapshot.ref.getDownloadURL();
+      debugPrint('🔗 Download URL: $downloadUrl');
       
       return downloadUrl;
-    } catch (e) {
+    } catch (e, stackTrace) {
+      debugPrint('❌ Upload error: $e');
+      debugPrint('📋 Stack trace: $stackTrace');
       throw Exception('Gagal upload gambar: $e');
     }
   }

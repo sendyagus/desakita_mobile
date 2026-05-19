@@ -3,6 +3,8 @@ import 'package:google_fonts/google_fonts.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:desa_wisata/screens/admin/user_management_screen.dart';
 import 'package:desa_wisata/screens/admin/destination_management_screen.dart';
+import 'package:desa_wisata/screens/admin/booking_management_screen.dart';
+import 'package:desa_wisata/screens/admin/admin_tools_screen.dart';
 import 'package:desa_wisata/services/stats_service.dart';
 import 'package:desa_wisata/services/auth_service.dart';
 import 'package:desa_wisata/services/user_service.dart';
@@ -412,7 +414,12 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
           subtitle: 'Lihat dan kelola pemesanan',
           color: const Color(0xFFFF9800),
           onTap: () {
-            _showComingSoon('Kelola Booking');
+            Navigator.push(
+              context,
+              MaterialPageRoute(
+                builder: (_) => const BookingManagementScreen(),
+              ),
+            );
           },
         ),
         const SizedBox(height: 10),
@@ -433,6 +440,21 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
           color: const Color(0xFFE91E63),
           onTap: () {
             _showComingSoon('Laporan & Analitik');
+          },
+        ),
+        const SizedBox(height: 10),
+        _MenuCard(
+          icon: Icons.build_outlined,
+          title: 'Admin Tools',
+          subtitle: 'Perbaikan & maintenance database',
+          color: const Color(0xFF607D8B),
+          onTap: () {
+            Navigator.push(
+              context,
+              MaterialPageRoute(
+                builder: (_) => const AdminToolsScreen(),
+              ),
+            );
           },
         ),
       ],

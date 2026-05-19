@@ -1,4 +1,3 @@
-import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:desa_wisata/services/auth_service.dart';
@@ -50,7 +49,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
     try {
       final phone = _normalizeIndonesianPhone(_phoneController.text);
 
-      final user = await AuthService.instance.signUp(
+      await AuthService.instance.signUp(
         name: _namaController.text.trim(),
         email: _emailController.text.trim(),
         phone: phone,
@@ -295,7 +294,10 @@ class _RegisterScreenState extends State<RegisterScreen> {
                             useIconWidget: true,
                             iconWidget: _googleIcon(),
                             onPressed: () {
-                              // TODO: daftar dengan Google
+                              ErrorHandler.showInfoSnackBar(
+                                context,
+                                'Daftar dengan Google belum tersedia.',
+                              );
                             },
                           ),
                         ),

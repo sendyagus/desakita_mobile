@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:desa_wisata/widgets/app_network_image.dart';
 
 class ExploreScreen extends StatefulWidget {
   const ExploreScreen({super.key});
@@ -249,6 +250,7 @@ class _ExploreScreenState extends State<ExploreScreen> {
             category: item['category'] as String,
             rating: item['rating'] as double,
             price: item['price'] as String,
+            imageUrl: item['imageUrl'] as String?,
           ),
         );
       },
@@ -360,6 +362,7 @@ class _DestinationCard extends StatelessWidget {
   final String category;
   final double rating;
   final String price;
+  final String? imageUrl;
 
   const _DestinationCard({
     required this.name,
@@ -367,6 +370,7 @@ class _DestinationCard extends StatelessWidget {
     required this.category,
     required this.rating,
     required this.price,
+    this.imageUrl,
   });
 
   @override
@@ -389,13 +393,13 @@ class _DestinationCard extends StatelessWidget {
           // Foto wireframe
           Stack(
             children: [
-              ClipRRect(
+              AppNetworkImage(
+                imageUrl: imageUrl,
+                height: 200,
+                width: double.infinity,
                 borderRadius:
                     const BorderRadius.vertical(top: Radius.circular(16)),
-                child: _WireframeImage(
-                  label: name,
-                  height: 200,
-                ),
+                placeholderLabel: name,
               ),
 
               // Rating badge kiri atas
@@ -523,63 +527,3 @@ class _DestinationCard extends StatelessWidget {
   }
 }
 
-// ─── Wireframe Image ──────────────────────────────────────────────────────────
-
-class _WireframeImage extends StatelessWidget {
-  final String label;
-  final double height;
-
-  const _WireframeImage({
-    required this.label,
-    required this.height,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      width: double.infinity,
-      height: height,
-      color: const Color(0xFFD8DDD0),
-      child: Stack(
-        children: [
-          CustomPaint(
-            size: Size(double.infinity, height),
-            painter: _WireframePainter(),
-          ),
-          Center(
-            child: Column(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                Icon(Icons.image_outlined, size: 32, color: Colors.grey[500]),
-                const SizedBox(height: 6),
-                Text(
-                  label,
-                  textAlign: TextAlign.center,
-                  style: GoogleFonts.poppins(
-                    fontSize: 12,
-                    color: Colors.grey[600],
-                    fontWeight: FontWeight.w500,
-                  ),
-                ),
-              ],
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-class _WireframePainter extends CustomPainter {
-  @override
-  void paint(Canvas canvas, Size size) {
-    final paint = Paint()
-      ..color = Colors.grey.withValues(alpha: 0.2)
-      ..strokeWidth = 1;
-    canvas.drawLine(Offset.zero, Offset(size.width, size.height), paint);
-    canvas.drawLine(Offset(size.width, 0), Offset(0, size.height), paint);
-  }
-
-  @override
-  bool shouldRepaint(covariant CustomPainter oldDelegate) => false;
-}

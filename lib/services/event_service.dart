@@ -56,23 +56,12 @@ class EventService {
   }
 
   Future<List<Map<String, dynamic>>> getUpcomingEvents() async {
-    final now = Timestamp.now();
-    final snap = await _db
-        .collection(_col)
-        .where('status', isEqualTo: true)
-        .where('startDate', isGreaterThanOrEqualTo: now)
-        .get();
-    final list = snap.docs
-        .map((d) => _docToMap(d.id, d.data()))
-        .toList()
-      ..sort((a, b) {
-        final da = DateTime.tryParse(a['start_date'] as String? ?? '') ??
-            DateTime.fromMillisecondsSinceEpoch(0);
-        final db = DateTime.tryParse(b['start_date'] as String? ?? '') ??
-            DateTime.fromMillisecondsSinceEpoch(0);
-        return da.compareTo(db);
-      });
-    return list;
+    final now = DateTime.now();
+    final all = await getAllEvents();
+    return all.where((event) {
+      final start = DateTime.tryParse(event['start_date'] as String? ?? '');
+      return start != null && !start.isBefore(DateTime(now.year, now.month, now.day));
+    }).toList();
   }
 
   Future<Map<String, dynamic>?> getEventById(String id) async {

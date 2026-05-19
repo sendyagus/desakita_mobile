@@ -3,6 +3,7 @@ import 'package:google_fonts/google_fonts.dart';
 import 'package:desa_wisata/screens/register_screen.dart';
 import 'package:desa_wisata/screens/home_screen.dart';
 import 'package:desa_wisata/screens/admin/admin_dashboard_screen.dart';
+import 'package:desa_wisata/models/user_model.dart';
 import 'package:desa_wisata/services/auth_service.dart';
 import 'package:desa_wisata/utils/error_handler.dart';
 import 'package:firebase_auth/firebase_auth.dart';
@@ -30,6 +31,21 @@ class _LoginScreenState extends State<LoginScreen> {
     super.dispose();
   }
 
+  Future<void> _navigateAfterAuth(UserModel user) async {
+    if (!mounted) return;
+    if (user.isAdmin) {
+      Navigator.pushReplacement(
+        context,
+        MaterialPageRoute(builder: (_) => const AdminDashboardScreen()),
+      );
+    } else {
+      Navigator.pushReplacement(
+        context,
+        MaterialPageRoute(builder: (_) => const HomeScreen()),
+      );
+    }
+  }
+
   Future<void> _handleLogin() async {
     if (!_formKey.currentState!.validate() || _isLoading) return;
 
@@ -41,19 +57,7 @@ class _LoginScreenState extends State<LoginScreen> {
         password: _passwordController.text,
       );
 
-      if (!mounted) return;
-
-      if (user.isAdmin) {
-        Navigator.pushReplacement(
-          context,
-          MaterialPageRoute(builder: (_) => const AdminDashboardScreen()),
-        );
-      } else {
-        Navigator.pushReplacement(
-          context,
-          MaterialPageRoute(builder: (_) => const HomeScreen()),
-        );
-      }
+      await _navigateAfterAuth(user);
     } on FirebaseAuthException catch (error) {
       ErrorHandler.showErrorSnackBar(
         context,
@@ -307,7 +311,10 @@ class _LoginScreenState extends State<LoginScreen> {
                             useIconWidget: true,
                             iconWidget: _googleIcon(),
                             onPressed: () {
-                              // TODO: login dengan Google
+                              ErrorHandler.showInfoSnackBar(
+                                context,
+                                'Login Google belum tersedia. Gunakan email & kata sandi.',
+                              );
                             },
                           ),
                         ),

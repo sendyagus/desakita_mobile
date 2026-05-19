@@ -44,6 +44,10 @@ app.*.map.json
 /android/app/profile
 /android/app/release
 
-# Firebase / migrasi (jangan commit kunci)
+# Firebase / Google (jangan commit kunci)
 **/serviceAccountKey.json
+lib/services/*.json
+!android/app/google-services.json
+!firebase.json
+!firestore.indexes.json
 tools/migrate_supabase_to_firestore/export.json

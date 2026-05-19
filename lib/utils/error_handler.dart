@@ -26,6 +26,11 @@ class ErrorHandler {
           return 'Koneksi bermasalah. Periksa internet Anda';
         case 'operation-not-allowed':
           return 'Metode login tidak diizinkan. Hubungi admin';
+        case 'account-exists-with-different-credential':
+          return 'Email sudah terdaftar dengan metode lain. Gunakan email/password';
+        case 'google-sign-in-failed':
+        case 'popup-closed-by-user':
+          return 'Login Google dibatalkan atau gagal. Coba lagi.';
         default:
           return error.message ?? 'Autentikasi gagal';
       }

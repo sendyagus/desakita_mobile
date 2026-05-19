@@ -1,8 +1,0 @@
-{
-  "name": "migrate-supabase-to-firestore",
-  "private": true,
-  "type": "module",
-  "dependencies": {
-    "firebase-admin": "^13.0.0"
-  }
-}

@@ -2,6 +2,9 @@ import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import '../../services/destination_service.dart';
+import '../../services/google_drive_service.dart';
+import '../../widgets/app_network_image.dart';
+import 'destination_form_screen.dart';
 
 class DestinationManagementScreen extends StatefulWidget {
   const DestinationManagementScreen({super.key});
@@ -13,6 +16,7 @@ class DestinationManagementScreen extends StatefulWidget {
 class _DestinationManagementScreenState extends State<DestinationManagementScreen> {
   final TextEditingController _searchController = TextEditingController();
   final DestinationService _destinationService = DestinationService();
+  final GoogleDriveService _googleDriveService = GoogleDriveService.instance;
   String _selectedCategory = 'Semua';
   final List<String> _categories = ['Semua', 'Alam', 'Budaya', 'Kuliner', 'Penginapan'];
 
@@ -32,6 +36,8 @@ class _DestinationManagementScreenState extends State<DestinationManagementScree
       rating: (d['rating'] as num).toDouble(),
       price: d['price'] as String,
       status: d['status'] as bool,
+      imageUrl: d['imageUrl'] as String?,
+      rawData: d,
     )).toList();
   }
 
@@ -70,12 +76,7 @@ class _DestinationManagementScreenState extends State<DestinationManagementScree
             final data = doc.data() as Map<String, dynamic>;
             return {
               'id': doc.id,
-              'name': data['name'] ?? '',
-              'category': data['category'] ?? '',
-              'location': data['location'] ?? '',
-              'rating': (data['rating'] as num?)?.toDouble() ?? 0.0,
-              'price': data['price'] ?? '',
-              'status': data['status'] ?? true,
+              ...data,
             };
           }).toList();
 
@@ -194,66 +195,26 @@ class _DestinationManagementScreenState extends State<DestinationManagementScree
     );
   }
 
-  void _showDestinationForm(BuildContext context, _DestinationModel? destination) {
-    showModalBottomSheet(
-      context: context,
-      isScrollControlled: true,
-      backgroundColor: Colors.white,
-      shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(20))),
-      builder: (_) => _DestinationFormSheet(
-        destination: destination,
-        onSave: (data) async {
-          final scaffoldMessenger = ScaffoldMessenger.of(context);
-          try {
-            if (destination == null) {
-              // Tambah destinasi baru
-              await _destinationService.addDestination(
-                name: data['name']!,
-                category: data['category']!,
-                location: data['location']!,
-                rating: double.parse(data['rating']!),
-                price: data['price']!,
-              );
-              scaffoldMessenger.showSnackBar(
-                SnackBar(
-                  content: Text('${data['name']} berhasil ditambahkan', style: GoogleFonts.poppins(fontSize: 13)),
-                  backgroundColor: const Color(0xFF2D5016),
-                  behavior: SnackBarBehavior.floating,
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-                ),
-              );
-            } else {
-              // Update destinasi
-              await _destinationService.updateDestination(
-                id: destination.id,
-                name: data['name']!,
-                category: data['category']!,
-                location: data['location']!,
-                rating: double.parse(data['rating']!),
-                price: data['price']!,
-              );
-              scaffoldMessenger.showSnackBar(
-                SnackBar(
-                  content: Text('${data['name']} berhasil diperbarui', style: GoogleFonts.poppins(fontSize: 13)),
-                  backgroundColor: const Color(0xFF2D5016),
-                  behavior: SnackBarBehavior.floating,
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-                ),
-              );
-            }
-          } catch (e) {
-            scaffoldMessenger.showSnackBar(
-              SnackBar(
-                content: Text('Gagal menyimpan: $e', style: GoogleFonts.poppins(fontSize: 13)),
-                backgroundColor: Colors.red,
-                behavior: SnackBarBehavior.floating,
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-              ),
-            );
-          }
-        },
+  void _showDestinationForm(BuildContext context, _DestinationModel? destination) async {
+    Map<String, dynamic>? formData;
+    if (destination != null) {
+      formData = _destinationService.docDataToFormMap(
+        destination.id,
+        destination.rawData,
+      );
+    }
+
+    final result = await Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (_) => DestinationFormScreen(destination: formData),
       ),
     );
+
+    // Refresh jika ada perubahan
+    if (result == true && mounted) {
+      setState(() {});
+    }
   }
 
   void _toggleStatus(_DestinationModel dest) async {
@@ -294,7 +255,15 @@ class _DestinationManagementScreenState extends State<DestinationManagementScree
               Navigator.pop(ctx);
               final scaffoldMessenger = ScaffoldMessenger.of(context);
               try {
+                final imageUrl = dest.imageUrl;
                 await _destinationService.deleteDestination(dest.id);
+                if (imageUrl != null && imageUrl.isNotEmpty) {
+                  try {
+                    await _googleDriveService.deleteFromGoogleDrive(imageUrl);
+                  } catch (_) {
+                    // Firestore sudah terhapus; gagal hapus Drive tidak memblokir UI
+                  }
+                }
                 scaffoldMessenger.showSnackBar(
                   SnackBar(
                     content: Text('${dest.name} dihapus', style: GoogleFonts.poppins(fontSize: 13)),
@@ -331,8 +300,20 @@ class _DestinationModel {
   final double rating;
   final String price;
   final bool status;
+  final String? imageUrl;
+  final Map<String, dynamic> rawData;
 
-  _DestinationModel({required this.id, required this.name, required this.category, required this.location, required this.rating, required this.price, required this.status});
+  _DestinationModel({
+    required this.id,
+    required this.name,
+    required this.category,
+    required this.location,
+    required this.rating,
+    required this.price,
+    required this.status,
+    this.imageUrl,
+    required this.rawData,
+  });
 }
 
 class _DestinationCard extends StatelessWidget {
@@ -354,11 +335,14 @@ class _DestinationCard extends StatelessWidget {
         children: [
           Row(
             children: [
-              Container(
-                width: 56,
-                height: 56,
-                decoration: BoxDecoration(borderRadius: BorderRadius.circular(12), color: const Color(0xFFD8DDD0)),
-                child: Icon(Icons.image_outlined, color: Colors.grey[500], size: 28),
+              ClipRRect(
+                borderRadius: BorderRadius.circular(12),
+                child: AppNetworkImage(
+                  imageUrl: destination.imageUrl,
+                  width: 56,
+                  height: 56,
+                  placeholderLabel: destination.name,
+                ),
               ),
               const SizedBox(width: 12),
               Expanded(
@@ -441,136 +425,5 @@ class _DestinationCard extends StatelessWidget {
       default:
         return Colors.grey;
     }
-  }
-}
-
-class _DestinationFormSheet extends StatefulWidget {
-  final _DestinationModel? destination;
-  final Function(Map<String, String>) onSave;
-
-  const _DestinationFormSheet({this.destination, required this.onSave});
-
-  @override
-  State<_DestinationFormSheet> createState() => _DestinationFormSheetState();
-}
-
-class _DestinationFormSheetState extends State<_DestinationFormSheet> {
-  final _formKey = GlobalKey<FormState>();
-  late final TextEditingController _nameController;
-  late final TextEditingController _locationController;
-  late final TextEditingController _ratingController;
-  late final TextEditingController _priceController;
-  String _selectedCategory = 'Alam';
-  final List<String> _categoryOptions = ['Alam', 'Budaya', 'Kuliner', 'Penginapan'];
-
-  @override
-  void initState() {
-    super.initState();
-    _nameController = TextEditingController(text: widget.destination?.name ?? '');
-    _locationController = TextEditingController(text: widget.destination?.location ?? '');
-    _ratingController = TextEditingController(text: widget.destination?.rating.toString() ?? '4.0');
-    _priceController = TextEditingController(text: widget.destination?.price ?? '');
-    _selectedCategory = widget.destination?.category ?? 'Alam';
-  }
-
-  @override
-  void dispose() {
-    _nameController.dispose();
-    _locationController.dispose();
-    _ratingController.dispose();
-    _priceController.dispose();
-    super.dispose();
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return Padding(
-      padding: EdgeInsets.only(bottom: MediaQuery.of(context).viewInsets.bottom),
-      child: SingleChildScrollView(
-        child: Padding(
-          padding: const EdgeInsets.all(24),
-          child: Form(
-            key: _formKey,
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Center(child: Container(width: 40, height: 4, decoration: BoxDecoration(color: Colors.grey[300], borderRadius: BorderRadius.circular(2)))),
-                const SizedBox(height: 20),
-                Text(widget.destination == null ? 'Tambah Destinasi Baru' : 'Edit Destinasi', style: GoogleFonts.poppins(fontSize: 18, fontWeight: FontWeight.w700, color: const Color(0xFF1A1A1A))),
-                const SizedBox(height: 20),
-                _buildTextField('Nama Destinasi', _nameController, Icons.place_outlined),
-                const SizedBox(height: 14),
-                _buildTextField('Lokasi', _locationController, Icons.location_on_outlined),
-                const SizedBox(height: 14),
-                Row(
-                  children: [
-                    Expanded(child: _buildTextField('Rating', _ratingController, Icons.star_outlined, keyboardType: TextInputType.number)),
-                    const SizedBox(width: 12),
-                    Expanded(child: _buildTextField('Harga', _priceController, Icons.attach_money_outlined)),
-                  ],
-                ),
-                const SizedBox(height: 14),
-                Text('Kategori', style: GoogleFonts.poppins(fontSize: 13, fontWeight: FontWeight.w500, color: const Color(0xFF333333))),
-                const SizedBox(height: 8),
-                Wrap(
-                  spacing: 8,
-                  children: _categoryOptions.map((cat) {
-                    final isSelected = cat == _selectedCategory;
-                    return GestureDetector(
-                      onTap: () => setState(() => _selectedCategory = cat),
-                      child: Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
-                        decoration: BoxDecoration(color: isSelected ? const Color(0xFF2D5016) : const Color(0xFFF5F5F0), borderRadius: BorderRadius.circular(12)),
-                        child: Text(cat, style: GoogleFonts.poppins(fontSize: 12, fontWeight: FontWeight.w600, color: isSelected ? Colors.white : Colors.grey[600])),
-                      ),
-                    );
-                  }).toList(),
-                ),
-                const SizedBox(height: 24),
-                SizedBox(
-                  width: double.infinity,
-                  height: 52,
-                  child: ElevatedButton(
-                    onPressed: () {
-                      if (_formKey.currentState!.validate()) {
-                        widget.onSave({'name': _nameController.text, 'category': _selectedCategory, 'location': _locationController.text, 'rating': _ratingController.text, 'price': _priceController.text});
-                        Navigator.pop(context);
-                      }
-                    },
-                    style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFF2D5016), foregroundColor: Colors.white, shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)), elevation: 0),
-                    child: Text('Simpan', style: GoogleFonts.poppins(fontSize: 15, fontWeight: FontWeight.w600)),
-                  ),
-                ),
-                const SizedBox(height: 8),
-              ],
-            ),
-          ),
-        ),
-      ),
-    );
-  }
-
-  Widget _buildTextField(String label, TextEditingController controller, IconData icon, {TextInputType? keyboardType}) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text(label, style: GoogleFonts.poppins(fontSize: 13, fontWeight: FontWeight.w500, color: const Color(0xFF333333))),
-        const SizedBox(height: 6),
-        TextFormField(
-          controller: controller,
-          keyboardType: keyboardType,
-          style: GoogleFonts.poppins(fontSize: 14),
-          decoration: InputDecoration(
-            prefixIcon: Icon(icon, color: Colors.grey[500], size: 20),
-            filled: true,
-            fillColor: const Color(0xFFF5F5F0),
-            border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide.none),
-            contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
-          ),
-          validator: (v) => v == null || v.isEmpty ? '$label tidak boleh kosong' : null,
-        ),
-      ],
-    );
   }
 }

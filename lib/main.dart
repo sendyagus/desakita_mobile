@@ -1,5 +1,7 @@
 import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/foundation.dart';
+import 'package:device_preview/device_preview.dart';
 import 'package:desa_wisata/screens/home_screen.dart';
 import 'package:desa_wisata/screens/login_screen.dart';
 import 'package:desa_wisata/widgets/auth_gate.dart';
@@ -18,7 +20,14 @@ Future<void> main() async {
     debugPrint('❌ Firebase initialization error: $e');
   }
 
-  runApp(const DesaKitaApp());
+  // Run app dengan DevicePreview
+  // Aktif hanya di debug mode, non-aktif di release mode
+  runApp(
+    DevicePreview(
+      enabled: !kReleaseMode, // Aktif di debug mode, non-aktif di release
+      builder: (context) => const DesaKitaApp(),
+    ),
+  );
 }
 
 class DesaKitaApp extends StatelessWidget {
@@ -27,6 +36,10 @@ class DesaKitaApp extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
+      // DevicePreview configuration
+      locale: DevicePreview.locale(context),
+      builder: DevicePreview.appBuilder,
+      
       title: 'DesaKita',
       debugShowCheckedModeBanner: false,
       theme: ThemeData(

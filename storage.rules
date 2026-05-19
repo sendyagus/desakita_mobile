@@ -1,0 +1,38 @@
+rules_version = '2';
+
+// Firebase Storage Security Rules
+service firebase.storage {
+  match /b/{bucket}/o {
+    
+    // Helper function: check if user is authenticated
+    function isSignedIn() {
+      return request.auth != null;
+    }
+    
+    // Destinations folder - admin can write, everyone can read
+    match /destinations/{fileName} {
+      allow read: if true;  // Public read
+      allow write: if isSignedIn();  // Authenticated users can upload
+      allow delete: if isSignedIn();  // Authenticated users can delete
+    }
+    
+    // Users folder - user can only access their own folder
+    match /users/{userId}/{fileName} {
+      allow read: if true;  // Public read (for avatars)
+      allow write: if isSignedIn() && request.auth.uid == userId;
+      allow delete: if isSignedIn() && request.auth.uid == userId;
+    }
+    
+    // Events folder - admin only
+    match /events/{fileName} {
+      allow read: if true;  // Public read
+      allow write: if isSignedIn();  // Authenticated users can upload
+      allow delete: if isSignedIn();  // Authenticated users can delete
+    }
+    
+    // Default: deny all other paths
+    match /{allPaths=**} {
+      allow read, write: if false;
+    }
+  }
+}

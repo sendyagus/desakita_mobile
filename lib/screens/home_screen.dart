@@ -6,7 +6,10 @@ import 'package:desa_wisata/screens/booking_screen.dart';
 import 'package:desa_wisata/screens/profile_screen.dart';
 import 'package:desa_wisata/screens/agent_screen.dart';
 import 'package:desa_wisata/services/user_service.dart';
+import 'package:desa_wisata/services/destination_service.dart';
+import 'package:desa_wisata/services/event_service.dart';
 import 'package:desa_wisata/models/user_model.dart';
+import 'package:desa_wisata/widgets/app_network_image.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -22,8 +25,16 @@ class _HomeScreenState extends State<HomeScreen> {
 
   final PageController _bannerController = PageController();
   final UserService _userService = UserService();
+  final DestinationService _destinationService = DestinationService();
+  final EventService _eventService = EventService();
+  
   UserModel? _currentUser;
   bool _isLoadingUser = true;
+  
+  List<Map<String, dynamic>> _recommendations = [];
+  bool _isLoadingDestinations = true;
+  List<Map<String, dynamic>> _events = [];
+  bool _isLoadingEvents = true;
 
   final List<Map<String, String>> _categories = [
     {'icon': 'alam', 'label': 'Alam'},
@@ -33,52 +44,18 @@ class _HomeScreenState extends State<HomeScreen> {
     {'icon': 'edukasi', 'label': 'Edukasi'},
   ];
 
-  final List<Map<String, dynamic>> _recommendations = [
-    {
-      'name': 'Bukit Sakura',
-      'location': 'Langkapura',
-      'rating': 4.3,
-    },
-    {
-      'name': 'Camp 9',
-      'location': 'Kemiling',
-      'rating': 4.1,
-    },
-    {
-      'name': 'Danau Hijau',
-      'location': 'Sukarame',
-      'rating': 4.5,
-    },
-  ];
-
-  final List<Map<String, dynamic>> _events = [
-    {
-      'month': 'OKT',
-      'day': '24',
-      'title': 'Festival Panen Raya',
-      'time': '08:00 - Selesai',
-      'location': 'Desa Pujon Kidul, Malang',
-    },
-    {
-      'month': 'NOV',
-      'day': '05',
-      'title': 'Pasar Budaya Nusantara',
-      'time': '09:00 - 17:00',
-      'location': 'Desa Sade, Lombok',
-    },
-    {
-      'month': 'NOV',
-      'day': '12',
-      'title': 'Festival Kuliner Desa',
-      'time': '10:00 - Selesai',
-      'location': 'Desa Penglipuran, Bali',
-    },
+  final List<String> banners = [
+    'assets/img/cs1.jpg',
+    'assets/img/cs2.jpg',
+    'assets/img/cs3.jpg',
   ];
 
   @override
   void initState() {
     super.initState();
     _loadUserData();
+    _loadDestinations();
+    _loadEvents();
   }
 
   Future<void> _loadUserData() async {
@@ -102,6 +79,65 @@ class _HomeScreenState extends State<HomeScreen> {
         setState(() => _isLoadingUser = false);
       }
     }
+  }
+
+  Future<void> _loadDestinations() async {
+    try {
+      final destinations = await _destinationService.getAllDestinations();
+      if (mounted) {
+        setState(() {
+          _recommendations = destinations.take(5).toList();
+          _isLoadingDestinations = false;
+        });
+      }
+    } catch (e) {
+      debugPrint('Error loading destinations: $e');
+      if (mounted) {
+        setState(() => _isLoadingDestinations = false);
+      }
+    }
+  }
+
+  Future<void> _loadEvents() async {
+    try {
+      final events = await _eventService.getUpcomingEvents();
+      if (mounted) {
+        setState(() {
+          _events = events.take(5).toList();
+          _isLoadingEvents = false;
+        });
+      }
+    } catch (e) {
+      debugPrint('Error loading events: $e');
+      if (mounted) {
+        setState(() => _isLoadingEvents = false);
+      }
+    }
+  }
+
+  static String _eventMonthLabel(String? isoDate) {
+    final date = DateTime.tryParse(isoDate ?? '');
+    if (date == null) return '---';
+    const months = ['JAN', 'FEB', 'MAR', 'APR', 'MEI', 'JUN', 'JUL', 'AGU', 'SEP', 'OKT', 'NOV', 'DES'];
+    return months[date.month - 1];
+  }
+
+  static String _eventDayLabel(String? isoDate) {
+    final date = DateTime.tryParse(isoDate ?? '');
+    if (date == null) return '--';
+    return date.day.toString().padLeft(2, '0');
+  }
+
+  static String _eventTimeLabel(Map<String, dynamic> event) {
+    final start = DateTime.tryParse(event['start_date'] as String? ?? '');
+    final end = DateTime.tryParse(event['end_date'] as String? ?? '');
+    if (start == null) return '';
+    final startTime =
+        '${start.hour.toString().padLeft(2, '0')}:${start.minute.toString().padLeft(2, '0')}';
+    if (end == null) return '$startTime - Selesai';
+    final endTime =
+        '${end.hour.toString().padLeft(2, '0')}:${end.minute.toString().padLeft(2, '0')}';
+    return '$startTime - $endTime';
   }
 
   @override
@@ -287,13 +323,11 @@ class _HomeScreenState extends State<HomeScreen> {
             itemBuilder: (context, index) {
               return Padding(
                 padding: const EdgeInsets.symmetric(horizontal: 16),
-                child: ClipRRect(
-                  borderRadius: BorderRadius.circular(16),
-                  child: _WireframeImage(
-                    label: 'Banner ${index + 1}\n(Foto Wisata Desa)',
-                    height: 180,
-                  ),
-                ),
+               child: Image.asset(
+  banners[index],
+  fit: BoxFit.cover,
+  width: double.infinity,
+),
               );
             },
           ),
@@ -329,17 +363,15 @@ class _HomeScreenState extends State<HomeScreen> {
   Widget _buildCategories() {
     return SizedBox(
       height: 80,
-      child: ListView.builder(
-        scrollDirection: Axis.horizontal,
-        padding: const EdgeInsets.symmetric(horizontal: 16),
-        itemCount: _categories.length,
-        itemBuilder: (context, index) {
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: List.generate(_categories.length, (index) {
           final cat = _categories[index];
           final isSelected = index == _selectedCategoryIndex;
           return GestureDetector(
             onTap: () => setState(() => _selectedCategoryIndex = index),
             child: Padding(
-              padding: const EdgeInsets.only(right: 16),
+              padding: const EdgeInsets.symmetric(horizontal: 12),
               child: Column(
                 children: [
                   Container(
@@ -376,7 +408,7 @@ class _HomeScreenState extends State<HomeScreen> {
               ),
             ),
           );
-        },
+        }),
       ),
     );
   }
@@ -417,6 +449,35 @@ class _HomeScreenState extends State<HomeScreen> {
   // ─── Rekomendasi ───────────────────────────────────────────────────────────
 
   Widget _buildRecommendations() {
+    if (_isLoadingDestinations) {
+      return SizedBox(
+        height: 220,
+        child: Center(
+          child: CircularProgressIndicator(color: const Color(0xFF2D5016)),
+        ),
+      );
+    }
+
+    if (_recommendations.isEmpty) {
+      return Container(
+        height: 220,
+        margin: const EdgeInsets.symmetric(horizontal: 16),
+        decoration: BoxDecoration(
+          color: Colors.grey[100],
+          borderRadius: BorderRadius.circular(16),
+        ),
+        child: Center(
+          child: Text(
+            'Belum ada destinasi wisata',
+            style: GoogleFonts.poppins(
+              fontSize: 13,
+              color: Colors.grey[600],
+            ),
+          ),
+        ),
+      );
+    }
+
     return SizedBox(
       height: 220,
       child: ListView.builder(
@@ -426,9 +487,10 @@ class _HomeScreenState extends State<HomeScreen> {
         itemBuilder: (context, index) {
           final item = _recommendations[index];
           return _RecommendationCard(
-            name: item['name'] as String,
-            location: item['location'] as String,
-            rating: item['rating'] as double,
+            name: item['name'] as String? ?? 'Destinasi',
+            location: item['location'] as String? ?? 'Lokasi',
+            rating: (item['rating'] as num?)?.toDouble() ?? 0.0,
+            imageUrl: item['image_url'] as String?,
           );
         },
       ),
@@ -438,18 +500,47 @@ class _HomeScreenState extends State<HomeScreen> {
   // ─── Acara Mendatang ───────────────────────────────────────────────────────
 
   Widget _buildEvents() {
+    if (_isLoadingEvents) {
+      return const Padding(
+        padding: EdgeInsets.symmetric(vertical: 24),
+        child: Center(
+          child: CircularProgressIndicator(color: Color(0xFF2D5016)),
+        ),
+      );
+    }
+
+    if (_events.isEmpty) {
+      return Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 16),
+        child: Container(
+          padding: const EdgeInsets.all(20),
+          decoration: BoxDecoration(
+            color: Colors.grey[100],
+            borderRadius: BorderRadius.circular(14),
+          ),
+          child: Center(
+            child: Text(
+              'Belum ada acara mendatang',
+              style: GoogleFonts.poppins(fontSize: 13, color: Colors.grey[600]),
+            ),
+          ),
+        ),
+      );
+    }
+
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 16),
       child: Column(
         children: _events.map((event) {
+          final start = event['start_date'] as String?;
           return Padding(
             padding: const EdgeInsets.only(bottom: 10),
             child: _EventCard(
-              month: event['month'] as String,
-              day: event['day'] as String,
-              title: event['title'] as String,
-              time: event['time'] as String,
-              location: event['location'] as String,
+              month: _eventMonthLabel(start),
+              day: _eventDayLabel(start),
+              title: event['name'] as String? ?? 'Acara',
+              time: _eventTimeLabel(event),
+              location: event['location'] as String? ?? '',
             ),
           );
         }).toList(),
@@ -529,11 +620,13 @@ class _RecommendationCard extends StatelessWidget {
   final String name;
   final String location;
   final double rating;
+  final String? imageUrl;
 
   const _RecommendationCard({
     required this.name,
     required this.location,
     required this.rating,
+    this.imageUrl,
   });
 
   @override
@@ -555,16 +648,18 @@ class _RecommendationCard extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // Foto wireframe
+          // Foto dari database atau wireframe
           Stack(
             children: [
               ClipRRect(
                 borderRadius:
                     const BorderRadius.vertical(top: Radius.circular(16)),
-                child: _WireframeImage(
-                  label: name,
+                child: AppNetworkImage(
+                  imageUrl: imageUrl,
                   height: 120,
                   width: 170,
+                  borderRadius: const BorderRadius.vertical(top: Radius.circular(16)),
+                  placeholderLabel: name,
                 ),
               ),
               // Rating badge
@@ -591,7 +686,7 @@ class _RecommendationCard extends StatelessWidget {
                           size: 13, color: Color(0xFFE8A020)),
                       const SizedBox(width: 3),
                       Text(
-                        rating.toString(),
+                        rating.toStringAsFixed(1),
                         style: GoogleFonts.poppins(
                           fontSize: 11,
                           fontWeight: FontWeight.w600,
@@ -627,11 +722,15 @@ class _RecommendationCard extends StatelessWidget {
                     const Icon(Icons.location_on_outlined,
                         size: 12, color: Colors.grey),
                     const SizedBox(width: 2),
-                    Text(
-                      location,
-                      style: GoogleFonts.poppins(
-                        fontSize: 11,
-                        color: Colors.grey[600],
+                    Expanded(
+                      child: Text(
+                        location,
+                        style: GoogleFonts.poppins(
+                          fontSize: 11,
+                          color: Colors.grey[600],
+                        ),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
                       ),
                     ),
                   ],
@@ -807,74 +906,3 @@ class _EventCard extends StatelessWidget {
   }
 }
 
-// ─── Wireframe Image ──────────────────────────────────────────────────────────
-
-class _WireframeImage extends StatelessWidget {
-  final String label;
-  final double height;
-  final double? width;
-
-  const _WireframeImage({
-    required this.label,
-    required this.height,
-    this.width,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      width: width ?? double.infinity,
-      height: height,
-      color: const Color(0xFFD8DDD0),
-      child: Stack(
-        children: [
-          // Grid pattern
-          CustomPaint(
-            size: Size(width ?? double.infinity, height),
-            painter: _WireframePainter(),
-          ),
-          // Label
-          Center(
-            child: Column(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                Icon(
-                  Icons.image_outlined,
-                  size: 28,
-                  color: Colors.grey[500],
-                ),
-                const SizedBox(height: 4),
-                Text(
-                  label,
-                  textAlign: TextAlign.center,
-                  style: GoogleFonts.poppins(
-                    fontSize: 11,
-                    color: Colors.grey[600],
-                    fontWeight: FontWeight.w500,
-                  ),
-                ),
-              ],
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-class _WireframePainter extends CustomPainter {
-  @override
-  void paint(Canvas canvas, Size size) {
-    final paint = Paint()
-      ..color = Colors.grey.withValues(alpha: 0.2)
-      ..strokeWidth = 1;
-
-    // Garis diagonal kiri-atas ke kanan-bawah
-    canvas.drawLine(Offset.zero, Offset(size.width, size.height), paint);
-    // Garis diagonal kanan-atas ke kiri-bawah
-    canvas.drawLine(Offset(size.width, 0), Offset(0, size.height), paint);
-  }
-
-  @override
-  bool shouldRepaint(covariant CustomPainter oldDelegate) => false;
-}

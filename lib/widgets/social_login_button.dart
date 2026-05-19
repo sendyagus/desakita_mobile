@@ -6,7 +6,7 @@ class SocialLoginButton extends StatelessWidget {
   final String? iconPath;
   final bool useIconWidget;
   final Widget? iconWidget;
-  final VoidCallback onPressed;
+  final VoidCallback? onPressed;
 
   const SocialLoginButton({
     super.key,
@@ -14,7 +14,7 @@ class SocialLoginButton extends StatelessWidget {
     this.iconPath,
     this.useIconWidget = false,
     this.iconWidget,
-    required this.onPressed,
+    this.onPressed,
   });
 
   @override
