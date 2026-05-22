@@ -173,8 +173,8 @@ class _BookingManagementScreenState extends State<BookingManagementScreen> {
           _buildFilterChips(),
           const SizedBox(height: 16),
           Expanded(
-            child: FutureBuilder<List<Map<String, dynamic>>>(
-              future: _bookingService.getAllBookings(),
+            child: StreamBuilder<List<Map<String, dynamic>>>(
+              stream: _bookingService.watchAllBookings(),
               builder: (context, snapshot) {
                 if (snapshot.connectionState == ConnectionState.waiting) {
                   return const Center(

@@ -1,5 +1,10 @@
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:desa_wisata/config/app_categories.dart';
+import 'package:desa_wisata/services/destination_service.dart';
+import 'package:desa_wisata/screens/user/create_booking_screen.dart';
+import 'package:desa_wisata/widgets/app_network_image.dart';
 
 class BookingScreen extends StatefulWidget {
   const BookingScreen({super.key});
@@ -10,68 +15,39 @@ class BookingScreen extends StatefulWidget {
 
 class _BookingScreenState extends State<BookingScreen> {
   int _selectedTabIndex = 0;
+  final DestinationService _destinationService = DestinationService();
 
-  final List<String> _tabs = ['Semua', 'Penginapan', 'Wisata', 'Kuliner'];
+  final List<String> _tabs = ['Semua', 'Penginapan', 'Wisata'];
 
-  final List<Map<String, dynamic>> _services = [
-    {
-      'name': 'Jukung Villa Lampung',
-      'description': 'Nikmati pemandangan perbukitan yang memukau.',
-      'category': 'Penginapan',
-      'categoryIcon': Icons.bed_outlined,
-      'price': 'Rp 450.000',
-      'priceUnit': '/ malam',
-      'rating': 4.8,
-      'isMultiPhoto': false,
-    },
-    {
-      'name': 'Lembah Durian Farm Stable',
-      'description': 'Pengalaman menginap yang menyatu dengan alam.',
-      'category': 'Penginapan & Glamping',
-      'categoryIcon': Icons.bed_outlined,
-      'price': 'Rp 350.000',
-      'priceUnit': '/ malam',
-      'rating': 4.6,
-      'isMultiPhoto': true,
-    },
-    {
-      'name': 'Homestay Desa Pujon',
-      'description': 'Rasakan kehidupan desa yang autentik dan nyaman.',
-      'category': 'Penginapan',
-      'categoryIcon': Icons.bed_outlined,
-      'price': 'Rp 200.000',
-      'priceUnit': '/ malam',
-      'rating': 4.4,
-      'isMultiPhoto': false,
-    },
-    {
-      'name': 'Wisata Kebun Teh Kemuning',
-      'description': 'Jelajahi hamparan kebun teh yang hijau dan segar.',
-      'category': 'Wisata',
-      'categoryIcon': Icons.landscape_outlined,
-      'price': 'Rp 75.000',
-      'priceUnit': '/ orang',
-      'rating': 4.7,
-      'isMultiPhoto': false,
-    },
-    {
-      'name': 'Paket Kuliner Desa Sade',
-      'description': 'Cicipi cita rasa masakan tradisional Lombok.',
-      'category': 'Kuliner',
-      'categoryIcon': Icons.restaurant_outlined,
-      'price': 'Rp 120.000',
-      'priceUnit': '/ paket',
-      'rating': 4.5,
-      'isMultiPhoto': true,
-    },
-  ];
-
-  List<Map<String, dynamic>> get _filteredServices {
+  List<Map<String, dynamic>> _filterList(List<Map<String, dynamic>> all) {
     final selected = _tabs[_selectedTabIndex];
-    if (selected == 'Semua') return _services;
-    return _services
-        .where((s) => (s['category'] as String).contains(selected))
+    if (selected == 'Semua') return all;
+    if (selected == 'Penginapan') {
+      return all
+          .where((d) => AppCategories.normalize(d['category'] as String?) == 'Penginapan')
+          .toList();
+    }
+    // Wisata = kategori Alam yang bisa dibooking
+    return all
+        .where((d) => AppCategories.normalize(d['category'] as String?) == 'Alam')
         .toList();
+  }
+
+  IconData _categoryIcon(String category) {
+    switch (AppCategories.normalize(category)) {
+      case 'Penginapan':
+        return Icons.bed_outlined;
+      case 'Alam':
+        return Icons.landscape_outlined;
+      default:
+        return Icons.place_outlined;
+    }
+  }
+
+  String _priceUnit(String category) {
+    return AppCategories.normalize(category) == 'Penginapan'
+        ? '/ malam'
+        : '/ orang';
   }
 
   @override
@@ -92,10 +68,7 @@ class _BookingScreenState extends State<BookingScreen> {
 
             const SizedBox(height: 16),
 
-            // Daftar layanan
-            Expanded(
-              child: _buildServiceList(),
-            ),
+            Expanded(child: _buildServiceList()),
           ],
         ),
       ),
@@ -182,62 +155,90 @@ class _BookingScreenState extends State<BookingScreen> {
   // ─── Service List ──────────────────────────────────────────────────────────
 
   Widget _buildServiceList() {
-    final services = _filteredServices;
-
-    if (services.isEmpty) {
-      return Center(
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Icon(Icons.inbox_outlined, size: 56, color: Colors.grey[300]),
-            const SizedBox(height: 12),
-            Text(
-              'Belum ada layanan tersedia',
-              style: GoogleFonts.poppins(
-                fontSize: 14,
-                color: Colors.grey[400],
-              ),
+    return FutureBuilder<List<Map<String, dynamic>>>(
+      future: _destinationService.getBookableDestinations(),
+      builder: (context, snapshot) {
+        if (snapshot.connectionState == ConnectionState.waiting) {
+          return const Center(
+            child: CircularProgressIndicator(color: Color(0xFF2D5016)),
+          );
+        }
+        if (snapshot.hasError) {
+          return Center(
+            child: Text(
+              'Gagal memuat data booking',
+              style: GoogleFonts.poppins(fontSize: 14, color: Colors.grey[600]),
             ),
-          ],
-        ),
-      );
-    }
+          );
+        }
 
-    return ListView.builder(
-      padding: const EdgeInsets.symmetric(horizontal: 16),
-      itemCount: services.length,
-      itemBuilder: (context, index) {
-        final item = services[index];
-        return Padding(
-          padding: const EdgeInsets.only(bottom: 20),
-          child: _ServiceCard(
-            name: item['name'] as String,
-            description: item['description'] as String,
-            category: item['category'] as String,
-            categoryIcon: item['categoryIcon'] as IconData,
-            price: item['price'] as String,
-            priceUnit: item['priceUnit'] as String,
-            rating: item['rating'] as double,
-            isMultiPhoto: item['isMultiPhoto'] as bool,
-            onTap: () => _showBookingSheet(context, item),
-          ),
+        final filtered = _filterList(snapshot.data ?? []);
+        if (filtered.isEmpty) {
+          return Center(
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Icon(Icons.inbox_outlined, size: 56, color: Colors.grey[300]),
+                const SizedBox(height: 12),
+                Text(
+                  'Belum ada tempat booking.\nAdmin dapat menambah di Kelola Destinasi\n(aktifkan "Bisa dibooking" + stok).',
+                  textAlign: TextAlign.center,
+                  style: GoogleFonts.poppins(fontSize: 13, color: Colors.grey[500]),
+                ),
+              ],
+            ),
+          );
+        }
+
+        return ListView.builder(
+          padding: const EdgeInsets.symmetric(horizontal: 16),
+          itemCount: filtered.length,
+          itemBuilder: (context, index) {
+            final item = filtered[index];
+            final category = AppCategories.normalize(item['category'] as String?);
+            return Padding(
+              padding: const EdgeInsets.only(bottom: 20),
+              child: _ServiceCard(
+                name: item['name'] as String? ?? 'Destinasi',
+                description: (item['description'] as String?)?.isNotEmpty == true
+                    ? item['description'] as String
+                    : item['location'] as String? ?? '',
+                category: category == 'Alam' ? 'Wisata' : category,
+                categoryIcon: _categoryIcon(category),
+                price: item['price'] as String? ?? 'Rp 0',
+                priceUnit: _priceUnit(category),
+                rating: (item['rating'] as num?)?.toDouble() ?? 0,
+                stock: (item['stock'] as num?)?.toInt() ?? 0,
+                imageUrl: item['image_url'] as String?,
+                onTap: () => _openBooking(context, item),
+              ),
+            );
+          },
         );
       },
     );
   }
 
-  // ─── Booking Bottom Sheet ──────────────────────────────────────────────────
+  void _openBooking(BuildContext context, Map<String, dynamic> destination) {
+    final user = FirebaseAuth.instance.currentUser;
+    if (user == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            'Login dulu untuk melakukan booking',
+            style: GoogleFonts.poppins(fontSize: 13),
+          ),
+          backgroundColor: Colors.orange[800],
+        ),
+      );
+      return;
+    }
 
-  void _showBookingSheet(
-      BuildContext context, Map<String, dynamic> item) {
-    showModalBottomSheet(
-      context: context,
-      isScrollControlled: true,
-      backgroundColor: Colors.white,
-      shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (_) => CreateBookingScreen(destination: destination),
       ),
-      builder: (context) => _BookingSheet(item: item),
     );
   }
 }
@@ -252,7 +253,8 @@ class _ServiceCard extends StatelessWidget {
   final String price;
   final String priceUnit;
   final double rating;
-  final bool isMultiPhoto;
+  final int stock;
+  final String? imageUrl;
   final VoidCallback onTap;
 
   const _ServiceCard({
@@ -263,7 +265,8 @@ class _ServiceCard extends StatelessWidget {
     required this.price,
     required this.priceUnit,
     required this.rating,
-    required this.isMultiPhoto,
+    required this.stock,
+    this.imageUrl,
     required this.onTap,
   });
 
@@ -290,27 +293,46 @@ class _ServiceCard extends StatelessWidget {
               ClipRRect(
                 borderRadius:
                     const BorderRadius.vertical(top: Radius.circular(16)),
-                child: isMultiPhoto
-                    ? _MultiPhotoWireframe(name: name)
-                    : _WireframeImage(label: name, height: 200),
+                child: AppNetworkImage(
+                  imageUrl: imageUrl,
+                  height: 200,
+                  width: double.infinity,
+                  placeholderLabel: name,
+                ),
               ),
 
-              // Badge kategori kanan atas
+              Positioned(
+                top: 12,
+                left: 12,
+                child: Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+                  decoration: BoxDecoration(
+                    color: stock > 0 ? const Color(0xFF2D5016) : Colors.red,
+                    borderRadius: BorderRadius.circular(20),
+                  ),
+                  child: Text(
+                    'Stok: $stock',
+                    style: GoogleFonts.poppins(
+                      fontSize: 11,
+                      fontWeight: FontWeight.w600,
+                      color: Colors.white,
+                    ),
+                  ),
+                ),
+              ),
               Positioned(
                 top: 12,
                 right: 12,
                 child: Container(
-                  padding: const EdgeInsets.symmetric(
-                      horizontal: 10, vertical: 5),
+                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
                   decoration: BoxDecoration(
-                    color: Colors.white.withOpacity(0.92),
+                    color: Colors.white.withValues(alpha: 0.92),
                     borderRadius: BorderRadius.circular(20),
                   ),
                   child: Row(
                     mainAxisSize: MainAxisSize.min,
                     children: [
-                      Icon(categoryIcon,
-                          size: 13, color: const Color(0xFF2D5016)),
+                      Icon(categoryIcon, size: 13, color: const Color(0xFF2D5016)),
                       const SizedBox(width: 4),
                       Text(
                         category,
@@ -435,7 +457,7 @@ class _ServiceCard extends StatelessWidget {
                           padding: const EdgeInsets.symmetric(horizontal: 16),
                         ),
                         child: Text(
-                          'Cek Ketersediaan',
+                          'Booking Sekarang',
                           style: GoogleFonts.poppins(
                             fontSize: 13,
                             fontWeight: FontWeight.w600,
@@ -452,438 +474,4 @@ class _ServiceCard extends StatelessWidget {
       ),
     );
   }
-}
-
-// ─── Booking Bottom Sheet ─────────────────────────────────────────────────────
-
-class _BookingSheet extends StatefulWidget {
-  final Map<String, dynamic> item;
-
-  const _BookingSheet({required this.item});
-
-  @override
-  State<_BookingSheet> createState() => _BookingSheetState();
-}
-
-class _BookingSheetState extends State<_BookingSheet> {
-  DateTime? _checkIn;
-  DateTime? _checkOut;
-  int _guestCount = 1;
-
-  Future<void> _pickDate(bool isCheckIn) async {
-    final now = DateTime.now();
-    final picked = await showDatePicker(
-      context: context,
-      initialDate: now,
-      firstDate: now,
-      lastDate: now.add(const Duration(days: 365)),
-      builder: (context, child) {
-        return Theme(
-          data: Theme.of(context).copyWith(
-            colorScheme: const ColorScheme.light(
-              primary: Color(0xFF2D5016),
-            ),
-          ),
-          child: child!,
-        );
-      },
-    );
-    if (picked != null) {
-      setState(() {
-        if (isCheckIn) {
-          _checkIn = picked;
-          if (_checkOut != null && _checkOut!.isBefore(picked)) {
-            _checkOut = null;
-          }
-        } else {
-          _checkOut = picked;
-        }
-      });
-    }
-  }
-
-  String _formatDate(DateTime? date) {
-    if (date == null) return 'Pilih tanggal';
-    final months = [
-      'Jan', 'Feb', 'Mar', 'Apr', 'Mei', 'Jun',
-      'Jul', 'Agu', 'Sep', 'Okt', 'Nov', 'Des'
-    ];
-    return '${date.day} ${months[date.month - 1]} ${date.year}';
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return Padding(
-      padding: EdgeInsets.only(
-        bottom: MediaQuery.of(context).viewInsets.bottom,
-      ),
-      child: SingleChildScrollView(
-        child: Padding(
-          padding: const EdgeInsets.all(24),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              // Handle bar
-              Center(
-                child: Container(
-                  width: 40,
-                  height: 4,
-                  decoration: BoxDecoration(
-                    color: Colors.grey[300],
-                    borderRadius: BorderRadius.circular(2),
-                  ),
-                ),
-              ),
-
-              const SizedBox(height: 20),
-
-              // Judul
-              Text(
-                widget.item['name'] as String,
-                style: GoogleFonts.poppins(
-                  fontSize: 18,
-                  fontWeight: FontWeight.w700,
-                  color: const Color(0xFF1A1A1A),
-                ),
-              ),
-
-              const SizedBox(height: 4),
-
-              Row(
-                children: [
-                  const Icon(Icons.star_rounded,
-                      size: 14, color: Color(0xFFE8A020)),
-                  const SizedBox(width: 4),
-                  Text(
-                    '${widget.item['rating']}  •  ${widget.item['category']}',
-                    style: GoogleFonts.poppins(
-                      fontSize: 12,
-                      color: Colors.grey[600],
-                    ),
-                  ),
-                ],
-              ),
-
-              const SizedBox(height: 20),
-              const Divider(height: 1, color: Color(0xFFEEEEEE)),
-              const SizedBox(height: 20),
-
-              // Check-in & Check-out
-              Row(
-                children: [
-                  Expanded(
-                    child: _DatePickerField(
-                      label: 'Check-in',
-                      value: _formatDate(_checkIn),
-                      onTap: () => _pickDate(true),
-                    ),
-                  ),
-                  const SizedBox(width: 12),
-                  Expanded(
-                    child: _DatePickerField(
-                      label: 'Check-out',
-                      value: _formatDate(_checkOut),
-                      onTap: () => _pickDate(false),
-                    ),
-                  ),
-                ],
-              ),
-
-              const SizedBox(height: 16),
-
-              // Jumlah tamu
-              Text(
-                'Jumlah Tamu',
-                style: GoogleFonts.poppins(
-                  fontSize: 13,
-                  fontWeight: FontWeight.w500,
-                  color: const Color(0xFF333333),
-                ),
-              ),
-              const SizedBox(height: 8),
-              Container(
-                padding: const EdgeInsets.symmetric(
-                    horizontal: 16, vertical: 4),
-                decoration: BoxDecoration(
-                  color: const Color(0xFFF5F5F0),
-                  borderRadius: BorderRadius.circular(12),
-                ),
-                child: Row(
-                  children: [
-                    const Icon(Icons.person_outline,
-                        size: 18, color: Colors.grey),
-                    const SizedBox(width: 8),
-                    Expanded(
-                      child: Text(
-                        '$_guestCount Tamu',
-                        style: GoogleFonts.poppins(fontSize: 14),
-                      ),
-                    ),
-                    // Kurang
-                    IconButton(
-                      onPressed: _guestCount > 1
-                          ? () => setState(() => _guestCount--)
-                          : null,
-                      icon: const Icon(Icons.remove_circle_outline),
-                      color: const Color(0xFF2D5016),
-                      iconSize: 22,
-                    ),
-                    // Tambah
-                    IconButton(
-                      onPressed: _guestCount < 20
-                          ? () => setState(() => _guestCount++)
-                          : null,
-                      icon: const Icon(Icons.add_circle_outline),
-                      color: const Color(0xFF2D5016),
-                      iconSize: 22,
-                    ),
-                  ],
-                ),
-              ),
-
-              const SizedBox(height: 20),
-
-              // Ringkasan harga
-              if (_checkIn != null && _checkOut != null) ...[
-                Container(
-                  padding: const EdgeInsets.all(14),
-                  decoration: BoxDecoration(
-                    color: const Color(0xFFEEF2E8),
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                  child: Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      Text(
-                        'Total estimasi',
-                        style: GoogleFonts.poppins(
-                          fontSize: 13,
-                          color: Colors.grey[700],
-                        ),
-                      ),
-                      Text(
-                        widget.item['price'] as String,
-                        style: GoogleFonts.poppins(
-                          fontSize: 15,
-                          fontWeight: FontWeight.w700,
-                          color: const Color(0xFF2D5016),
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-                const SizedBox(height: 16),
-              ],
-
-              // Tombol Pesan
-              SizedBox(
-                width: double.infinity,
-                height: 52,
-                child: ElevatedButton(
-                  onPressed: () {
-                    Navigator.pop(context);
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      SnackBar(
-                        content: Text(
-                          'Pemesanan ${widget.item['name']} berhasil dikirim!',
-                          style: GoogleFonts.poppins(fontSize: 13),
-                        ),
-                        backgroundColor: const Color(0xFF2D5016),
-                        behavior: SnackBarBehavior.floating,
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(10),
-                        ),
-                      ),
-                    );
-                  },
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: const Color(0xFF2D5016),
-                    foregroundColor: Colors.white,
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(12),
-                    ),
-                    elevation: 0,
-                  ),
-                  child: Text(
-                    'Pesan Sekarang',
-                    style: GoogleFonts.poppins(
-                      fontSize: 15,
-                      fontWeight: FontWeight.w600,
-                    ),
-                  ),
-                ),
-              ),
-
-              const SizedBox(height: 8),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-}
-
-// ─── Date Picker Field ────────────────────────────────────────────────────────
-
-class _DatePickerField extends StatelessWidget {
-  final String label;
-  final String value;
-  final VoidCallback onTap;
-
-  const _DatePickerField({
-    required this.label,
-    required this.value,
-    required this.onTap,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return GestureDetector(
-      onTap: onTap,
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(
-            label,
-            style: GoogleFonts.poppins(
-              fontSize: 13,
-              fontWeight: FontWeight.w500,
-              color: const Color(0xFF333333),
-            ),
-          ),
-          const SizedBox(height: 6),
-          Container(
-            padding:
-                const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
-            decoration: BoxDecoration(
-              color: const Color(0xFFF5F5F0),
-              borderRadius: BorderRadius.circular(12),
-            ),
-            child: Row(
-              children: [
-                const Icon(Icons.calendar_today_outlined,
-                    size: 15, color: Color(0xFF2D5016)),
-                const SizedBox(width: 8),
-                Expanded(
-                  child: Text(
-                    value,
-                    style: GoogleFonts.poppins(
-                      fontSize: 12,
-                      color: value == 'Pilih tanggal'
-                          ? Colors.grey[400]
-                          : const Color(0xFF1A1A1A),
-                    ),
-                  ),
-                ),
-              ],
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-// ─── Multi Photo Wireframe ────────────────────────────────────────────────────
-
-class _MultiPhotoWireframe extends StatelessWidget {
-  final String name;
-
-  const _MultiPhotoWireframe({required this.name});
-
-  @override
-  Widget build(BuildContext context) {
-    return SizedBox(
-      height: 200,
-      child: Row(
-        children: [
-          // Foto besar kiri
-          Expanded(
-            flex: 2,
-            child: _WireframeImage(label: name, height: 200),
-          ),
-          const SizedBox(width: 2),
-          // Dua foto kecil kanan
-          Expanded(
-            flex: 1,
-            child: Column(
-              children: [
-                Expanded(
-                  child: _WireframeImage(label: '', height: 99),
-                ),
-                const SizedBox(height: 2),
-                Expanded(
-                  child: _WireframeImage(label: '', height: 99),
-                ),
-              ],
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-// ─── Wireframe Image ──────────────────────────────────────────────────────────
-
-class _WireframeImage extends StatelessWidget {
-  final String label;
-  final double height;
-
-  const _WireframeImage({
-    required this.label,
-    required this.height,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      width: double.infinity,
-      height: height,
-      color: const Color(0xFFD8DDD0),
-      child: Stack(
-        children: [
-          CustomPaint(
-            size: Size(double.infinity, height),
-            painter: _WireframePainter(),
-          ),
-          if (label.isNotEmpty)
-            Center(
-              child: Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  Icon(Icons.image_outlined,
-                      size: 28, color: Colors.grey[500]),
-                  const SizedBox(height: 4),
-                  Text(
-                    label,
-                    textAlign: TextAlign.center,
-                    style: GoogleFonts.poppins(
-                      fontSize: 11,
-                      color: Colors.grey[600],
-                      fontWeight: FontWeight.w500,
-                    ),
-                  ),
-                ],
-              ),
-            ),
-        ],
-      ),
-    );
-  }
-}
-
-class _WireframePainter extends CustomPainter {
-  @override
-  void paint(Canvas canvas, Size size) {
-    final paint = Paint()
-      ..color = Colors.grey.withOpacity(0.2)
-      ..strokeWidth = 1;
-    canvas.drawLine(Offset.zero, Offset(size.width, size.height), paint);
-    canvas.drawLine(Offset(size.width, 0), Offset(0, size.height), paint);
-  }
-
-  @override
-  bool shouldRepaint(covariant CustomPainter oldDelegate) => false;
 }

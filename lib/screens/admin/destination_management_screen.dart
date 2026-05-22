@@ -18,7 +18,7 @@ class _DestinationManagementScreenState extends State<DestinationManagementScree
   final DestinationService _destinationService = DestinationService();
   final GoogleDriveService _googleDriveService = GoogleDriveService.instance;
   String _selectedCategory = 'Semua';
-  final List<String> _categories = ['Semua', 'Alam', 'Budaya', 'Kuliner', 'Penginapan'];
+  final List<String> _categories = ['Semua', 'Alam', 'Penginapan', 'Kuliner', 'Edukasi'];
 
   List<_DestinationModel> _filterDestinations(List<Map<String, dynamic>> allDestinations) {
     final query = _searchController.text.toLowerCase();
@@ -416,7 +416,7 @@ class _DestinationCard extends StatelessWidget {
     switch (category) {
       case 'Alam':
         return const Color(0xFF4CAF50);
-      case 'Budaya':
+      case 'Edukasi':
         return const Color(0xFF9C27B0);
       case 'Kuliner':
         return const Color(0xFFFF9800);

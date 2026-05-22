@@ -4,7 +4,8 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:desa_wisata/screens/admin/user_management_screen.dart';
 import 'package:desa_wisata/screens/admin/destination_management_screen.dart';
 import 'package:desa_wisata/screens/admin/booking_management_screen.dart';
-import 'package:desa_wisata/screens/admin/admin_tools_screen.dart';
+import 'package:desa_wisata/screens/admin/event_management_screen.dart';
+import 'package:desa_wisata/screens/admin/booking_analytics_screen.dart';
 import 'package:desa_wisata/services/stats_service.dart';
 import 'package:desa_wisata/services/auth_service.dart';
 import 'package:desa_wisata/services/user_service.dart';
@@ -195,29 +196,6 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
                 ),
               ],
             ),
-          ),
-
-          // Notifikasi
-          Stack(
-            children: [
-              IconButton(
-                onPressed: () {},
-                icon: const Icon(Icons.notifications_outlined),
-                color: const Color(0xFF2D5016),
-              ),
-              Positioned(
-                top: 8,
-                right: 8,
-                child: Container(
-                  width: 8,
-                  height: 8,
-                  decoration: const BoxDecoration(
-                    shape: BoxShape.circle,
-                    color: Color(0xFFE53935),
-                  ),
-                ),
-              ),
-            ],
           ),
 
           // Logout button
@@ -429,31 +407,22 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
           subtitle: 'Tambah dan kelola event desa',
           color: const Color(0xFF9C27B0),
           onTap: () {
-            _showComingSoon('Kelola Acara');
+            Navigator.push(
+              context,
+              MaterialPageRoute(builder: (_) => const EventManagementScreen()),
+            );
           },
         ),
         const SizedBox(height: 10),
         _MenuCard(
           icon: Icons.bar_chart_outlined,
           title: 'Laporan & Analitik',
-          subtitle: 'Lihat statistik lengkap',
+          subtitle: 'Laporan booking & pendapatan',
           color: const Color(0xFFE91E63),
-          onTap: () {
-            _showComingSoon('Laporan & Analitik');
-          },
-        ),
-        const SizedBox(height: 10),
-        _MenuCard(
-          icon: Icons.build_outlined,
-          title: 'Admin Tools',
-          subtitle: 'Perbaikan & maintenance database',
-          color: const Color(0xFF607D8B),
           onTap: () {
             Navigator.push(
               context,
-              MaterialPageRoute(
-                builder: (_) => const AdminToolsScreen(),
-              ),
+              MaterialPageRoute(builder: (_) => const BookingAnalyticsScreen()),
             );
           },
         ),
@@ -577,19 +546,6 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
     }
   }
 
-  void _showComingSoon(String feature) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text(
-          '$feature — segera hadir',
-          style: GoogleFonts.poppins(fontSize: 13),
-        ),
-        backgroundColor: const Color(0xFF2D5016),
-        behavior: SnackBarBehavior.floating,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-      ),
-    );
-  }
 }
 
 // ─── Stat Card ────────────────────────────────────────────────────────────────

@@ -7,9 +7,7 @@ class BookingService {
   static const _destinations = 'destinations';
   static const _users = 'users';
 
-  Map<String, dynamic> _nestedDestination(
-    Map<String, dynamic> b,
-  ) {
+  Map<String, dynamic> _nestedDestination(Map<String, dynamic> b) {
     return {
       'id': b['destinationId'],
       'name': b['destinationName'] ?? '',
@@ -65,6 +63,11 @@ class BookingService {
     };
   }
 
+  Future<int> _getDestinationStock(String destinationId) async {
+    final doc = await _db.collection(_destinations).doc(destinationId).get();
+    return (doc.data()?['stock'] as num?)?.toInt() ?? 0;
+  }
+
   Future<Map<String, dynamic>> createBooking({
     required String destinationId,
     required String userId,
@@ -73,9 +76,17 @@ class BookingService {
     required int guestCount,
     required String totalPrice,
   }) async {
-    final destSnap =
-        await _db.collection(_destinations).doc(destinationId).get();
+    final stock = await _getDestinationStock(destinationId);
+    if (stock <= 0) {
+      throw Exception('Stok habis. Pilih tempat lain atau hubungi admin.');
+    }
+
+    final destSnap = await _db.collection(_destinations).doc(destinationId).get();
     final dest = destSnap.data() ?? {};
+    if (dest['bookable'] != true) {
+      throw Exception('Destinasi ini tidak tersedia untuk booking.');
+    }
+
     final userSnap = await _db.collection(_users).doc(userId).get();
     final user = userSnap.data() ?? {};
 
@@ -111,9 +122,7 @@ class BookingService {
         .collection(_bookings)
         .where('userId', isEqualTo: userId)
         .get();
-    final list = snap.docs
-        .map((d) => _docToBookingMap(d.id, d.data()))
-        .toList()
+    final list = snap.docs.map((d) => _docToBookingMap(d.id, d.data())).toList()
       ..sort((a, b) {
         final ca = DateTime.tryParse(a['created_at'] as String? ?? '') ??
             DateTime.fromMillisecondsSinceEpoch(0);
@@ -124,11 +133,24 @@ class BookingService {
     return list;
   }
 
+  Stream<List<Map<String, dynamic>>> watchAllBookings() {
+    return _db.collection(_bookings).snapshots().map((snap) {
+      final list =
+          snap.docs.map((d) => _docToBookingMap(d.id, d.data())).toList()
+            ..sort((a, b) {
+              final ca = DateTime.tryParse(a['created_at'] as String? ?? '') ??
+                  DateTime.fromMillisecondsSinceEpoch(0);
+              final cb = DateTime.tryParse(b['created_at'] as String? ?? '') ??
+                  DateTime.fromMillisecondsSinceEpoch(0);
+              return cb.compareTo(ca);
+            });
+      return list;
+    });
+  }
+
   Future<List<Map<String, dynamic>>> getAllBookings() async {
     final snap = await _db.collection(_bookings).get();
-    final list = snap.docs
-        .map((d) => _docToBookingMap(d.id, d.data()))
-        .toList()
+    final list = snap.docs.map((d) => _docToBookingMap(d.id, d.data())).toList()
       ..sort((a, b) {
         final ca = DateTime.tryParse(a['created_at'] as String? ?? '') ??
             DateTime.fromMillisecondsSinceEpoch(0);
@@ -140,10 +162,40 @@ class BookingService {
   }
 
   Future<void> updateBookingStatus(String bookingId, String status) async {
-    await _db.collection(_bookings).doc(bookingId).update({
+    final bookingRef = _db.collection(_bookings).doc(bookingId);
+    final bookingDoc = await bookingRef.get();
+    if (!bookingDoc.exists) return;
+
+    final data = bookingDoc.data()!;
+    final oldStatus = data['status'] as String? ?? 'pending';
+    final destId = data['destinationId'] as String?;
+
+    await bookingRef.update({
       'status': status,
       'updatedAt': FieldValue.serverTimestamp(),
     });
+
+    if (destId == null) return;
+
+    final destRef = _db.collection(_destinations).doc(destId);
+
+    if (status == 'confirmed' && oldStatus == 'pending') {
+      await _db.runTransaction((tx) async {
+        final destSnap = await tx.get(destRef);
+        final stock = (destSnap.data()?['stock'] as num?)?.toInt() ?? 0;
+        if (stock <= 0) {
+          throw Exception('Stok destinasi habis, tidak bisa dikonfirmasi.');
+        }
+        tx.update(destRef, {'stock': stock - 1});
+      });
+    } else if ((status == 'cancelled') &&
+        (oldStatus == 'confirmed' || oldStatus == 'completed')) {
+      await _db.runTransaction((tx) async {
+        final destSnap = await tx.get(destRef);
+        final stock = (destSnap.data()?['stock'] as num?)?.toInt() ?? 0;
+        tx.update(destRef, {'stock': stock + 1});
+      });
+    }
   }
 
   Future<void> cancelBooking(String bookingId) async {

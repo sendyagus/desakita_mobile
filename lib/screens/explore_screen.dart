@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:desa_wisata/config/app_categories.dart';
 import 'package:desa_wisata/widgets/app_network_image.dart';
 
 class ExploreScreen extends StatefulWidget {
@@ -14,20 +15,17 @@ class _ExploreScreenState extends State<ExploreScreen> {
   int _selectedFilterIndex = 0;
   final TextEditingController _searchController = TextEditingController();
 
-  final List<String> _filters = [
-    'Semua',
-    'Alam',
-    'Budaya',
-    'Kuliner',
-    'Penginapan',
-  ];
+  final List<String> _filters = AppCategories.exploreFilters;
 
   List<Map<String, dynamic>> _filterDestinations(List<Map<String, dynamic>> allDestinations) {
     final query = _searchController.text.toLowerCase();
     final selectedFilter = _filters[_selectedFilterIndex];
 
     return allDestinations.where((item) {
-      final matchCategory = selectedFilter == 'Semua' || item['category'] == selectedFilter;
+      final matchCategory = AppCategories.matchesFilter(
+        item['category'] as String? ?? '',
+        selectedFilter,
+      );
       final matchSearch = query.isEmpty || 
           (item['name'] as String).toLowerCase().contains(query) ||
           (item['location'] as String).toLowerCase().contains(query);
@@ -515,7 +513,7 @@ class _DestinationCard extends StatelessWidget {
     switch (category) {
       case 'Alam':
         return Icons.landscape_outlined;
-      case 'Budaya':
+      case 'Edukasi':
         return Icons.account_balance_outlined;
       case 'Kuliner':
         return Icons.fastfood_outlined;

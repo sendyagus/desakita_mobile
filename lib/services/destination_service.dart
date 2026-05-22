@@ -1,4 +1,5 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:desa_wisata/config/app_categories.dart';
 
 /// CRUD destinasi wisata di Firestore (`destinations`).
 /// Map yang dikembalikan memakai key snake_case agar kompatibel dengan kode lama.
@@ -33,6 +34,8 @@ class DestinationService {
       'mapsUrl': d['mapsUrl'] ?? '',
       'contact': d['contact'] ?? '',
       'openingHours': d['openingHours'] ?? '',
+      'bookable': d['bookable'] ?? false,
+      'stock': (d['stock'] as num?)?.toInt() ?? 0,
       'status': d['status'] ?? true,
       'created_at': iso(c),
       'updated_at': iso(u),
@@ -51,6 +54,8 @@ class DestinationService {
     String? mapsUrl,
     String? contact,
     String? openingHours,
+    bool bookable = false,
+    int stock = 0,
     bool status = true,
   }) {
     return {
@@ -65,9 +70,36 @@ class DestinationService {
       'mapsUrl': mapsUrl,
       'contact': contact,
       'openingHours': openingHours,
+      'bookable': bookable,
+      'stock': stock,
       'status': status,
       'updatedAt': FieldValue.serverTimestamp(),
     };
+  }
+
+  /// Destinasi yang bisa dibooking: Penginapan + wisata (Alam), stok > 0.
+  Future<List<Map<String, dynamic>>> getBookableDestinations() async {
+    final snap = await _db
+        .collection(_col)
+        .where('status', isEqualTo: true)
+        .where('bookable', isEqualTo: true)
+        .get();
+    final list = snap.docs
+        .map((d) => _docToMap(d.id, d.data()))
+        .where((row) {
+          final cat = AppCategories.normalize(row['category'] as String?);
+          final stock = (row['stock'] as num?)?.toInt() ?? 0;
+          return AppCategories.isBookableCategory(cat) && stock > 0;
+        })
+        .toList();
+    list.sort((a, b) {
+      final ca = AppCategories.normalize(a['category'] as String?);
+      final cb = AppCategories.normalize(b['category'] as String?);
+      if (ca == 'Penginapan' && cb != 'Penginapan') return -1;
+      if (cb == 'Penginapan' && ca != 'Penginapan') return 1;
+      return (a['name'] as String).compareTo(b['name'] as String);
+    });
+    return list;
   }
 
   Future<List<Map<String, dynamic>>> getAllDestinations() async {
@@ -132,6 +164,8 @@ class DestinationService {
     String? mapsUrl,
     String? contact,
     String? openingHours,
+    bool bookable = false,
+    int stock = 0,
   }) async {
     final now = FieldValue.serverTimestamp();
     final ref = await _db.collection(_col).add({
@@ -147,6 +181,8 @@ class DestinationService {
         mapsUrl: mapsUrl,
         contact: contact,
         openingHours: openingHours,
+        bookable: bookable,
+        stock: stock,
         status: true,
       ),
       'createdAt': now,
@@ -168,6 +204,8 @@ class DestinationService {
     String? mapsUrl,
     String? contact,
     String? openingHours,
+    bool? bookable,
+    int? stock,
     bool? status,
   }) async {
     final updates = <String, dynamic>{
@@ -184,6 +222,8 @@ class DestinationService {
     if (mapsUrl != null) updates['mapsUrl'] = mapsUrl;
     if (contact != null) updates['contact'] = contact;
     if (openingHours != null) updates['openingHours'] = openingHours;
+    if (bookable != null) updates['bookable'] = bookable;
+    if (stock != null) updates['stock'] = stock;
     if (status != null) updates['status'] = status;
 
     await _db.collection(_col).doc(id).update(updates);

@@ -4,6 +4,7 @@ import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:image_picker/image_picker.dart';
+import '../../config/app_categories.dart';
 import '../../services/destination_service.dart';
 import '../../services/google_drive_service.dart';
 import '../../widgets/app_network_image.dart';
@@ -32,9 +33,11 @@ class _DestinationFormScreenState extends State<DestinationFormScreen> {
   late final TextEditingController _mapsUrlController;
   late final TextEditingController _contactController;
   late final TextEditingController _openingHoursController;
+  late final TextEditingController _stockController;
 
   String _selectedCategory = 'Alam';
-  final List<String> _categoryOptions = ['Alam', 'Budaya', 'Kuliner', 'Penginapan', 'Edukasi'];
+  final List<String> _categoryOptions = AppCategories.all;
+  bool _bookable = false;
 
   XFile? _selectedImage;
   String? _existingImageUrl;
@@ -57,7 +60,14 @@ class _DestinationFormScreenState extends State<DestinationFormScreen> {
     _mapsUrlController = TextEditingController(text: dest?['mapsUrl'] ?? '');
     _contactController = TextEditingController(text: dest?['contact'] ?? '');
     _openingHoursController = TextEditingController(text: dest?['openingHours'] ?? '');
-    _selectedCategory = dest?['category'] ?? 'Alam';
+    _stockController = TextEditingController(
+      text: dest?['stock']?.toString() ?? '0',
+    );
+    _selectedCategory = AppCategories.normalize(dest?['category'] as String?) == ''
+        ? 'Alam'
+        : AppCategories.normalize(dest?['category'] as String?);
+    _bookable = dest?['bookable'] as bool? ??
+        (_selectedCategory == 'Penginapan');
     _existingImageUrl = dest?['image_url'];
   }
 
@@ -116,6 +126,7 @@ class _DestinationFormScreenState extends State<DestinationFormScreen> {
     _mapsUrlController.dispose();
     _contactController.dispose();
     _openingHoursController.dispose();
+    _stockController.dispose();
     super.dispose();
   }
 
@@ -138,8 +149,6 @@ class _DestinationFormScreenState extends State<DestinationFormScreen> {
   }
 
   Future<void> _saveDestination() async {
-    if (!_formKey.currentState!.validate()) return;
-
     if (_selectedImage != null && !_googleDriveConnected) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
@@ -148,17 +157,6 @@ class _DestinationFormScreenState extends State<DestinationFormScreen> {
             style: GoogleFonts.poppins(fontSize: 13),
           ),
           backgroundColor: Colors.orange[800],
-        ),
-      );
-      return;
-    }
-
-    // Validasi: harus ada gambar untuk destinasi baru
-    if (widget.destination == null && _selectedImage == null) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('Pilih gambar terlebih dahulu', style: GoogleFonts.poppins(fontSize: 13)),
-          backgroundColor: Colors.red,
         ),
       );
       return;
@@ -183,18 +181,27 @@ class _DestinationFormScreenState extends State<DestinationFormScreen> {
         debugPrint('ℹ️ Tidak ada gambar baru untuk di-upload');
       }
 
+      final name = _nameController.text.trim().isEmpty
+          ? 'Destinasi Baru'
+          : _nameController.text.trim();
+      final rating = double.tryParse(_ratingController.text.trim()) ?? 0;
+      final stock = int.tryParse(_stockController.text.trim()) ?? 0;
+      final bookable = _bookable && AppCategories.isBookableCategory(_selectedCategory);
+
       final data = {
-        'name': _nameController.text.trim(),
+        'name': name,
         'category': _selectedCategory,
         'location': _locationController.text.trim(),
         'description': _descriptionController.text.trim(),
-        'rating': double.parse(_ratingController.text.trim()),
+        'rating': rating,
         'price': _priceController.text.trim(),
         'facilities': _facilitiesController.text.trim(),
         'mapsUrl': _mapsUrlController.text.trim(),
         'contact': _contactController.text.trim(),
         'openingHours': _openingHoursController.text.trim(),
         'imageUrl': imageUrl,
+        'bookable': bookable,
+        'stock': bookable ? stock : 0,
       };
 
       debugPrint('💾 Menyimpan data ke Firestore...');
@@ -214,6 +221,8 @@ class _DestinationFormScreenState extends State<DestinationFormScreen> {
           mapsUrl: data['mapsUrl'] as String,
           contact: data['contact'] as String,
           openingHours: data['openingHours'] as String,
+          bookable: data['bookable'] as bool,
+          stock: data['stock'] as int,
         );
         debugPrint('✅ Destinasi baru berhasil ditambahkan');
       } else {
@@ -231,6 +240,8 @@ class _DestinationFormScreenState extends State<DestinationFormScreen> {
           mapsUrl: data['mapsUrl'] as String,
           contact: data['contact'] as String,
           openingHours: data['openingHours'] as String,
+          bookable: data['bookable'] as bool,
+          stock: data['stock'] as int,
         );
         debugPrint('✅ Destinasi berhasil diperbarui');
       }
@@ -303,12 +314,15 @@ class _DestinationFormScreenState extends State<DestinationFormScreen> {
                 'Nama Destinasi',
                 _nameController,
                 Icons.place_outlined,
-                'Masukkan nama destinasi',
+                'Masukkan nama destinasi (opsional)',
+                required: false,
               ),
               const SizedBox(height: 16),
 
               // Kategori
               _buildCategorySelector(),
+              const SizedBox(height: 16),
+              _buildBookingOptions(),
               const SizedBox(height: 16),
 
               // Lokasi
@@ -317,6 +331,7 @@ class _DestinationFormScreenState extends State<DestinationFormScreen> {
                 _locationController,
                 Icons.location_on_outlined,
                 'Contoh: Desa Pujon Kidul, Malang',
+                required: false,
               ),
               const SizedBox(height: 16),
 
@@ -338,6 +353,7 @@ class _DestinationFormScreenState extends State<DestinationFormScreen> {
                       Icons.star_outlined,
                       '0.0 - 5.0',
                       keyboardType: TextInputType.number,
+                      required: false,
                     ),
                   ),
                   const SizedBox(width: 12),
@@ -347,6 +363,7 @@ class _DestinationFormScreenState extends State<DestinationFormScreen> {
                       _priceController,
                       Icons.attach_money_outlined,
                       'Rp 10.000',
+                      required: false,
                     ),
                   ),
                 ],
@@ -359,6 +376,7 @@ class _DestinationFormScreenState extends State<DestinationFormScreen> {
                 _facilitiesController,
                 Icons.local_parking_outlined,
                 'Parkir, Toilet, Mushola, dll',
+                required: false,
               ),
               const SizedBox(height: 16),
 
@@ -368,6 +386,7 @@ class _DestinationFormScreenState extends State<DestinationFormScreen> {
                 _openingHoursController,
                 Icons.access_time_outlined,
                 '08:00 - 17:00',
+                required: false,
               ),
               const SizedBox(height: 16),
 
@@ -377,6 +396,7 @@ class _DestinationFormScreenState extends State<DestinationFormScreen> {
                 _contactController,
                 Icons.phone_outlined,
                 '+62 812-3456-7890',
+                required: false,
               ),
               const SizedBox(height: 16),
 
@@ -386,6 +406,7 @@ class _DestinationFormScreenState extends State<DestinationFormScreen> {
                 _mapsUrlController,
                 Icons.map_outlined,
                 'https://maps.google.com/...',
+                required: false,
               ),
               const SizedBox(height: 32),
 
@@ -620,7 +641,10 @@ class _DestinationFormScreenState extends State<DestinationFormScreen> {
           children: _categoryOptions.map((cat) {
             final isSelected = cat == _selectedCategory;
             return GestureDetector(
-              onTap: () => setState(() => _selectedCategory = cat),
+              onTap: () => setState(() {
+                _selectedCategory = cat;
+                if (cat == 'Penginapan') _bookable = true;
+              }),
               child: Container(
                 padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
                 decoration: BoxDecoration(
@@ -647,12 +671,59 @@ class _DestinationFormScreenState extends State<DestinationFormScreen> {
     );
   }
 
+  Widget _buildBookingOptions() {
+    final canBook = AppCategories.isBookableCategory(_selectedCategory);
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          'Booking & Stok',
+          style: GoogleFonts.poppins(
+            fontSize: 14,
+            fontWeight: FontWeight.w600,
+            color: const Color(0xFF333333),
+          ),
+        ),
+        const SizedBox(height: 8),
+        SwitchListTile(
+          contentPadding: EdgeInsets.zero,
+          value: _bookable && canBook,
+          onChanged: canBook
+              ? (v) => setState(() => _bookable = v)
+              : null,
+          title: Text(
+            'Bisa dibooking (Penginapan / Wisata Alam)',
+            style: GoogleFonts.poppins(fontSize: 13),
+          ),
+          activeThumbColor: const Color(0xFF2D5016),
+        ),
+        if (!canBook)
+          Text(
+            'Kategori Kuliner/Edukasi tidak ditampilkan di menu booking.',
+            style: GoogleFonts.poppins(fontSize: 11, color: Colors.grey[600]),
+          ),
+        if (_bookable && canBook) ...[
+          const SizedBox(height: 8),
+          _buildTextField(
+            'Stok tersedia',
+            _stockController,
+            Icons.inventory_2_outlined,
+            'Contoh: 10',
+            keyboardType: TextInputType.number,
+            required: false,
+          ),
+        ],
+      ],
+    );
+  }
+
   Widget _buildTextField(
     String label,
     TextEditingController controller,
     IconData icon,
     String hint, {
     TextInputType? keyboardType,
+    bool required = true,
   }) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -690,7 +761,9 @@ class _DestinationFormScreenState extends State<DestinationFormScreen> {
             ),
             contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
           ),
-          validator: (v) => v == null || v.isEmpty ? '$label tidak boleh kosong' : null,
+          validator: required
+              ? (v) => v == null || v.isEmpty ? '$label tidak boleh kosong' : null
+              : null,
         ),
       ],
     );
@@ -736,7 +809,6 @@ class _DestinationFormScreenState extends State<DestinationFormScreen> {
             ),
             contentPadding: const EdgeInsets.all(16),
           ),
-          validator: (v) => v == null || v.isEmpty ? '$label tidak boleh kosong' : null,
         ),
       ],
     );

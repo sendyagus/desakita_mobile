@@ -2,8 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:intl/intl.dart';
-import '../../services/booking_service.dart';
-import '../../services/user_service.dart';
+import 'payment_screen.dart';
 
 class CreateBookingScreen extends StatefulWidget {
   final Map<String, dynamic> destination;
@@ -16,13 +15,10 @@ class CreateBookingScreen extends StatefulWidget {
 
 class _CreateBookingScreenState extends State<CreateBookingScreen> {
   final _formKey = GlobalKey<FormState>();
-  final BookingService _bookingService = BookingService();
-  final UserService _userService = UserService();
 
   DateTime? _checkInDate;
   DateTime? _checkOutDate;
   int _guestCount = 1;
-  bool _isLoading = false;
 
   String get _destinationName => widget.destination['name'] as String? ?? '';
   String get _destinationLocation => widget.destination['location'] as String? ?? '';
@@ -116,9 +112,7 @@ class _CreateBookingScreenState extends State<CreateBookingScreen> {
     }
   }
 
-  Future<void> _submitBooking() async {
-    if (!_formKey.currentState!.validate()) return;
-
+  Future<void> _goToPayment() async {
     if (_checkInDate == null || _checkOutDate == null) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
@@ -129,43 +123,32 @@ class _CreateBookingScreenState extends State<CreateBookingScreen> {
       return;
     }
 
-    setState(() => _isLoading = true);
-
-    try {
-      final userId = FirebaseAuth.instance.currentUser?.uid;
-      if (userId == null) throw Exception('User tidak terautentikasi');
-
-      await _bookingService.createBooking(
-        destinationId: widget.destination['id'] as String,
-        userId: userId,
-        checkIn: _checkInDate!,
-        checkOut: _checkOutDate!,
-        guestCount: _guestCount,
-        totalPrice: _formattedTotalPrice,
+    final userId = FirebaseAuth.instance.currentUser?.uid;
+    if (userId == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Login dulu untuk melanjutkan pembayaran', style: GoogleFonts.poppins(fontSize: 13)),
+          backgroundColor: Colors.orange[800],
+        ),
       );
+      return;
+    }
 
-      if (mounted) {
-        Navigator.pop(context, true);
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Booking berhasil dibuat!', style: GoogleFonts.poppins(fontSize: 13)),
-            backgroundColor: const Color(0xFF2D5016),
-          ),
-        );
-      }
-    } catch (e) {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Gagal membuat booking: $e', style: GoogleFonts.poppins(fontSize: 13)),
-            backgroundColor: Colors.red,
-          ),
-        );
-      }
-    } finally {
-      if (mounted) {
-        setState(() => _isLoading = false);
-      }
+    final result = await Navigator.push<bool>(
+      context,
+      MaterialPageRoute(
+        builder: (_) => PaymentScreen(
+          destination: widget.destination,
+          checkIn: _checkInDate!,
+          checkOut: _checkOutDate!,
+          guestCount: _guestCount,
+          totalPrice: _formattedTotalPrice,
+        ),
+      ),
+    );
+
+    if (result == true && mounted) {
+      Navigator.pop(context, true);
     }
   }
 
@@ -486,7 +469,7 @@ class _CreateBookingScreenState extends State<CreateBookingScreen> {
           width: double.infinity,
           height: 52,
           child: ElevatedButton(
-            onPressed: _isLoading ? null : _submitBooking,
+            onPressed: _goToPayment,
             style: ElevatedButton.styleFrom(
               backgroundColor: const Color(0xFF2D5016),
               foregroundColor: Colors.white,
@@ -495,22 +478,13 @@ class _CreateBookingScreenState extends State<CreateBookingScreen> {
               ),
               elevation: 0,
             ),
-            child: _isLoading
-                ? const SizedBox(
-                    width: 20,
-                    height: 20,
-                    child: CircularProgressIndicator(
-                      color: Colors.white,
-                      strokeWidth: 2,
-                    ),
-                  )
-                : Text(
-                    'Konfirmasi Booking',
-                    style: GoogleFonts.poppins(
-                      fontSize: 15,
-                      fontWeight: FontWeight.w600,
-                    ),
-                  ),
+            child: Text(
+              'Lanjut ke Pembayaran',
+              style: GoogleFonts.poppins(
+                fontSize: 15,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
           ),
         ),
       ),

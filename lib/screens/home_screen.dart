@@ -9,6 +9,7 @@ import 'package:desa_wisata/services/user_service.dart';
 import 'package:desa_wisata/services/destination_service.dart';
 import 'package:desa_wisata/services/event_service.dart';
 import 'package:desa_wisata/models/user_model.dart';
+import 'package:desa_wisata/config/app_categories.dart';
 import 'package:desa_wisata/widgets/app_network_image.dart';
 
 class HomeScreen extends StatefulWidget {
@@ -31,18 +32,29 @@ class _HomeScreenState extends State<HomeScreen> {
   UserModel? _currentUser;
   bool _isLoadingUser = true;
   
-  List<Map<String, dynamic>> _recommendations = [];
+  List<Map<String, dynamic>> _allDestinations = [];
   bool _isLoadingDestinations = true;
   List<Map<String, dynamic>> _events = [];
   bool _isLoadingEvents = true;
 
   final List<Map<String, String>> _categories = [
+    {'icon': 'semua', 'label': 'Semua'},
     {'icon': 'alam', 'label': 'Alam'},
-    {'icon': 'sekitar', 'label': 'Sekitar'},
-    {'icon': 'budaya', 'label': 'Budaya'},
+    {'icon': 'penginapan', 'label': 'Penginapan'},
     {'icon': 'kuliner', 'label': 'Kuliner'},
     {'icon': 'edukasi', 'label': 'Edukasi'},
   ];
+
+  List<Map<String, dynamic>> get _filteredRecommendations {
+    if (_selectedCategoryIndex == 0) {
+      return _allDestinations.take(8).toList();
+    }
+    final label = _categories[_selectedCategoryIndex]['label']!;
+    return _allDestinations
+        .where((d) => AppCategories.normalize(d['category'] as String?) == label)
+        .take(8)
+        .toList();
+  }
 
   final List<String> banners = [
     'assets/img/cs1.jpg',
@@ -86,7 +98,7 @@ class _HomeScreenState extends State<HomeScreen> {
       final destinations = await _destinationService.getAllDestinations();
       if (mounted) {
         setState(() {
-          _recommendations = destinations.take(5).toList();
+          _allDestinations = destinations;
           _isLoadingDestinations = false;
         });
       }
@@ -100,7 +112,7 @@ class _HomeScreenState extends State<HomeScreen> {
 
   Future<void> _loadEvents() async {
     try {
-      final events = await _eventService.getUpcomingEvents();
+      final events = await _eventService.getHomeEvents();
       if (mounted) {
         setState(() {
           _events = events.take(5).toList();
@@ -363,9 +375,11 @@ class _HomeScreenState extends State<HomeScreen> {
   Widget _buildCategories() {
     return SizedBox(
       height: 80,
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: List.generate(_categories.length, (index) {
+      child: ListView.builder(
+        scrollDirection: Axis.horizontal,
+        padding: const EdgeInsets.symmetric(horizontal: 12),
+        itemCount: _categories.length,
+        itemBuilder: (context, index) {
           final cat = _categories[index];
           final isSelected = index == _selectedCategoryIndex;
           return GestureDetector(
@@ -408,19 +422,19 @@ class _HomeScreenState extends State<HomeScreen> {
               ),
             ),
           );
-        }),
+        },
       ),
     );
   }
 
   IconData _categoryIcon(String key) {
     switch (key) {
+      case 'semua':
+        return Icons.apps_rounded;
       case 'alam':
         return Icons.landscape_outlined;
-      case 'sekitar':
-        return Icons.location_on_outlined;
-      case 'budaya':
-        return Icons.account_balance_outlined;
+      case 'penginapan':
+        return Icons.hotel_outlined;
       case 'kuliner':
         return Icons.restaurant_outlined;
       case 'edukasi':
@@ -458,7 +472,9 @@ class _HomeScreenState extends State<HomeScreen> {
       );
     }
 
-    if (_recommendations.isEmpty) {
+    final recommendations = _filteredRecommendations;
+
+    if (recommendations.isEmpty) {
       return Container(
         height: 220,
         margin: const EdgeInsets.symmetric(horizontal: 16),
@@ -483,9 +499,9 @@ class _HomeScreenState extends State<HomeScreen> {
       child: ListView.builder(
         scrollDirection: Axis.horizontal,
         padding: const EdgeInsets.symmetric(horizontal: 16),
-        itemCount: _recommendations.length,
+        itemCount: recommendations.length,
         itemBuilder: (context, index) {
-          final item = _recommendations[index];
+          final item = recommendations[index];
           return _RecommendationCard(
             name: item['name'] as String? ?? 'Destinasi',
             location: item['location'] as String? ?? 'Lokasi',
@@ -541,6 +557,7 @@ class _HomeScreenState extends State<HomeScreen> {
               title: event['name'] as String? ?? 'Acara',
               time: _eventTimeLabel(event),
               location: event['location'] as String? ?? '',
+              phase: EventService.eventPhaseLabel(event),
             ),
           );
         }).toList(),
@@ -781,6 +798,7 @@ class _EventCard extends StatelessWidget {
   final String title;
   final String time;
   final String location;
+  final String phase;
 
   const _EventCard({
     required this.month,
@@ -788,6 +806,7 @@ class _EventCard extends StatelessWidget {
     required this.title,
     required this.time,
     required this.location,
+    required this.phase,
   });
 
   @override
@@ -840,13 +859,36 @@ class _EventCard extends StatelessWidget {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(
-                  title,
-                  style: GoogleFonts.poppins(
-                    fontSize: 13,
-                    fontWeight: FontWeight.w600,
-                    color: const Color(0xFF1A1A1A),
-                  ),
+                Row(
+                  children: [
+                    Expanded(
+                      child: Text(
+                        title,
+                        style: GoogleFonts.poppins(
+                          fontSize: 13,
+                          fontWeight: FontWeight.w600,
+                          color: const Color(0xFF1A1A1A),
+                        ),
+                      ),
+                    ),
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                      decoration: BoxDecoration(
+                        color: phase == 'Sedang Berjalan'
+                            ? const Color(0xFF2D5016)
+                            : const Color(0xFFE8A020),
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                      child: Text(
+                        phase,
+                        style: GoogleFonts.poppins(
+                          fontSize: 9,
+                          fontWeight: FontWeight.w600,
+                          color: Colors.white,
+                        ),
+                      ),
+                    ),
+                  ],
                 ),
                 const SizedBox(height: 4),
                 Row(

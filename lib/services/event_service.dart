@@ -57,11 +57,44 @@ class EventService {
 
   Future<List<Map<String, dynamic>>> getUpcomingEvents() async {
     final now = DateTime.now();
+    final today = DateTime(now.year, now.month, now.day);
     final all = await getAllEvents();
     return all.where((event) {
       final start = DateTime.tryParse(event['start_date'] as String? ?? '');
-      return start != null && !start.isBefore(DateTime(now.year, now.month, now.day));
+      return start != null && !DateTime(start.year, start.month, start.day).isBefore(today);
     }).toList();
+  }
+
+  /// Acara mendatang atau sedang berjalan — untuk tampilan beranda.
+  Future<List<Map<String, dynamic>>> getHomeEvents() async {
+    final now = DateTime.now();
+    final today = DateTime(now.year, now.month, now.day);
+    final all = await getAllEvents();
+    return all.where((event) {
+      final end = DateTime.tryParse(event['end_date'] as String? ?? '');
+      final start = DateTime.tryParse(event['start_date'] as String? ?? '');
+      final endDay = end != null
+          ? DateTime(end.year, end.month, end.day)
+          : (start != null
+              ? DateTime(start.year, start.month, start.day)
+              : today);
+      return !endDay.isBefore(today);
+    }).toList();
+  }
+
+  static String eventPhaseLabel(Map<String, dynamic> event) {
+    final now = DateTime.now();
+    final today = DateTime(now.year, now.month, now.day);
+    final start = DateTime.tryParse(event['start_date'] as String? ?? '');
+    final end = DateTime.tryParse(event['end_date'] as String? ?? '');
+    if (start == null) return 'Akan Datang';
+    final startDay = DateTime(start.year, start.month, start.day);
+    final endDay = end != null
+        ? DateTime(end.year, end.month, end.day)
+        : startDay;
+    if (today.isBefore(startDay)) return 'Akan Datang';
+    if (!today.isAfter(endDay)) return 'Sedang Berjalan';
+    return 'Selesai';
   }
 
   Future<Map<String, dynamic>?> getEventById(String id) async {

@@ -4,7 +4,11 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:desa_wisata/services/auth_service.dart';
 import 'package:desa_wisata/services/user_service.dart';
 import 'package:desa_wisata/services/storage_service.dart';
+import 'package:desa_wisata/services/booking_service.dart';
 import 'package:desa_wisata/models/user_model.dart';
+import 'package:desa_wisata/screens/login_screen.dart';
+import 'package:desa_wisata/screens/register_screen.dart';
+import 'package:desa_wisata/screens/user/user_booking_history_screen.dart';
 
 class ProfileScreen extends StatefulWidget {
   const ProfileScreen({super.key});
@@ -16,8 +20,12 @@ class ProfileScreen extends StatefulWidget {
 class _ProfileScreenState extends State<ProfileScreen> {
   final UserService _userService = UserService();
   final StorageService _storageService = StorageService();
+  final BookingService _bookingService = BookingService();
   UserModel? _currentUser;
   bool _isLoading = true;
+  int _bookingCount = 0;
+
+  bool get _isLoggedIn => FirebaseAuth.instance.currentUser != null;
 
   @override
   void initState() {
@@ -30,12 +38,20 @@ class _ProfileScreenState extends State<ProfileScreen> {
       final userId = FirebaseAuth.instance.currentUser?.uid;
       if (userId != null) {
         final user = await _userService.getUserById(userId);
+        final bookings = await _bookingService.getUserBookings(userId);
         if (mounted) {
           setState(() {
             _currentUser = user;
+            _bookingCount = bookings.length;
             _isLoading = false;
           });
         }
+      } else if (mounted) {
+        setState(() {
+          _currentUser = null;
+          _bookingCount = 0;
+          _isLoading = false;
+        });
       }
     } catch (e) {
       if (mounted) {
@@ -113,7 +129,11 @@ class _ProfileScreenState extends State<ProfileScreen> {
     }
   }
 
-  final List<Map<String, dynamic>> _menuItems = const [
+  List<Map<String, dynamic>> get _menuItems => [
+    {
+      'icon': Icons.history_outlined,
+      'label': 'Riwayat Booking',
+    },
     {
       'icon': Icons.location_on_outlined,
       'label': 'Alamat Saya',
@@ -151,28 +171,34 @@ class _ProfileScreenState extends State<ProfileScreen> {
       );
     }
 
+    if (!_isLoggedIn) {
+      return Scaffold(
+        backgroundColor: const Color(0xFFF5F5F0),
+        body: SafeArea(
+          child: Column(
+            children: [
+              _buildAppBar(context),
+              Expanded(child: _buildGuestLoginPrompt(context)),
+            ],
+          ),
+        ),
+      );
+    }
+
     return Scaffold(
       backgroundColor: const Color(0xFFF5F5F0),
       body: SafeArea(
         child: Column(
           children: [
-            // App bar
             _buildAppBar(context),
-
-            // Konten scrollable
             Expanded(
               child: SingleChildScrollView(
                 padding: const EdgeInsets.symmetric(horizontal: 20),
                 child: Column(
                   children: [
                     const SizedBox(height: 24),
-
-                    // Avatar
                     _buildAvatar(),
-
                     const SizedBox(height: 14),
-
-                    // Nama
                     Text(
                       _currentUser?.fullName ?? 'Nama Pengguna',
                       style: GoogleFonts.poppins(
@@ -181,38 +207,19 @@ class _ProfileScreenState extends State<ProfileScreen> {
                         color: const Color(0xFF1A1A1A),
                       ),
                     ),
-
                     const SizedBox(height: 4),
-
-                    // Email
                     Text(
-                      _currentUser?.email ?? '',
-                      style: GoogleFonts.poppins(
-                        fontSize: 13,
-                        color: Colors.grey[600],
-                      ),
+                      _currentUser?.email ?? FirebaseAuth.instance.currentUser?.email ?? '',
+                      style: GoogleFonts.poppins(fontSize: 13, color: Colors.grey[600]),
                     ),
-
                     const SizedBox(height: 12),
-
-                    // Badge member
                     _buildMemberBadge(),
-
                     const SizedBox(height: 20),
-
-                    // Statistik
                     _buildStats(),
-
                     const SizedBox(height: 24),
-
-                    // Menu list
                     _buildMenuList(context),
-
                     const SizedBox(height: 20),
-
-                    // Tombol Keluar
                     _buildLogoutButton(context),
-
                     const SizedBox(height: 32),
                   ],
                 ),
@@ -220,6 +227,109 @@ class _ProfileScreenState extends State<ProfileScreen> {
             ),
           ],
         ),
+      ),
+    );
+  }
+
+  Widget _buildGuestLoginPrompt(BuildContext context) {
+    return SingleChildScrollView(
+      padding: const EdgeInsets.symmetric(horizontal: 24),
+      child: Column(
+        children: [
+          const SizedBox(height: 32),
+          Container(
+            width: 100,
+            height: 100,
+            decoration: BoxDecoration(
+              shape: BoxShape.circle,
+              color: const Color(0xFFE8EDE3),
+              border: Border.all(color: const Color(0xFF2D5016), width: 2),
+            ),
+            child: const Icon(Icons.person_outline, size: 52, color: Color(0xFF2D5016)),
+          ),
+          const SizedBox(height: 20),
+          Text(
+            'Masuk ke DesaKita',
+            style: GoogleFonts.poppins(
+              fontSize: 22,
+              fontWeight: FontWeight.w700,
+              color: const Color(0xFF1A1A1A),
+            ),
+          ),
+          const SizedBox(height: 10),
+          Text(
+            'Login untuk booking penginapan & wisata, melihat riwayat pesanan, dan menyimpan favorit destinasi.',
+            textAlign: TextAlign.center,
+            style: GoogleFonts.poppins(fontSize: 13, color: Colors.grey[600], height: 1.5),
+          ),
+          const SizedBox(height: 28),
+          _guestBenefit(Icons.confirmation_number_outlined, 'Booking penginapan & wisata'),
+          _guestBenefit(Icons.history_outlined, 'Riwayat booking (disetujui & menunggu)'),
+          _guestBenefit(Icons.favorite_border, 'Simpan destinasi favorit'),
+          const SizedBox(height: 32),
+          SizedBox(
+            width: double.infinity,
+            height: 52,
+            child: ElevatedButton(
+              onPressed: () async {
+                await Navigator.push(
+                  context,
+                  MaterialPageRoute(builder: (_) => const LoginScreen()),
+                );
+                _loadUserData();
+              },
+              style: ElevatedButton.styleFrom(
+                backgroundColor: const Color(0xFF2D5016),
+                foregroundColor: Colors.white,
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                elevation: 0,
+              ),
+              child: Text('Login', style: GoogleFonts.poppins(fontSize: 15, fontWeight: FontWeight.w600)),
+            ),
+          ),
+          const SizedBox(height: 12),
+          SizedBox(
+            width: double.infinity,
+            height: 52,
+            child: OutlinedButton(
+              onPressed: () async {
+                await Navigator.push(
+                  context,
+                  MaterialPageRoute(builder: (_) => const RegisterScreen()),
+                );
+                _loadUserData();
+              },
+              style: OutlinedButton.styleFrom(
+                side: const BorderSide(color: Color(0xFF2D5016), width: 1.5),
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+              ),
+              child: Text(
+                'Daftar Akun Baru',
+                style: GoogleFonts.poppins(
+                  fontSize: 15,
+                  fontWeight: FontWeight.w600,
+                  color: const Color(0xFF2D5016),
+                ),
+              ),
+            ),
+          ),
+          const SizedBox(height: 40),
+        ],
+      ),
+    );
+  }
+
+  Widget _guestBenefit(IconData icon, String text) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 12),
+      child: Row(
+        children: [
+          Icon(icon, size: 22, color: const Color(0xFF2D5016)),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Text(text, style: GoogleFonts.poppins(fontSize: 13, color: const Color(0xFF333333))),
+          ),
+        ],
       ),
     );
   }
@@ -372,11 +482,11 @@ class _ProfileScreenState extends State<ProfileScreen> {
     return Row(
       children: [
         Expanded(
-          child: _StatCard(value: '12', label: 'Favorit'),
+          child: _StatCard(value: '$_bookingCount', label: 'Booking'),
         ),
         const SizedBox(width: 12),
         Expanded(
-          child: _StatCard(value: '8', label: 'Ulasan'),
+          child: _StatCard(value: '0', label: 'Favorit'),
         ),
       ],
     );
@@ -447,7 +557,13 @@ class _ProfileScreenState extends State<ProfileScreen> {
   // ─── Handlers ──────────────────────────────────────────────────────────────
 
   void _handleMenuTap(BuildContext context, String label) {
-    // Placeholder — navigasi ke sub-halaman masing-masing
+    if (label == 'Riwayat Booking') {
+      Navigator.push(
+        context,
+        MaterialPageRoute(builder: (_) => const UserBookingHistoryScreen()),
+      ).then((_) => _loadUserData());
+      return;
+    }
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
         content: Text(
