@@ -11,6 +11,7 @@ import 'package:desa_wisata/services/event_service.dart';
 import 'package:desa_wisata/models/user_model.dart';
 import 'package:desa_wisata/config/app_categories.dart';
 import 'package:desa_wisata/widgets/app_network_image.dart';
+import 'package:desa_wisata/screens/notification_screen.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -188,25 +189,20 @@ class _HomeScreenState extends State<HomeScreen> {
     return Scaffold(
       backgroundColor: const Color(0xFFF5F5F0),
       body: SafeArea(
-        child: Column(
+        bottom: false,
+        child: IndexedStack(
+          index: _selectedNavIndex,
           children: [
-            Expanded(
-              child: IndexedStack(
-                index: _selectedNavIndex,
-                children: [
-                  _buildBerandaContent(),
-                  const ExploreScreen(),
-                  const AgentScreen(),
-                  const BookingScreen(),
-                  // Tab 4: Profil
-                  const ProfileScreen(),
-                ],
-              ),
-            ),
-            _buildBottomNav(),
+            _buildBerandaContent(),
+            const ExploreScreen(),
+            const AgentScreen(),
+            const BookingScreen(),
+            // Tab 4: Profil
+            const ProfileScreen(),
           ],
         ),
       ),
+      bottomNavigationBar: _buildBottomNav(),
     );
   }
 
@@ -298,24 +294,53 @@ class _HomeScreenState extends State<HomeScreen> {
           ),
 
           // Ikon notifikasi
-          _headerIconButton(Icons.notifications_outlined),
+          _headerIconButton(
+            Icons.notifications_outlined,
+            onTap: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (context) => const NotificationScreen(),
+                ),
+              );
+            },
+          ),
           const SizedBox(width: 8),
           // Ikon headset / support
-          _headerIconButton(Icons.headset_mic_outlined),
+          _headerIconButton(
+            Icons.headset_mic_outlined,
+            onTap: () {
+              ScaffoldMessenger.of(context).showSnackBar(
+                SnackBar(
+                  content: Text(
+                    'Fitur bantuan Hubungi Admin sedang dikembangkan',
+                    style: GoogleFonts.poppins(fontSize: 13, color: Colors.white),
+                  ),
+                  backgroundColor: const Color(0xFF2D5016),
+                  behavior: SnackBarBehavior.floating,
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                ),
+              );
+            },
+          ),
         ],
       ),
     );
   }
 
-  Widget _headerIconButton(IconData icon) {
-    return Container(
-      width: 40,
-      height: 40,
-      decoration: BoxDecoration(
-        shape: BoxShape.circle,
-        color: const Color(0xFFE8EDE3),
+  Widget _headerIconButton(IconData icon, {VoidCallback? onTap}) {
+    return GestureDetector(
+      onTap: onTap,
+      behavior: HitTestBehavior.opaque,
+      child: Container(
+        width: 40,
+        height: 40,
+        decoration: const BoxDecoration(
+          shape: BoxShape.circle,
+          color: Color(0xFFE8EDE3),
+        ),
+        child: Icon(icon, size: 20, color: const Color(0xFF2D5016)),
       ),
-      child: Icon(icon, size: 20, color: const Color(0xFF2D5016)),
     );
   }
 
@@ -571,7 +596,7 @@ class _HomeScreenState extends State<HomeScreen> {
     final items = [
       {'icon': Icons.home_rounded, 'label': 'Beranda'},
       {'icon': Icons.explore_outlined, 'label': 'Explorasi'},
-      {'icon': Icons.smart_toy_outlined, 'label': 'agent'},
+      {'icon': Icons.smart_toy_outlined, 'label': 'Agent'},
       {'icon': Icons.confirmation_number_outlined, 'label': 'Booking'},
       {'icon': Icons.person_outline, 'label': 'Profil'},
     ];
@@ -590,37 +615,45 @@ class _HomeScreenState extends State<HomeScreen> {
       child: SafeArea(
         top: false,
         child: Padding(
-          padding: const EdgeInsets.symmetric(vertical: 8),
+          padding: const EdgeInsets.only(top: 10, bottom: 8),
           child: Row(
             mainAxisAlignment: MainAxisAlignment.spaceAround,
             children: List.generate(items.length, (index) {
               final isSelected = index == _selectedNavIndex;
               return GestureDetector(
                 onTap: () => setState(() => _selectedNavIndex = index),
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Icon(
-                      items[index]['icon'] as IconData,
-                      size: 24,
-                      color: isSelected
-                          ? const Color(0xFF2D5016)
-                          : Colors.grey[500],
-                    ),
-                    const SizedBox(height: 3),
-                    Text(
-                      items[index]['label'] as String,
-                      style: GoogleFonts.poppins(
-                        fontSize: 10,
-                        fontWeight: isSelected
-                            ? FontWeight.w600
-                            : FontWeight.w400,
-                        color: isSelected
-                            ? const Color(0xFF2D5016)
-                            : Colors.grey[500],
+                behavior: HitTestBehavior.opaque,
+                child: SizedBox(
+                  width: MediaQuery.of(context).size.width / items.length - 8,
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      AnimatedScale(
+                        scale: isSelected ? 1.15 : 1.0,
+                        duration: const Duration(milliseconds: 200),
+                        child: Icon(
+                          items[index]['icon'] as IconData,
+                          size: 24,
+                          color: isSelected
+                              ? const Color(0xFF2D5016)
+                              : Colors.grey[500],
+                        ),
                       ),
-                    ),
-                  ],
+                      const SizedBox(height: 5),
+                      Text(
+                        items[index]['label'] as String,
+                        style: GoogleFonts.poppins(
+                          fontSize: 10,
+                          fontWeight: isSelected
+                              ? FontWeight.w600
+                              : FontWeight.w400,
+                          color: isSelected
+                              ? const Color(0xFF2D5016)
+                              : Colors.grey[500],
+                        ),
+                      ),
+                    ],
+                  ),
                 ),
               );
             }),

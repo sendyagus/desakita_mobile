@@ -39,7 +39,7 @@ class DesaKitaApp extends StatelessWidget {
       // DevicePreview configuration
       locale: DevicePreview.locale(context),
       builder: DevicePreview.appBuilder,
-      
+
       title: 'DesaKita',
       debugShowCheckedModeBanner: false,
       theme: ThemeData(
