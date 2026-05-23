@@ -160,26 +160,33 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   Widget _buildBerandaContent() {
-    return SingleChildScrollView(
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          _buildHeader(),
-          const SizedBox(height: 16),
-          _buildBannerSlider(),
-          const SizedBox(height: 20),
-          _buildCategories(),
-          const SizedBox(height: 20),
-          _buildSectionTitle('Rekomendasi Untukmu'),
-          const SizedBox(height: 12),
-          _buildRecommendations(),
-          const SizedBox(height: 20),
-          _buildSectionTitle('Acara Mendatang'),
-          const SizedBox(height: 12),
-          _buildEvents(),
-          const SizedBox(height: 24),
-        ],
-      ),
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        _buildHeader(),
+        const SizedBox(height: 16),
+        Expanded(
+          child: SingleChildScrollView(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                _buildBannerSlider(),
+                const SizedBox(height: 20),
+                _buildCategories(),
+                const SizedBox(height: 20),
+                _buildSectionTitle('Rekomendasi Untukmu'),
+                const SizedBox(height: 12),
+                _buildRecommendations(),
+                const SizedBox(height: 20),
+                _buildSectionTitle('Acara Mendatang'),
+                const SizedBox(height: 12),
+                _buildEvents(),
+                const SizedBox(height: 24),
+              ],
+            ),
+          ),
+        ),
+      ],
     );
   }
 
@@ -188,19 +195,14 @@ class _HomeScreenState extends State<HomeScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: const Color(0xFFF5F5F0),
-      body: SafeArea(
-        bottom: false,
-        child: IndexedStack(
-          index: _selectedNavIndex,
-          children: [
-            _buildBerandaContent(),
-            const ExploreScreen(),
-            const AgentScreen(),
-            const BookingScreen(),
-            // Tab 4: Profil
-            const ProfileScreen(),
-          ],
-        ),
+      body: IndexedStack(
+        index: _selectedNavIndex,
+        children: [
+          SafeArea(bottom: false, child: _buildBerandaContent()),
+          const SafeArea(bottom: false, child: ExploreScreen()),
+          const AgentScreen(), // AgentScreen manages its own SafeArea internally for full-bleed header
+          const SafeArea(bottom: false, child: BookingScreen()),
+        ],
       ),
       bottomNavigationBar: _buildBottomNav(),
     );
@@ -214,54 +216,74 @@ class _HomeScreenState extends State<HomeScreen> {
       child: Row(
         children: [
           // Avatar
-          Container(
-            width: 44,
-            height: 44,
-            decoration: BoxDecoration(
-              shape: BoxShape.circle,
-              color: Colors.grey[300],
-              border: Border.all(color: const Color(0xFF2D5016), width: 2),
-            ),
-            child: ClipOval(
-              child: _isLoadingUser
-                  ? const Center(
-                      child: SizedBox(
-                        width: 20,
-                        height: 20,
-                        child: CircularProgressIndicator(
-                          color: Color(0xFF2D5016),
-                          strokeWidth: 2,
+          GestureDetector(
+            onTap: () {
+              Navigator.push(
+                context,
+                PageRouteBuilder(
+                  pageBuilder: (context, animation, secondaryAnimation) => const ProfileScreen(),
+                  transitionsBuilder: (context, animation, secondaryAnimation, child) {
+                    const begin = Offset(-1.0, 0.0);
+                    const end = Offset.zero;
+                    const curve = Curves.easeInOut;
+                    var tween = Tween(begin: begin, end: end).chain(CurveTween(curve: curve));
+                    return SlideTransition(
+                      position: animation.drive(tween),
+                      child: child,
+                    );
+                  },
+                ),
+              );
+            },
+            child: Container(
+              width: 44,
+              height: 44,
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                color: Colors.grey[300],
+                border: Border.all(color: const Color(0xFF2D5016), width: 2),
+              ),
+              child: ClipOval(
+                child: _isLoadingUser
+                    ? const Center(
+                        child: SizedBox(
+                          width: 20,
+                          height: 20,
+                          child: CircularProgressIndicator(
+                            color: Color(0xFF2D5016),
+                            strokeWidth: 2,
+                          ),
                         ),
-                      ),
-                    )
-                  : _currentUser?.avatarUrl != null && _currentUser!.avatarUrl!.isNotEmpty
-                      ? Image.network(
-                          _currentUser!.avatarUrl!,
-                          width: 44,
-                          height: 44,
-                          fit: BoxFit.cover,
-                          errorBuilder: (context, error, stackTrace) {
-                            return const Icon(
-                              Icons.person,
-                              color: Colors.grey,
-                              size: 24,
-                            );
-                          },
-                          loadingBuilder: (context, child, loadingProgress) {
-                            if (loadingProgress == null) return child;
-                            return const Center(
-                              child: SizedBox(
-                                width: 20,
-                                height: 20,
-                                child: CircularProgressIndicator(
-                                  color: Color(0xFF2D5016),
-                                  strokeWidth: 2,
+                      )
+                    : _currentUser?.avatarUrl != null && _currentUser!.avatarUrl!.isNotEmpty
+                        ? Image.network(
+                            _currentUser!.avatarUrl!,
+                            width: 44,
+                            height: 44,
+                            fit: BoxFit.cover,
+                            errorBuilder: (context, error, stackTrace) {
+                              return const Icon(
+                                Icons.person,
+                                color: Colors.grey,
+                                size: 24,
+                              );
+                            },
+                            loadingBuilder: (context, child, loadingProgress) {
+                              if (loadingProgress == null) return child;
+                              return const Center(
+                                child: SizedBox(
+                                  width: 20,
+                                  height: 20,
+                                  child: CircularProgressIndicator(
+                                    color: Color(0xFF2D5016),
+                                    strokeWidth: 2,
+                                  ),
                                 ),
-                              ),
-                            );
-                          },
-                        )
-                      : const Icon(Icons.person, color: Colors.grey, size: 24),
+                              );
+                            },
+                          )
+                        : const Icon(Icons.person, color: Colors.grey, size: 24),
+              ),
             ),
           ),
 
@@ -598,7 +620,6 @@ class _HomeScreenState extends State<HomeScreen> {
       {'icon': Icons.explore_outlined, 'label': 'Explorasi'},
       {'icon': Icons.smart_toy_outlined, 'label': 'Agent'},
       {'icon': Icons.confirmation_number_outlined, 'label': 'Booking'},
-      {'icon': Icons.person_outline, 'label': 'Profil'},
     ];
 
     return Container(

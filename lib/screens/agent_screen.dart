@@ -120,27 +120,28 @@ class _AgentScreenState extends State<AgentScreen>
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: const Color(0xFFF5F5F0),
-      body: SafeArea(
-        child: Column(
-          children: [
-            // Header
-            _buildHeader(),
+      body: Column(
+        children: [
+          // Header
+          _buildHeader(),
 
-            // Area chat
-            Expanded(
-              child: _messages.isEmpty
-                  ? _buildEmptyState()
-                  : _buildChatArea(),
-            ),
+          // Area chat
+          Expanded(
+            child: _messages.isEmpty
+                ? _buildEmptyState()
+                : _buildChatArea(),
+          ),
 
-            // Suggestions (hanya tampil di awal)
-            if (_showSuggestions && _messages.isNotEmpty)
-              _buildSuggestions(),
+          // Suggestions (hanya tampil di awal)
+          if (_showSuggestions && _messages.isNotEmpty)
+            _buildSuggestions(),
 
-            // Input bar
-            _buildInputBar(),
-          ],
-        ),
+          // Input bar
+          SafeArea(
+            top: false,
+            child: _buildInputBar(),
+          ),
+        ],
       ),
     );
   }
@@ -149,7 +150,6 @@ class _AgentScreenState extends State<AgentScreen>
 
   Widget _buildHeader() {
     return Container(
-      padding: const EdgeInsets.fromLTRB(16, 14, 16, 14),
       decoration: const BoxDecoration(
         color: Colors.white,
         boxShadow: [
@@ -160,79 +160,85 @@ class _AgentScreenState extends State<AgentScreen>
           ),
         ],
       ),
-      child: Row(
-        children: [
-          // Avatar bot
-          Container(
-            width: 42,
-            height: 42,
-            decoration: BoxDecoration(
-              shape: BoxShape.circle,
-              gradient: const LinearGradient(
-                colors: [Color(0xFF2D5016), Color(0xFF6B9E45)],
-                begin: Alignment.topLeft,
-                end: Alignment.bottomRight,
-              ),
-              boxShadow: [
-                BoxShadow(
-                  color: const Color(0xFF2D5016).withOpacity(0.3),
-                  blurRadius: 8,
-                  offset: const Offset(0, 2),
-                ),
-              ],
-            ),
-            child: const Icon(Icons.eco_rounded, color: Colors.white, size: 22),
-          ),
-
-          const SizedBox(width: 12),
-
-          // Nama & status
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  'Kita — Asisten DesaKita',
-                  style: GoogleFonts.poppins(
-                    fontSize: 14,
-                    fontWeight: FontWeight.w700,
-                    color: const Color(0xFF1A1A1A),
+      child: SafeArea(
+        bottom: false,
+        child: Padding(
+          padding: const EdgeInsets.fromLTRB(16, 14, 16, 14),
+          child: Row(
+            children: [
+              // Avatar bot
+              Container(
+                width: 42,
+                height: 42,
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  gradient: const LinearGradient(
+                    colors: [Color(0xFF2D5016), Color(0xFF6B9E45)],
+                    begin: Alignment.topLeft,
+                    end: Alignment.bottomRight,
                   ),
-                ),
-                Row(
-                  children: [
-                    Container(
-                      width: 7,
-                      height: 7,
-                      decoration: const BoxDecoration(
-                        shape: BoxShape.circle,
-                        color: Color(0xFF4CAF50),
-                      ),
-                    ),
-                    const SizedBox(width: 5),
-                    Text(
-                      'Online • Siap membantu',
-                      style: GoogleFonts.poppins(
-                        fontSize: 11,
-                        color: Colors.grey[500],
-                      ),
+                  boxShadow: [
+                    BoxShadow(
+                      color: const Color(0xFF2D5016).withOpacity(0.3),
+                      blurRadius: 8,
+                      offset: const Offset(0, 2),
                     ),
                   ],
                 ),
-              ],
-            ),
-          ),
+                child: const Icon(Icons.eco_rounded, color: Colors.white, size: 22),
+              ),
 
-          // Tombol hapus riwayat
-          IconButton(
-            onPressed: _messages.isEmpty ? null : _confirmClearChat,
-            icon: Icon(
-              Icons.delete_outline_rounded,
-              color: _messages.isEmpty ? Colors.grey[300] : Colors.grey[500],
-              size: 22,
-            ),
+              const SizedBox(width: 12),
+
+              // Nama & status
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'Kita — Asisten DesaKita',
+                      style: GoogleFonts.poppins(
+                        fontSize: 14,
+                        fontWeight: FontWeight.w700,
+                        color: const Color(0xFF1A1A1A),
+                      ),
+                    ),
+                    Row(
+                      children: [
+                        Container(
+                          width: 7,
+                          height: 7,
+                          decoration: const BoxDecoration(
+                            shape: BoxShape.circle,
+                            color: Color(0xFF4CAF50),
+                          ),
+                        ),
+                        const SizedBox(width: 5),
+                        Text(
+                          'Online • Siap membantu',
+                          style: GoogleFonts.poppins(
+                            fontSize: 11,
+                            color: Colors.grey[500],
+                          ),
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
+              ),
+
+              // Tombol hapus riwayat
+              IconButton(
+                onPressed: _messages.isEmpty ? null : _confirmClearChat,
+                icon: Icon(
+                  Icons.delete_outline_rounded,
+                  color: _messages.isEmpty ? Colors.grey[300] : Colors.grey[500],
+                  size: 22,
+                ),
+              ),
+            ],
           ),
-        ],
+        ),
       ),
     );
   }

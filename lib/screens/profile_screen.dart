@@ -162,17 +162,17 @@ class _ProfileScreenState extends State<ProfileScreen> {
 
   @override
   Widget build(BuildContext context) {
+    Widget content;
+
     if (_isLoading) {
-      return const Scaffold(
+      content = const Scaffold(
         backgroundColor: Color(0xFFF5F5F0),
         body: Center(
           child: CircularProgressIndicator(color: Color(0xFF2D5016)),
         ),
       );
-    }
-
-    if (!_isLoggedIn) {
-      return Scaffold(
+    } else if (!_isLoggedIn) {
+      content = Scaffold(
         backgroundColor: const Color(0xFFF5F5F0),
         body: SafeArea(
           child: Column(
@@ -183,51 +183,65 @@ class _ProfileScreenState extends State<ProfileScreen> {
           ),
         ),
       );
-    }
-
-    return Scaffold(
-      backgroundColor: const Color(0xFFF5F5F0),
-      body: SafeArea(
-        child: Column(
-          children: [
-            _buildAppBar(context),
-            Expanded(
-              child: SingleChildScrollView(
-                padding: const EdgeInsets.symmetric(horizontal: 20),
-                child: Column(
-                  children: [
-                    const SizedBox(height: 24),
-                    _buildAvatar(),
-                    const SizedBox(height: 14),
-                    Text(
-                      _currentUser?.fullName ?? 'Nama Pengguna',
-                      style: GoogleFonts.poppins(
-                        fontSize: 20,
-                        fontWeight: FontWeight.w700,
-                        color: const Color(0xFF1A1A1A),
+    } else {
+      content = Scaffold(
+        backgroundColor: const Color(0xFFF5F5F0),
+        body: SafeArea(
+          child: Column(
+            children: [
+              _buildAppBar(context),
+              Expanded(
+                child: SingleChildScrollView(
+                  padding: const EdgeInsets.symmetric(horizontal: 20),
+                  child: Column(
+                    children: [
+                      const SizedBox(height: 24),
+                      _buildAvatar(),
+                      const SizedBox(height: 14),
+                      Text(
+                        _currentUser?.fullName ?? 'Nama Pengguna',
+                        style: GoogleFonts.poppins(
+                          fontSize: 20,
+                          fontWeight: FontWeight.w700,
+                          color: const Color(0xFF1A1A1A),
+                        ),
                       ),
-                    ),
-                    const SizedBox(height: 4),
-                    Text(
-                      _currentUser?.email ?? FirebaseAuth.instance.currentUser?.email ?? '',
-                      style: GoogleFonts.poppins(fontSize: 13, color: Colors.grey[600]),
-                    ),
-                    const SizedBox(height: 12),
-                    _buildMemberBadge(),
-                    const SizedBox(height: 20),
-                    _buildStats(),
-                    const SizedBox(height: 24),
-                    _buildMenuList(context),
-                    const SizedBox(height: 20),
-                    _buildLogoutButton(context),
-                    const SizedBox(height: 32),
-                  ],
+                      const SizedBox(height: 4),
+                      Text(
+                        _currentUser?.email ?? FirebaseAuth.instance.currentUser?.email ?? '',
+                        style: GoogleFonts.poppins(fontSize: 13, color: Colors.grey[600]),
+                      ),
+                      const SizedBox(height: 12),
+                      _buildMemberBadge(),
+                      const SizedBox(height: 20),
+                      _buildStats(),
+                      const SizedBox(height: 24),
+                      _buildMenuList(context),
+                      const SizedBox(height: 20),
+                      _buildLogoutButton(context),
+                      const SizedBox(height: 32),
+                    ],
+                  ),
                 ),
               ),
-            ),
-          ],
+            ],
+          ),
         ),
-      ),
+      );
+    }
+
+    return GestureDetector(
+      onHorizontalDragEnd: (details) {
+        if (details.primaryVelocity != null) {
+          // Mendeteksi geseran (swipe) baik dari kanan ke kiri (velocity < -300) maupun kiri ke kanan (velocity > 300)
+          if (details.primaryVelocity!.abs() > 300) {
+            if (Navigator.canPop(context)) {
+              Navigator.pop(context);
+            }
+          }
+        }
+      },
+      child: content,
     );
   }
 
@@ -352,15 +366,47 @@ class _ProfileScreenState extends State<ProfileScreen> {
               color: const Color(0xFF2D5016),
             ),
           ),
-          // Ikon menu kiri
+          // Tombol kembali di kiri
           Align(
             alignment: Alignment.centerLeft,
             child: GestureDetector(
+              onTap: () {
+                if (Navigator.canPop(context)) {
+                  Navigator.pop(context);
+                }
+              },
+              child: Container(
+                width: 40,
+                height: 40,
+                decoration: const BoxDecoration(
+                  shape: BoxShape.circle,
+                  color: Color(0xFFE8EDE3),
+                ),
+                child: const Icon(
+                  Icons.arrow_back_ios_new_rounded,
+                  size: 18,
+                  color: Color(0xFF2D5016),
+                ),
+              ),
+            ),
+          ),
+          // Ikon menu kanan
+          Align(
+            alignment: Alignment.centerRight,
+            child: GestureDetector(
               onTap: () => _showDrawerMenu(context),
-              child: const Icon(
-                Icons.menu_rounded,
-                size: 26,
-                color: Color(0xFF2D5016),
+              child: Container(
+                width: 40,
+                height: 40,
+                decoration: const BoxDecoration(
+                  shape: BoxShape.circle,
+                  color: Color(0xFFE8EDE3),
+                ),
+                child: const Icon(
+                  Icons.menu_rounded,
+                  size: 22,
+                  color: Color(0xFF2D5016),
+                ),
               ),
             ),
           ),
