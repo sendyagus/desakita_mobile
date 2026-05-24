@@ -356,10 +356,10 @@ class _ProfileScreenState extends State<ProfileScreen> {
           Align(
             alignment: Alignment.centerLeft,
             child: GestureDetector(
-              onTap: () => _showDrawerMenu(context),
+              onTap: () => Navigator.pop(context),
               child: const Icon(
-                Icons.menu_rounded,
-                size: 26,
+                Icons.arrow_back_ios_new_rounded,
+                size: 22,
                 color: Color(0xFF2D5016),
               ),
             ),
@@ -635,53 +635,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
     );
   }
 
-  void _showDrawerMenu(BuildContext context) {
-    showModalBottomSheet(
-      context: context,
-      backgroundColor: Colors.white,
-      shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
-      ),
-      builder: (_) => Padding(
-        padding: const EdgeInsets.all(24),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Center(
-              child: Container(
-                width: 40,
-                height: 4,
-                decoration: BoxDecoration(
-                  color: Colors.grey[300],
-                  borderRadius: BorderRadius.circular(2),
-                ),
-              ),
-            ),
-            const SizedBox(height: 20),
-            Text(
-              'Menu',
-              style: GoogleFonts.poppins(
-                fontSize: 16,
-                fontWeight: FontWeight.w700,
-                color: const Color(0xFF1A1A1A),
-              ),
-            ),
-            const SizedBox(height: 12),
-            _DrawerItem(
-                icon: Icons.edit_outlined, label: 'Edit Profil'),
-            _DrawerItem(
-                icon: Icons.history_outlined, label: 'Riwayat Perjalanan'),
-            _DrawerItem(
-                icon: Icons.bookmark_outline, label: 'Tersimpan'),
-            _DrawerItem(
-                icon: Icons.star_outline, label: 'Ulasan Saya'),
-            const SizedBox(height: 8),
-          ],
-        ),
-      ),
-    );
-  }
+
 }
 
 // ─── Stat Card ────────────────────────────────────────────────────────────────
@@ -785,30 +739,4 @@ class _MenuItem extends StatelessWidget {
   }
 }
 
-// ─── Drawer Item ──────────────────────────────────────────────────────────────
 
-class _DrawerItem extends StatelessWidget {
-  final IconData icon;
-  final String label;
-
-  const _DrawerItem({required this.icon, required this.label});
-
-  @override
-  Widget build(BuildContext context) {
-    return ListTile(
-      contentPadding: EdgeInsets.zero,
-      leading: Icon(icon, color: const Color(0xFF2D5016), size: 22),
-      title: Text(
-        label,
-        style: GoogleFonts.poppins(
-          fontSize: 14,
-          fontWeight: FontWeight.w500,
-          color: const Color(0xFF1A1A1A),
-        ),
-      ),
-      trailing: const Icon(Icons.chevron_right_rounded,
-          size: 18, color: Colors.grey),
-      onTap: () => Navigator.pop(context),
-    );
-  }
-}

@@ -3,6 +3,9 @@ import 'package:google_fonts/google_fonts.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:desa_wisata/config/app_categories.dart';
 import 'package:desa_wisata/widgets/app_network_image.dart';
+import 'package:desa_wisata/screens/destination_detail_screen.dart';
+import 'package:firebase_auth/firebase_auth.dart';
+import 'package:desa_wisata/screens/user/create_booking_screen.dart';
 
 class ExploreScreen extends StatefulWidget {
   const ExploreScreen({super.key});
@@ -77,6 +80,7 @@ class _ExploreScreenState extends State<ExploreScreen> {
                 'rating': (data['rating'] as num?)?.toDouble() ?? 0.0,
                 'price': data['price'] ?? '',
                 'imageUrl': data['imageUrl'],
+                'raw_data': {'id': doc.id, ...data},
               };
             }).toList();
 
@@ -242,13 +246,48 @@ class _ExploreScreenState extends State<ExploreScreen> {
         final item = destinations[index];
         return Padding(
           padding: const EdgeInsets.only(bottom: 20),
-          child: _DestinationCard(
-            name: item['name'] as String,
-            location: item['location'] as String,
-            category: item['category'] as String,
-            rating: item['rating'] as double,
-            price: item['price'] as String,
-            imageUrl: item['imageUrl'] as String?,
+          child: GestureDetector(
+            onTap: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (_) => DestinationDetailScreen(
+                    destinationId: item['id'] as String,
+                  ),
+                ),
+              );
+            },
+            child: _DestinationCard(
+              name: item['name'] as String,
+              location: item['location'] as String,
+              category: item['category'] as String,
+              rating: item['rating'] as double,
+              price: item['price'] as String,
+              imageUrl: item['imageUrl'] as String?,
+              onBookTap: () {
+                final user = FirebaseAuth.instance.currentUser;
+                if (user == null) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(
+                      content: Text(
+                        'Login dulu untuk melakukan booking',
+                        style: GoogleFonts.poppins(fontSize: 13),
+                      ),
+                      backgroundColor: Colors.orange[800],
+                    ),
+                  );
+                  return;
+                }
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (_) => CreateBookingScreen(
+                      destination: item['raw_data'] as Map<String, dynamic>,
+                    ),
+                  ),
+                );
+              },
+            ),
           ),
         );
       },
@@ -361,6 +400,7 @@ class _DestinationCard extends StatelessWidget {
   final double rating;
   final String price;
   final String? imageUrl;
+  final VoidCallback onBookTap;
 
   const _DestinationCard({
     required this.name,
@@ -369,6 +409,7 @@ class _DestinationCard extends StatelessWidget {
     required this.rating,
     required this.price,
     this.imageUrl,
+    required this.onBookTap,
   });
 
   @override
@@ -500,6 +541,29 @@ class _DestinationCard extends StatelessWidget {
                       ),
                     ),
                   ],
+                ),
+                const SizedBox(height: 12),
+                SizedBox(
+                  width: double.infinity,
+                  height: 40,
+                  child: ElevatedButton(
+                    onPressed: onBookTap,
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: const Color(0xFF2D5016),
+                      foregroundColor: Colors.white,
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(10),
+                      ),
+                      elevation: 0,
+                    ),
+                    child: Text(
+                      'Booking',
+                      style: GoogleFonts.poppins(
+                        fontSize: 13,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                  ),
                 ),
               ],
             ),

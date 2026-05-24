@@ -2,9 +2,9 @@ import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:desa_wisata/screens/explore_screen.dart';
-import 'package:desa_wisata/screens/booking_screen.dart';
 import 'package:desa_wisata/screens/profile_screen.dart';
 import 'package:desa_wisata/screens/agent_screen.dart';
+import 'package:desa_wisata/screens/destination_detail_screen.dart';
 import 'package:desa_wisata/services/user_service.dart';
 import 'package:desa_wisata/services/destination_service.dart';
 import 'package:desa_wisata/services/event_service.dart';
@@ -196,9 +196,6 @@ class _HomeScreenState extends State<HomeScreen> {
             _buildBerandaContent(),
             const ExploreScreen(),
             const AgentScreen(),
-            const BookingScreen(),
-            // Tab 4: Profil
-            const ProfileScreen(),
           ],
         ),
       ),
@@ -213,83 +210,104 @@ class _HomeScreenState extends State<HomeScreen> {
       padding: const EdgeInsets.fromLTRB(16, 16, 16, 0),
       child: Row(
         children: [
-          // Avatar
-          Container(
-            width: 44,
-            height: 44,
-            decoration: BoxDecoration(
-              shape: BoxShape.circle,
-              color: Colors.grey[300],
-              border: Border.all(color: const Color(0xFF2D5016), width: 2),
-            ),
-            child: ClipOval(
-              child: _isLoadingUser
-                  ? const Center(
-                      child: SizedBox(
-                        width: 20,
-                        height: 20,
-                        child: CircularProgressIndicator(
-                          color: Color(0xFF2D5016),
-                          strokeWidth: 2,
+          // Avatar - tappable to open ProfileScreen
+          GestureDetector(
+            onTap: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (_) => const ProfileScreen(),
+                ),
+              );
+            },
+            child: Container(
+              width: 44,
+              height: 44,
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                color: Colors.grey[300],
+                border: Border.all(color: const Color(0xFF2D5016), width: 2),
+              ),
+              child: ClipOval(
+                child: _isLoadingUser
+                    ? const Center(
+                        child: SizedBox(
+                          width: 20,
+                          height: 20,
+                          child: CircularProgressIndicator(
+                            color: Color(0xFF2D5016),
+                            strokeWidth: 2,
+                          ),
                         ),
-                      ),
-                    )
-                  : _currentUser?.avatarUrl != null && _currentUser!.avatarUrl!.isNotEmpty
-                      ? Image.network(
-                          _currentUser!.avatarUrl!,
-                          width: 44,
-                          height: 44,
-                          fit: BoxFit.cover,
-                          errorBuilder: (context, error, stackTrace) {
-                            return const Icon(
-                              Icons.person,
-                              color: Colors.grey,
-                              size: 24,
-                            );
-                          },
-                          loadingBuilder: (context, child, loadingProgress) {
-                            if (loadingProgress == null) return child;
-                            return const Center(
-                              child: SizedBox(
-                                width: 20,
-                                height: 20,
-                                child: CircularProgressIndicator(
-                                  color: Color(0xFF2D5016),
-                                  strokeWidth: 2,
+                      )
+                    : _currentUser?.avatarUrl != null && _currentUser!.avatarUrl!.isNotEmpty
+                        ? Image.network(
+                            _currentUser!.avatarUrl!,
+                            width: 44,
+                            height: 44,
+                            fit: BoxFit.cover,
+                            errorBuilder: (context, error, stackTrace) {
+                              return const Icon(
+                                Icons.person,
+                                color: Colors.grey,
+                                size: 24,
+                              );
+                            },
+                            loadingBuilder: (context, child, loadingProgress) {
+                              if (loadingProgress == null) return child;
+                              return const Center(
+                                child: SizedBox(
+                                  width: 20,
+                                  height: 20,
+                                  child: CircularProgressIndicator(
+                                    color: Color(0xFF2D5016),
+                                    strokeWidth: 2,
+                                  ),
                                 ),
-                              ),
-                            );
-                          },
-                        )
-                      : const Icon(Icons.person, color: Colors.grey, size: 24),
+                              );
+                            },
+                          )
+                        : const Icon(Icons.person, color: Colors.grey, size: 24),
+              ),
             ),
           ),
 
           const SizedBox(width: 12),
 
-          // Sapaan
+          // Sapaan - tappable to open ProfileScreen
           Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  _isLoadingUser
-                      ? 'Halo, Pengguna!'
-                      : 'Halo, ${_currentUser?.fullName ?? 'Pengguna'}!',
-                  style: GoogleFonts.poppins(
-                    fontSize: 15,
-                    fontWeight: FontWeight.w700,
-                    color: const Color(0xFF2D5016),
+            child: GestureDetector(
+              onTap: () {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (_) => const ProfileScreen(),
                   ),
-                ),
-                Text(
-                  'Mau pergi kemana hari ini ?',
-                  style: GoogleFonts.poppins(
-                    fontSize: 12,
-                    color: Colors.grey[600],
+                );
+              },
+              behavior: HitTestBehavior.opaque,
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    _isLoadingUser
+                        ? 'Halo, Pengguna!'
+                        : 'Halo, ${_currentUser?.fullName ?? 'Pengguna'}!',
+                    style: GoogleFonts.poppins(
+                      fontSize: 15,
+                      fontWeight: FontWeight.w700,
+                      color: const Color(0xFF2D5016),
+                    ),
                   ),
-                ),
-              ],
+                  Text(
+                    'Mau pergi kemana hari ini ?',
+                    style: GoogleFonts.poppins(
+                      fontSize: 12,
+                      color: Colors.grey[600],
+                    ),
+                  ),
+                ],
+              ),
             ),
           ),
 
@@ -528,6 +546,7 @@ class _HomeScreenState extends State<HomeScreen> {
         itemBuilder: (context, index) {
           final item = recommendations[index];
           return _RecommendationCard(
+            destinationId: item['id'] as String? ?? '',
             name: item['name'] as String? ?? 'Destinasi',
             location: item['location'] as String? ?? 'Lokasi',
             rating: (item['rating'] as num?)?.toDouble() ?? 0.0,
@@ -597,8 +616,6 @@ class _HomeScreenState extends State<HomeScreen> {
       {'icon': Icons.home_rounded, 'label': 'Beranda'},
       {'icon': Icons.explore_outlined, 'label': 'Explorasi'},
       {'icon': Icons.smart_toy_outlined, 'label': 'Agent'},
-      {'icon': Icons.confirmation_number_outlined, 'label': 'Booking'},
-      {'icon': Icons.person_outline, 'label': 'Profil'},
     ];
 
     return Container(
@@ -667,12 +684,14 @@ class _HomeScreenState extends State<HomeScreen> {
 // ─── Recommendation Card ──────────────────────────────────────────────────────
 
 class _RecommendationCard extends StatelessWidget {
+  final String destinationId;
   final String name;
   final String location;
   final double rating;
   final String? imageUrl;
 
   const _RecommendationCard({
+    required this.destinationId,
     required this.name,
     required this.location,
     required this.rating,
@@ -681,143 +700,168 @@ class _RecommendationCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      width: 170,
-      margin: const EdgeInsets.only(right: 14),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(16),
-        boxShadow: const [
-          BoxShadow(
-            color: Color(0x10000000),
-            blurRadius: 8,
-            offset: Offset(0, 2),
-          ),
-        ],
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          // Foto dari database atau wireframe
-          Stack(
-            children: [
-              ClipRRect(
-                borderRadius:
-                    const BorderRadius.vertical(top: Radius.circular(16)),
-                child: AppNetworkImage(
-                  imageUrl: imageUrl,
-                  height: 120,
-                  width: 170,
-                  borderRadius: const BorderRadius.vertical(top: Radius.circular(16)),
-                  placeholderLabel: name,
-                ),
+    return GestureDetector(
+      onTap: () {
+        if (destinationId.isNotEmpty) {
+          Navigator.push(
+            context,
+            MaterialPageRoute(
+              builder: (_) => DestinationDetailScreen(
+                destinationId: destinationId,
               ),
-              // Rating badge
-              Positioned(
-                top: 8,
-                right: 8,
-                child: Container(
-                  padding:
-                      const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                  decoration: BoxDecoration(
-                    color: Colors.white,
-                    borderRadius: BorderRadius.circular(20),
-                    boxShadow: const [
-                      BoxShadow(
-                        color: Color(0x20000000),
-                        blurRadius: 4,
-                      ),
-                    ],
-                  ),
-                  child: Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      const Icon(Icons.star_rounded,
-                          size: 13, color: Color(0xFFE8A020)),
-                      const SizedBox(width: 3),
-                      Text(
-                        rating.toStringAsFixed(1),
-                        style: GoogleFonts.poppins(
-                          fontSize: 11,
-                          fontWeight: FontWeight.w600,
-                          color: const Color(0xFF333333),
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              ),
-            ],
-          ),
-
-          // Info
-          Padding(
-            padding: const EdgeInsets.fromLTRB(10, 8, 10, 8),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
+            ),
+          );
+        }
+      },
+      child: Container(
+        width: 170,
+        margin: const EdgeInsets.only(right: 14),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(16),
+          boxShadow: const [
+            BoxShadow(
+              color: Color(0x10000000),
+              blurRadius: 8,
+              offset: Offset(0, 2),
+            ),
+          ],
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            // Foto dari database atau wireframe
+            Stack(
               children: [
-                Text(
-                  name,
-                  style: GoogleFonts.poppins(
-                    fontSize: 13,
-                    fontWeight: FontWeight.w600,
-                    color: const Color(0xFF1A1A1A),
+                ClipRRect(
+                  borderRadius:
+                      const BorderRadius.vertical(top: Radius.circular(16)),
+                  child: AppNetworkImage(
+                    imageUrl: imageUrl,
+                    height: 120,
+                    width: 170,
+                    borderRadius: const BorderRadius.vertical(top: Radius.circular(16)),
+                    placeholderLabel: name,
                   ),
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
                 ),
-                const SizedBox(height: 2),
-                Row(
-                  children: [
-                    const Icon(Icons.location_on_outlined,
-                        size: 12, color: Colors.grey),
-                    const SizedBox(width: 2),
-                    Expanded(
-                      child: Text(
-                        location,
-                        style: GoogleFonts.poppins(
-                          fontSize: 11,
-                          color: Colors.grey[600],
+                // Rating badge
+                Positioned(
+                  top: 8,
+                  right: 8,
+                  child: Container(
+                    padding:
+                        const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                    decoration: BoxDecoration(
+                      color: Colors.white,
+                      borderRadius: BorderRadius.circular(20),
+                      boxShadow: const [
+                        BoxShadow(
+                          color: Color(0x20000000),
+                          blurRadius: 4,
                         ),
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                      ),
+                      ],
                     ),
-                  ],
-                ),
-                const SizedBox(height: 8),
-                Align(
-                  alignment: Alignment.centerRight,
-                  child: SizedBox(
-                    height: 28,
-                    child: ElevatedButton(
-                      onPressed: () {},
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: const Color(0xFF2D5016),
-                        foregroundColor: Colors.white,
-                        padding: const EdgeInsets.symmetric(horizontal: 14),
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(8),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        const Icon(Icons.star_rounded,
+                            size: 13, color: Color(0xFFE8A020)),
+                        const SizedBox(width: 3),
+                        Text(
+                          rating.toStringAsFixed(1),
+                          style: GoogleFonts.poppins(
+                            fontSize: 11,
+                            fontWeight: FontWeight.w600,
+                            color: const Color(0xFF333333),
+                          ),
                         ),
-                        elevation: 0,
-                        minimumSize: Size.zero,
-                        tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                      ),
-                      child: Text(
-                        'BUKA',
-                        style: GoogleFonts.poppins(
-                          fontSize: 10,
-                          fontWeight: FontWeight.w700,
-                          letterSpacing: 0.5,
-                        ),
-                      ),
+                      ],
                     ),
                   ),
                 ),
               ],
             ),
-          ),
-        ],
+
+            // Info
+            Padding(
+              padding: const EdgeInsets.fromLTRB(10, 8, 10, 8),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    name,
+                    style: GoogleFonts.poppins(
+                      fontSize: 13,
+                      fontWeight: FontWeight.w600,
+                      color: const Color(0xFF1A1A1A),
+                    ),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                  const SizedBox(height: 2),
+                  Row(
+                    children: [
+                      const Icon(Icons.location_on_outlined,
+                          size: 12, color: Colors.grey),
+                      const SizedBox(width: 2),
+                      Expanded(
+                        child: Text(
+                          location,
+                          style: GoogleFonts.poppins(
+                            fontSize: 11,
+                            color: Colors.grey[600],
+                          ),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 8),
+                  Align(
+                    alignment: Alignment.centerRight,
+                    child: SizedBox(
+                      height: 28,
+                      child: ElevatedButton(
+                        onPressed: () {
+                          if (destinationId.isNotEmpty) {
+                            Navigator.push(
+                              context,
+                              MaterialPageRoute(
+                                builder: (_) => DestinationDetailScreen(
+                                  destinationId: destinationId,
+                                ),
+                              ),
+                            );
+                          }
+                        },
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: const Color(0xFF2D5016),
+                          foregroundColor: Colors.white,
+                          padding: const EdgeInsets.symmetric(horizontal: 14),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(8),
+                          ),
+                          elevation: 0,
+                          minimumSize: Size.zero,
+                          tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                        ),
+                        child: Text(
+                          'BUKA',
+                          style: GoogleFonts.poppins(
+                            fontSize: 10,
+                            fontWeight: FontWeight.w700,
+                            letterSpacing: 0.5,
+                          ),
+                        ),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }
