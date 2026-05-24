@@ -29,8 +29,9 @@ class _DestinationDetailScreenState extends State<DestinationDetailScreen> {
 
   Future<void> _loadDestination() async {
     try {
-      final dest =
-          await _destinationService.getDestinationById(widget.destinationId);
+      final dest = await _destinationService.getDestinationById(
+        widget.destinationId,
+      );
       if (mounted) {
         setState(() {
           _destination = dest;
@@ -122,7 +123,9 @@ class _DestinationDetailScreenState extends State<DestinationDetailScreen> {
               Text(
                 'Destinasi tidak ditemukan',
                 style: GoogleFonts.poppins(
-                    fontSize: 14, color: Colors.grey[600]),
+                  fontSize: 14,
+                  color: Colors.grey[600],
+                ),
               ),
             ],
           ),
@@ -161,7 +164,11 @@ class _DestinationDetailScreenState extends State<DestinationDetailScreen> {
                   shape: BoxShape.circle,
                 ),
                 child: IconButton(
-                  icon: const Icon(Icons.arrow_back, color: Colors.white, size: 20),
+                  icon: const Icon(
+                    Icons.arrow_back,
+                    color: Colors.white,
+                    size: 20,
+                  ),
                   onPressed: () => Navigator.pop(context),
                 ),
               ),
@@ -175,13 +182,18 @@ class _DestinationDetailScreenState extends State<DestinationDetailScreen> {
                     shape: BoxShape.circle,
                   ),
                   child: IconButton(
-                    icon: const Icon(Icons.share_outlined,
-                        color: Colors.white, size: 20),
+                    icon: const Icon(
+                      Icons.share_outlined,
+                      color: Colors.white,
+                      size: 20,
+                    ),
                     onPressed: () {
                       ScaffoldMessenger.of(context).showSnackBar(
                         SnackBar(
-                          content: Text('Fitur share segera hadir',
-                              style: GoogleFonts.poppins(fontSize: 13)),
+                          content: Text(
+                            'Fitur share segera hadir',
+                            style: GoogleFonts.poppins(fontSize: 13),
+                          ),
                           backgroundColor: const Color(0xFF2D5016),
                           behavior: SnackBarBehavior.floating,
                         ),
@@ -227,7 +239,9 @@ class _DestinationDetailScreenState extends State<DestinationDetailScreen> {
                         // Category chip
                         Container(
                           padding: const EdgeInsets.symmetric(
-                              horizontal: 12, vertical: 5),
+                            horizontal: 12,
+                            vertical: 5,
+                          ),
                           decoration: BoxDecoration(
                             color: const Color(0xFF2D5016),
                             borderRadius: BorderRadius.circular(20),
@@ -259,8 +273,11 @@ class _DestinationDetailScreenState extends State<DestinationDetailScreen> {
                         const SizedBox(height: 4),
                         Row(
                           children: [
-                            const Icon(Icons.location_on,
-                                size: 14, color: Colors.white70),
+                            const Icon(
+                              Icons.location_on,
+                              size: 14,
+                              color: Colors.white70,
+                            ),
                             const SizedBox(width: 4),
                             Expanded(
                               child: Text(
@@ -326,7 +343,9 @@ class _DestinationDetailScreenState extends State<DestinationDetailScreen> {
                           // Stock
                           _InfoChip(
                             icon: Icons.inventory_2_outlined,
-                            iconColor: stock > 0 ? const Color(0xFF2D5016) : Colors.red,
+                            iconColor: stock > 0
+                                ? const Color(0xFF2D5016)
+                                : Colors.red,
                             label: '$stock',
                             subtitle: 'Stok',
                           ),
@@ -395,7 +414,9 @@ class _DestinationDetailScreenState extends State<DestinationDetailScreen> {
                             .map(
                               (f) => Container(
                                 padding: const EdgeInsets.symmetric(
-                                    horizontal: 12, vertical: 8),
+                                  horizontal: 12,
+                                  vertical: 8,
+                                ),
                                 decoration: BoxDecoration(
                                   color: const Color(0xFFEEF2E8),
                                   borderRadius: BorderRadius.circular(10),
@@ -403,9 +424,11 @@ class _DestinationDetailScreenState extends State<DestinationDetailScreen> {
                                 child: Row(
                                   mainAxisSize: MainAxisSize.min,
                                   children: [
-                                    const Icon(Icons.check_circle,
-                                        size: 14,
-                                        color: Color(0xFF2D5016)),
+                                    const Icon(
+                                      Icons.check_circle,
+                                      size: 14,
+                                      color: Color(0xFF2D5016),
+                                    ),
                                     const SizedBox(width: 6),
                                     Text(
                                       f,
@@ -454,11 +477,7 @@ class _DestinationDetailScreenState extends State<DestinationDetailScreen> {
                           if (openingHours.isNotEmpty && contact.isNotEmpty)
                             const Divider(height: 20),
                           if (contact.isNotEmpty)
-                            _infoRow(
-                              Icons.phone_outlined,
-                              'Kontak',
-                              contact,
-                            ),
+                            _infoRow(Icons.phone_outlined, 'Kontak', contact),
                         ],
                       ),
                     ),
@@ -597,8 +616,7 @@ class _DestinationDetailScreenState extends State<DestinationDetailScreen> {
                             borderRadius: BorderRadius.circular(12),
                           ),
                           elevation: 0,
-                          padding:
-                              const EdgeInsets.symmetric(horizontal: 32),
+                          padding: const EdgeInsets.symmetric(horizontal: 32),
                         ),
                         child: Text(
                           'Booking Sekarang',
@@ -703,10 +721,7 @@ class _InfoChip extends StatelessWidget {
           ),
           Text(
             subtitle,
-            style: GoogleFonts.poppins(
-              fontSize: 11,
-              color: Colors.grey[500],
-            ),
+            style: GoogleFonts.poppins(fontSize: 11, color: Colors.grey[500]),
           ),
         ],
       ),
