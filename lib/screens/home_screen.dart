@@ -160,26 +160,33 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   Widget _buildBerandaContent() {
-    return SingleChildScrollView(
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          _buildHeader(),
-          const SizedBox(height: 16),
-          _buildBannerSlider(),
-          const SizedBox(height: 20),
-          _buildCategories(),
-          const SizedBox(height: 20),
-          _buildSectionTitle('Rekomendasi Untukmu'),
-          const SizedBox(height: 12),
-          _buildRecommendations(),
-          const SizedBox(height: 20),
-          _buildSectionTitle('Acara Mendatang'),
-          const SizedBox(height: 12),
-          _buildEvents(),
-          const SizedBox(height: 24),
-        ],
-      ),
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        _buildHeader(),
+        const SizedBox(height: 16),
+        Expanded(
+          child: SingleChildScrollView(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                _buildBannerSlider(),
+                const SizedBox(height: 20),
+                _buildCategories(),
+                const SizedBox(height: 20),
+                _buildSectionTitle('Rekomendasi Untukmu'),
+                const SizedBox(height: 12),
+                _buildRecommendations(),
+                const SizedBox(height: 20),
+                _buildSectionTitle('Acara Mendatang'),
+                const SizedBox(height: 12),
+                _buildEvents(),
+                const SizedBox(height: 24),
+              ],
+            ),
+          ),
+        ),
+      ],
     );
   }
 
@@ -188,6 +195,7 @@ class _HomeScreenState extends State<HomeScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: const Color(0xFFF5F5F0),
+<<<<<<< HEAD
       body: SafeArea(
         bottom: false,
         child: IndexedStack(
@@ -198,6 +206,16 @@ class _HomeScreenState extends State<HomeScreen> {
             const AgentScreen(),
           ],
         ),
+=======
+      body: IndexedStack(
+        index: _selectedNavIndex,
+        children: [
+          SafeArea(bottom: false, child: _buildBerandaContent()),
+          const SafeArea(bottom: false, child: ExploreScreen()),
+          const AgentScreen(), // AgentScreen manages its own SafeArea internally for full-bleed header
+          const SafeArea(bottom: false, child: BookingScreen()),
+        ],
+>>>>>>> c4c1fbdc5fc96756c40b051db10ea7614239c69c
       ),
       bottomNavigationBar: _buildBottomNav(),
     );
@@ -210,13 +228,32 @@ class _HomeScreenState extends State<HomeScreen> {
       padding: const EdgeInsets.fromLTRB(16, 16, 16, 0),
       child: Row(
         children: [
+<<<<<<< HEAD
           // Avatar - tappable to open ProfileScreen
+=======
+          // Avatar
+>>>>>>> c4c1fbdc5fc96756c40b051db10ea7614239c69c
           GestureDetector(
             onTap: () {
               Navigator.push(
                 context,
+<<<<<<< HEAD
                 MaterialPageRoute(
                   builder: (_) => const ProfileScreen(),
+=======
+                PageRouteBuilder(
+                  pageBuilder: (context, animation, secondaryAnimation) => const ProfileScreen(),
+                  transitionsBuilder: (context, animation, secondaryAnimation, child) {
+                    const begin = Offset(-1.0, 0.0);
+                    const end = Offset.zero;
+                    const curve = Curves.easeInOut;
+                    var tween = Tween(begin: begin, end: end).chain(CurveTween(curve: curve));
+                    return SlideTransition(
+                      position: animation.drive(tween),
+                      child: child,
+                    );
+                  },
+>>>>>>> c4c1fbdc5fc96756c40b051db10ea7614239c69c
                 ),
               );
             },
@@ -616,6 +653,10 @@ class _HomeScreenState extends State<HomeScreen> {
       {'icon': Icons.home_rounded, 'label': 'Beranda'},
       {'icon': Icons.explore_outlined, 'label': 'Explorasi'},
       {'icon': Icons.smart_toy_outlined, 'label': 'Agent'},
+<<<<<<< HEAD
+=======
+      {'icon': Icons.confirmation_number_outlined, 'label': 'Booking'},
+>>>>>>> c4c1fbdc5fc96756c40b051db10ea7614239c69c
     ];
 
     return Container(

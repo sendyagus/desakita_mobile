@@ -4,6 +4,7 @@ import 'package:google_fonts/google_fonts.dart';
 import 'package:desa_wisata/config/app_categories.dart';
 import 'package:desa_wisata/services/destination_service.dart';
 import 'package:desa_wisata/screens/user/create_booking_screen.dart';
+import 'package:desa_wisata/screens/user/user_booking_history_screen.dart';
 import 'package:desa_wisata/widgets/app_network_image.dart';
 
 class BookingScreen extends StatefulWidget {
@@ -92,18 +93,73 @@ class _BookingScreenState extends State<BookingScreen> {
               ),
             ),
           ),
-          // Ikon headset
-          Container(
-            width: 40,
-            height: 40,
-            decoration: const BoxDecoration(
-              shape: BoxShape.circle,
-              color: Color(0xFFE8EDE3),
+          // Tombol Riwayat Booking
+          GestureDetector(
+            onTap: () {
+              final user = FirebaseAuth.instance.currentUser;
+              if (user == null) {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  SnackBar(
+                    content: Text(
+                      'Login dulu untuk melihat riwayat booking',
+                      style: GoogleFonts.poppins(fontSize: 13),
+                    ),
+                    backgroundColor: Colors.orange[800],
+                    behavior: SnackBarBehavior.floating,
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                  ),
+                );
+                return;
+              }
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (_) => const UserBookingHistoryScreen(),
+                ),
+              );
+            },
+            child: Container(
+              width: 40,
+              height: 40,
+              decoration: const BoxDecoration(
+                shape: BoxShape.circle,
+                color: Color(0xFFE8EDE3),
+              ),
+              child: const Icon(
+                Icons.history_outlined,
+                size: 20,
+                color: Color(0xFF2D5016),
+              ),
             ),
-            child: const Icon(
-              Icons.headset_mic_outlined,
-              size: 20,
-              color: Color(0xFF2D5016),
+          ),
+          const SizedBox(width: 8),
+          // Tombol customer service (headset)
+          GestureDetector(
+            onTap: () {
+              ScaffoldMessenger.of(context).showSnackBar(
+                SnackBar(
+                  content: Text(
+                    'Fitur bantuan Hubungi Admin sedang dikembangkan',
+                    style: GoogleFonts.poppins(fontSize: 13, color: Colors.white),
+                  ),
+                  backgroundColor: const Color(0xFF2D5016),
+                  behavior: SnackBarBehavior.floating,
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                ),
+              );
+            },
+            child: Container(
+              width: 40,
+              height: 40,
+              decoration: const BoxDecoration(
+                shape: BoxShape.circle,
+                color: Color(0xFFE8EDE3),
+              ),
+              child: const Icon(
+                Icons.headset_mic_outlined,
+                size: 20,
+                color: Color(0xFF2D5016),
+              ),
             ),
           ),
         ],
