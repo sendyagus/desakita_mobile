@@ -29,10 +29,10 @@ class _HomeScreenState extends State<HomeScreen> {
   final UserService _userService = UserService();
   final DestinationService _destinationService = DestinationService();
   final EventService _eventService = EventService();
-  
+
   UserModel? _currentUser;
   bool _isLoadingUser = true;
-  
+
   List<Map<String, dynamic>> _allDestinations = [];
   bool _isLoadingDestinations = true;
   List<Map<String, dynamic>> _events = [];
@@ -52,7 +52,9 @@ class _HomeScreenState extends State<HomeScreen> {
     }
     final label = _categories[_selectedCategoryIndex]['label']!;
     return _allDestinations
-        .where((d) => AppCategories.normalize(d['category'] as String?) == label)
+        .where(
+          (d) => AppCategories.normalize(d['category'] as String?) == label,
+        )
         .take(8)
         .toList();
   }
@@ -131,7 +133,20 @@ class _HomeScreenState extends State<HomeScreen> {
   static String _eventMonthLabel(String? isoDate) {
     final date = DateTime.tryParse(isoDate ?? '');
     if (date == null) return '---';
-    const months = ['JAN', 'FEB', 'MAR', 'APR', 'MEI', 'JUN', 'JUL', 'AGU', 'SEP', 'OKT', 'NOV', 'DES'];
+    const months = [
+      'JAN',
+      'FEB',
+      'MAR',
+      'APR',
+      'MEI',
+      'JUN',
+      'JUL',
+      'AGU',
+      'SEP',
+      'OKT',
+      'NOV',
+      'DES',
+    ];
     return months[date.month - 1];
   }
 
@@ -190,23 +205,10 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
-
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: const Color(0xFFF5F5F0),
-<<<<<<< HEAD
-      body: SafeArea(
-        bottom: false,
-        child: IndexedStack(
-          index: _selectedNavIndex,
-          children: [
-            _buildBerandaContent(),
-            const ExploreScreen(),
-            const AgentScreen(),
-          ],
-        ),
-=======
       body: IndexedStack(
         index: _selectedNavIndex,
         children: [
@@ -215,7 +217,6 @@ class _HomeScreenState extends State<HomeScreen> {
           const AgentScreen(), // AgentScreen manages its own SafeArea internally for full-bleed header
           const SafeArea(bottom: false, child: BookingScreen()),
         ],
->>>>>>> c4c1fbdc5fc96756c40b051db10ea7614239c69c
       ),
       bottomNavigationBar: _buildBottomNav(),
     );
@@ -228,32 +229,28 @@ class _HomeScreenState extends State<HomeScreen> {
       padding: const EdgeInsets.fromLTRB(16, 16, 16, 0),
       child: Row(
         children: [
-<<<<<<< HEAD
-          // Avatar - tappable to open ProfileScreen
-=======
           // Avatar
->>>>>>> c4c1fbdc5fc96756c40b051db10ea7614239c69c
           GestureDetector(
             onTap: () {
               Navigator.push(
                 context,
-<<<<<<< HEAD
-                MaterialPageRoute(
-                  builder: (_) => const ProfileScreen(),
-=======
                 PageRouteBuilder(
-                  pageBuilder: (context, animation, secondaryAnimation) => const ProfileScreen(),
-                  transitionsBuilder: (context, animation, secondaryAnimation, child) {
-                    const begin = Offset(-1.0, 0.0);
-                    const end = Offset.zero;
-                    const curve = Curves.easeInOut;
-                    var tween = Tween(begin: begin, end: end).chain(CurveTween(curve: curve));
-                    return SlideTransition(
-                      position: animation.drive(tween),
-                      child: child,
-                    );
-                  },
->>>>>>> c4c1fbdc5fc96756c40b051db10ea7614239c69c
+                  pageBuilder: (context, animation, secondaryAnimation) =>
+                      const ProfileScreen(),
+                  transitionsBuilder:
+                      (context, animation, secondaryAnimation, child) {
+                        const begin = Offset(-1.0, 0.0);
+                        const end = Offset.zero;
+                        const curve = Curves.easeInOut;
+                        var tween = Tween(
+                          begin: begin,
+                          end: end,
+                        ).chain(CurveTween(curve: curve));
+                        return SlideTransition(
+                          position: animation.drive(tween),
+                          child: child,
+                        );
+                      },
                 ),
               );
             },
@@ -277,34 +274,35 @@ class _HomeScreenState extends State<HomeScreen> {
                           ),
                         ),
                       )
-                    : _currentUser?.avatarUrl != null && _currentUser!.avatarUrl!.isNotEmpty
-                        ? Image.network(
-                            _currentUser!.avatarUrl!,
-                            width: 44,
-                            height: 44,
-                            fit: BoxFit.cover,
-                            errorBuilder: (context, error, stackTrace) {
-                              return const Icon(
-                                Icons.person,
-                                color: Colors.grey,
-                                size: 24,
-                              );
-                            },
-                            loadingBuilder: (context, child, loadingProgress) {
-                              if (loadingProgress == null) return child;
-                              return const Center(
-                                child: SizedBox(
-                                  width: 20,
-                                  height: 20,
-                                  child: CircularProgressIndicator(
-                                    color: Color(0xFF2D5016),
-                                    strokeWidth: 2,
-                                  ),
-                                ),
-                              );
-                            },
-                          )
-                        : const Icon(Icons.person, color: Colors.grey, size: 24),
+                    : _currentUser?.avatarUrl != null &&
+                          _currentUser!.avatarUrl!.isNotEmpty
+                    ? Image.network(
+                        _currentUser!.avatarUrl!,
+                        width: 44,
+                        height: 44,
+                        fit: BoxFit.cover,
+                        errorBuilder: (context, error, stackTrace) {
+                          return const Icon(
+                            Icons.person,
+                            color: Colors.grey,
+                            size: 24,
+                          );
+                        },
+                        loadingBuilder: (context, child, loadingProgress) {
+                          if (loadingProgress == null) return child;
+                          return const Center(
+                            child: SizedBox(
+                              width: 20,
+                              height: 20,
+                              child: CircularProgressIndicator(
+                                color: Color(0xFF2D5016),
+                                strokeWidth: 2,
+                              ),
+                            ),
+                          );
+                        },
+                      )
+                    : const Icon(Icons.person, color: Colors.grey, size: 24),
               ),
             ),
           ),
@@ -317,9 +315,7 @@ class _HomeScreenState extends State<HomeScreen> {
               onTap: () {
                 Navigator.push(
                   context,
-                  MaterialPageRoute(
-                    builder: (_) => const ProfileScreen(),
-                  ),
+                  MaterialPageRoute(builder: (_) => const ProfileScreen()),
                 );
               },
               behavior: HitTestBehavior.opaque,
@@ -369,11 +365,16 @@ class _HomeScreenState extends State<HomeScreen> {
                 SnackBar(
                   content: Text(
                     'Fitur bantuan Hubungi Admin sedang dikembangkan',
-                    style: GoogleFonts.poppins(fontSize: 13, color: Colors.white),
+                    style: GoogleFonts.poppins(
+                      fontSize: 13,
+                      color: Colors.white,
+                    ),
                   ),
                   backgroundColor: const Color(0xFF2D5016),
                   behavior: SnackBarBehavior.floating,
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(10),
+                  ),
                 ),
               );
             },
@@ -415,11 +416,11 @@ class _HomeScreenState extends State<HomeScreen> {
             itemBuilder: (context, index) {
               return Padding(
                 padding: const EdgeInsets.symmetric(horizontal: 16),
-               child: Image.asset(
-  banners[index],
-  fit: BoxFit.cover,
-  width: double.infinity,
-),
+                child: Image.asset(
+                  banners[index],
+                  fit: BoxFit.cover,
+                  width: double.infinity,
+                ),
               );
             },
           ),
@@ -565,10 +566,7 @@ class _HomeScreenState extends State<HomeScreen> {
         child: Center(
           child: Text(
             'Belum ada destinasi wisata',
-            style: GoogleFonts.poppins(
-              fontSize: 13,
-              color: Colors.grey[600],
-            ),
+            style: GoogleFonts.poppins(fontSize: 13, color: Colors.grey[600]),
           ),
         ),
       );
@@ -653,10 +651,7 @@ class _HomeScreenState extends State<HomeScreen> {
       {'icon': Icons.home_rounded, 'label': 'Beranda'},
       {'icon': Icons.explore_outlined, 'label': 'Explorasi'},
       {'icon': Icons.smart_toy_outlined, 'label': 'Agent'},
-<<<<<<< HEAD
-=======
       {'icon': Icons.confirmation_number_outlined, 'label': 'Booking'},
->>>>>>> c4c1fbdc5fc96756c40b051db10ea7614239c69c
     ];
 
     return Container(
@@ -747,9 +742,8 @@ class _RecommendationCard extends StatelessWidget {
           Navigator.push(
             context,
             MaterialPageRoute(
-              builder: (_) => DestinationDetailScreen(
-                destinationId: destinationId,
-              ),
+              builder: (_) =>
+                  DestinationDetailScreen(destinationId: destinationId),
             ),
           );
         }
@@ -775,13 +769,16 @@ class _RecommendationCard extends StatelessWidget {
             Stack(
               children: [
                 ClipRRect(
-                  borderRadius:
-                      const BorderRadius.vertical(top: Radius.circular(16)),
+                  borderRadius: const BorderRadius.vertical(
+                    top: Radius.circular(16),
+                  ),
                   child: AppNetworkImage(
                     imageUrl: imageUrl,
                     height: 120,
                     width: 170,
-                    borderRadius: const BorderRadius.vertical(top: Radius.circular(16)),
+                    borderRadius: const BorderRadius.vertical(
+                      top: Radius.circular(16),
+                    ),
                     placeholderLabel: name,
                   ),
                 ),
@@ -790,23 +787,25 @@ class _RecommendationCard extends StatelessWidget {
                   top: 8,
                   right: 8,
                   child: Container(
-                    padding:
-                        const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 8,
+                      vertical: 4,
+                    ),
                     decoration: BoxDecoration(
                       color: Colors.white,
                       borderRadius: BorderRadius.circular(20),
                       boxShadow: const [
-                        BoxShadow(
-                          color: Color(0x20000000),
-                          blurRadius: 4,
-                        ),
+                        BoxShadow(color: Color(0x20000000), blurRadius: 4),
                       ],
                     ),
                     child: Row(
                       mainAxisSize: MainAxisSize.min,
                       children: [
-                        const Icon(Icons.star_rounded,
-                            size: 13, color: Color(0xFFE8A020)),
+                        const Icon(
+                          Icons.star_rounded,
+                          size: 13,
+                          color: Color(0xFFE8A020),
+                        ),
                         const SizedBox(width: 3),
                         Text(
                           rating.toStringAsFixed(1),
@@ -842,8 +841,11 @@ class _RecommendationCard extends StatelessWidget {
                   const SizedBox(height: 2),
                   Row(
                     children: [
-                      const Icon(Icons.location_on_outlined,
-                          size: 12, color: Colors.grey),
+                      const Icon(
+                        Icons.location_on_outlined,
+                        size: 12,
+                        color: Colors.grey,
+                      ),
                       const SizedBox(width: 2),
                       Expanded(
                         child: Text(
@@ -990,7 +992,10 @@ class _EventCard extends StatelessWidget {
                       ),
                     ),
                     Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 8,
+                        vertical: 3,
+                      ),
                       decoration: BoxDecoration(
                         color: phase == 'Sedang Berjalan'
                             ? const Color(0xFF2D5016)
@@ -1011,8 +1016,11 @@ class _EventCard extends StatelessWidget {
                 const SizedBox(height: 4),
                 Row(
                   children: [
-                    const Icon(Icons.access_time_outlined,
-                        size: 12, color: Colors.grey),
+                    const Icon(
+                      Icons.access_time_outlined,
+                      size: 12,
+                      color: Colors.grey,
+                    ),
                     const SizedBox(width: 4),
                     Text(
                       time,
@@ -1026,8 +1034,11 @@ class _EventCard extends StatelessWidget {
                 const SizedBox(height: 2),
                 Row(
                   children: [
-                    const Icon(Icons.location_on_outlined,
-                        size: 12, color: Colors.grey),
+                    const Icon(
+                      Icons.location_on_outlined,
+                      size: 12,
+                      color: Colors.grey,
+                    ),
                     const SizedBox(width: 4),
                     Expanded(
                       child: Text(
@@ -1065,4 +1076,3 @@ class _EventCard extends StatelessWidget {
     );
   }
 }
-

@@ -370,13 +370,6 @@ class _ProfileScreenState extends State<ProfileScreen> {
           Align(
             alignment: Alignment.centerLeft,
             child: GestureDetector(
-<<<<<<< HEAD
-              onTap: () => Navigator.pop(context),
-              child: const Icon(
-                Icons.arrow_back_ios_new_rounded,
-                size: 22,
-                color: Color(0xFF2D5016),
-=======
               onTap: () {
                 if (Navigator.canPop(context)) {
                   Navigator.pop(context);
@@ -394,27 +387,6 @@ class _ProfileScreenState extends State<ProfileScreen> {
                   size: 18,
                   color: Color(0xFF2D5016),
                 ),
-              ),
-            ),
-          ),
-          // Ikon menu kanan
-          Align(
-            alignment: Alignment.centerRight,
-            child: GestureDetector(
-              onTap: () => _showDrawerMenu(context),
-              child: Container(
-                width: 40,
-                height: 40,
-                decoration: const BoxDecoration(
-                  shape: BoxShape.circle,
-                  color: Color(0xFFE8EDE3),
-                ),
-                child: const Icon(
-                  Icons.menu_rounded,
-                  size: 22,
-                  color: Color(0xFF2D5016),
-                ),
->>>>>>> c4c1fbdc5fc96756c40b051db10ea7614239c69c
               ),
             ),
           ),
