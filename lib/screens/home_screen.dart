@@ -1,4 +1,3 @@
-import 'package:desa_wisata/screens/booking_screen.dart';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:firebase_auth/firebase_auth.dart';
@@ -216,7 +215,6 @@ class _HomeScreenState extends State<HomeScreen> {
           SafeArea(bottom: false, child: _buildBerandaContent()),
           const SafeArea(bottom: false, child: ExploreScreen()),
           const AgentScreen(), // AgentScreen manages its own SafeArea internally for full-bleed header
-          const SafeArea(bottom: false, child: BookingScreen()),
         ],
       ),
       bottomNavigationBar: _buildBottomNav(),
@@ -652,7 +650,6 @@ class _HomeScreenState extends State<HomeScreen> {
       {'icon': Icons.home_rounded, 'label': 'Beranda'},
       {'icon': Icons.explore_outlined, 'label': 'Explorasi'},
       {'icon': Icons.smart_toy_outlined, 'label': 'Agent'},
-      {'icon': Icons.confirmation_number_outlined, 'label': 'Booking'},
     ];
 
     return Container(
@@ -891,7 +888,7 @@ class _RecommendationCard extends StatelessWidget {
                           tapTargetSize: MaterialTapTargetSize.shrinkWrap,
                         ),
                         child: Text(
-                          'BUKA',
+                          'Lihat Detail',
                           style: GoogleFonts.poppins(
                             fontSize: 10,
                             fontWeight: FontWeight.w700,

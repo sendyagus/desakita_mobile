@@ -72,12 +72,13 @@ class _DestinationDetailScreenState extends State<DestinationDetailScreen> {
   }
 
   Future<void> _openMaps() async {
-    final mapsUrl = _destination?['mapsUrl'] as String?;
-    if (mapsUrl == null || mapsUrl.isEmpty) {
+    final rawUrl = (_destination?['mapsUrl'] as String?)?.trim();
+    if (rawUrl == null || rawUrl.isEmpty) {
+      if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text(
-            'Link peta belum tersedia',
+            'Link lokasi belum tersedia',
             style: GoogleFonts.poppins(fontSize: 13),
           ),
           backgroundColor: Colors.orange[800],
@@ -86,9 +87,56 @@ class _DestinationDetailScreenState extends State<DestinationDetailScreen> {
       return;
     }
 
-    final uri = Uri.tryParse(mapsUrl);
-    if (uri != null && await canLaunchUrl(uri)) {
-      await launchUrl(uri, mode: LaunchMode.externalApplication);
+    var url = rawUrl;
+    if (!url.startsWith('http://') && !url.startsWith('https://')) {
+      url = 'https://$url';
+    }
+
+    final uri = Uri.tryParse(url);
+    if (uri == null) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            'Format link lokasi tidak valid',
+            style: GoogleFonts.poppins(fontSize: 13),
+          ),
+          backgroundColor: Colors.red,
+        ),
+      );
+      return;
+    }
+
+    try {
+      final launched = await launchUrl(
+        uri,
+        mode: LaunchMode.externalApplication,
+        webOnlyWindowName: '_blank',
+      );
+      if (!launched && mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(
+              'Tidak dapat membuka link lokasi',
+              style: GoogleFonts.poppins(fontSize: 13),
+            ),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    } catch (e) {
+      debugPrint('Error opening maps URL: $e');
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(
+              'Gagal membuka link lokasi',
+              style: GoogleFonts.poppins(fontSize: 13),
+            ),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
     }
   }
 
@@ -357,198 +405,125 @@ class _DestinationDetailScreenState extends State<DestinationDetailScreen> {
                   const SizedBox(height: 20),
 
                   // ─── Deskripsi ───
-                  if (description.isNotEmpty) ...[
-                    _sectionTitle('Deskripsi'),
-                    const SizedBox(height: 8),
-                    Container(
-                      width: double.infinity,
-                      padding: const EdgeInsets.all(16),
-                      decoration: BoxDecoration(
-                        color: Colors.white,
-                        borderRadius: BorderRadius.circular(16),
-                        boxShadow: const [
-                          BoxShadow(
-                            color: Color(0x0D000000),
-                            blurRadius: 8,
-                            offset: Offset(0, 2),
-                          ),
-                        ],
-                      ),
-                      child: Text(
-                        description,
-                        style: GoogleFonts.poppins(
-                          fontSize: 13,
-                          color: Colors.grey[700],
-                          height: 1.6,
-                        ),
+                  _sectionTitle('Deskripsi'),
+                  const SizedBox(height: 8),
+                  _infoCard(
+                    child: Text(
+                      description.isNotEmpty
+                          ? description
+                          : 'Belum ada deskripsi',
+                      style: GoogleFonts.poppins(
+                        fontSize: 13,
+                        color: description.isNotEmpty
+                            ? Colors.grey[700]
+                            : Colors.grey[400],
+                        height: 1.6,
                       ),
                     ),
-                    const SizedBox(height: 20),
-                  ],
+                  ),
+                  const SizedBox(height: 20),
 
                   // ─── Fasilitas ───
-                  if (facilities.isNotEmpty) ...[
-                    _sectionTitle('Fasilitas'),
-                    const SizedBox(height: 8),
-                    Container(
-                      width: double.infinity,
-                      padding: const EdgeInsets.all(16),
-                      decoration: BoxDecoration(
-                        color: Colors.white,
-                        borderRadius: BorderRadius.circular(16),
-                        boxShadow: const [
-                          BoxShadow(
-                            color: Color(0x0D000000),
-                            blurRadius: 8,
-                            offset: Offset(0, 2),
-                          ),
-                        ],
-                      ),
-                      child: Wrap(
-                        spacing: 8,
-                        runSpacing: 8,
-                        children: facilities
-                            .split(',')
-                            .map((f) => f.trim())
-                            .where((f) => f.isNotEmpty)
-                            .map(
-                              (f) => Container(
-                                padding: const EdgeInsets.symmetric(
-                                  horizontal: 12,
-                                  vertical: 8,
-                                ),
-                                decoration: BoxDecoration(
-                                  color: const Color(0xFFEEF2E8),
-                                  borderRadius: BorderRadius.circular(10),
-                                ),
-                                child: Row(
-                                  mainAxisSize: MainAxisSize.min,
-                                  children: [
-                                    const Icon(
-                                      Icons.check_circle,
-                                      size: 14,
-                                      color: Color(0xFF2D5016),
-                                    ),
-                                    const SizedBox(width: 6),
-                                    Text(
-                                      f,
-                                      style: GoogleFonts.poppins(
-                                        fontSize: 12,
-                                        fontWeight: FontWeight.w500,
-                                        color: const Color(0xFF333333),
-                                      ),
-                                    ),
-                                  ],
-                                ),
-                              ),
-                            )
-                            .toList(),
-                      ),
-                    ),
-                    const SizedBox(height: 20),
-                  ],
+                  _sectionTitle('Fasilitas'),
+                  const SizedBox(height: 8),
+                  _infoCard(
+                    child: _buildFacilitiesContent(facilities),
+                  ),
+                  const SizedBox(height: 20),
 
-                  // ─── Informasi Tambahan ───
-                  if (openingHours.isNotEmpty || contact.isNotEmpty) ...[
-                    _sectionTitle('Informasi'),
-                    const SizedBox(height: 8),
-                    Container(
-                      width: double.infinity,
-                      padding: const EdgeInsets.all(16),
-                      decoration: BoxDecoration(
-                        color: Colors.white,
-                        borderRadius: BorderRadius.circular(16),
-                        boxShadow: const [
-                          BoxShadow(
-                            color: Color(0x0D000000),
-                            blurRadius: 8,
-                            offset: Offset(0, 2),
-                          ),
-                        ],
-                      ),
-                      child: Column(
-                        children: [
-                          if (openingHours.isNotEmpty)
-                            _infoRow(
-                              Icons.access_time_outlined,
-                              'Jam Buka',
-                              openingHours,
-                            ),
-                          if (openingHours.isNotEmpty && contact.isNotEmpty)
-                            const Divider(height: 20),
-                          if (contact.isNotEmpty)
-                            _infoRow(Icons.phone_outlined, 'Kontak', contact),
-                        ],
-                      ),
+                  // ─── Nomor & Jam Buka ───
+                  _sectionTitle('Informasi'),
+                  const SizedBox(height: 8),
+                  _infoCard(
+                    child: Column(
+                      children: [
+                        _infoRow(
+                          Icons.phone_outlined,
+                          'Nomor',
+                          contact.isNotEmpty ? contact : 'Belum tersedia',
+                          muted: contact.isEmpty,
+                        ),
+                        const Divider(height: 20),
+                        _infoRow(
+                          Icons.access_time_outlined,
+                          'Jam Buka',
+                          openingHours.isNotEmpty
+                              ? openingHours
+                              : 'Belum tersedia',
+                          muted: openingHours.isEmpty,
+                        ),
+                      ],
                     ),
-                    const SizedBox(height: 20),
-                  ],
+                  ),
+                  const SizedBox(height: 20),
 
-                  // ─── Lokasi Map Button ───
+                  // ─── Lokasi (buka URL peta) ───
                   _sectionTitle('Lokasi'),
                   const SizedBox(height: 8),
-                  GestureDetector(
-                    onTap: _openMaps,
-                    child: Container(
-                      width: double.infinity,
-                      padding: const EdgeInsets.all(16),
-                      decoration: BoxDecoration(
-                        color: Colors.white,
-                        borderRadius: BorderRadius.circular(16),
-                        boxShadow: const [
-                          BoxShadow(
-                            color: Color(0x0D000000),
-                            blurRadius: 8,
-                            offset: Offset(0, 2),
-                          ),
-                        ],
-                      ),
-                      child: Row(
-                        children: [
-                          Container(
-                            width: 48,
-                            height: 48,
-                            decoration: BoxDecoration(
-                              color: const Color(0xFFEEF2E8),
-                              borderRadius: BorderRadius.circular(12),
+                  Material(
+                    color: Colors.transparent,
+                    child: InkWell(
+                      onTap: _openMaps,
+                      borderRadius: BorderRadius.circular(16),
+                      child: _infoCard(
+                        child: Row(
+                          children: [
+                            Container(
+                              width: 48,
+                              height: 48,
+                              decoration: BoxDecoration(
+                                color: const Color(0xFFEEF2E8),
+                                borderRadius: BorderRadius.circular(12),
+                              ),
+                              child: const Icon(
+                                Icons.map_outlined,
+                                color: Color(0xFF2D5016),
+                                size: 24,
+                              ),
                             ),
-                            child: const Icon(
-                              Icons.map_outlined,
+                            const SizedBox(width: 14),
+                            Expanded(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text(
+                                    location.isNotEmpty
+                                        ? location
+                                        : 'Lokasi belum tersedia',
+                                    style: GoogleFonts.poppins(
+                                      fontSize: 13,
+                                      fontWeight: FontWeight.w600,
+                                      color: const Color(0xFF1A1A1A),
+                                    ),
+                                  ),
+                                  const SizedBox(height: 2),
+                                  Text(
+                                    (dest['mapsUrl'] as String?)?.trim().isNotEmpty ==
+                                            true
+                                        ? 'Ketuk untuk buka di peta'
+                                        : 'Link peta belum ditambahkan',
+                                    style: GoogleFonts.poppins(
+                                      fontSize: 12,
+                                      color:
+                                          (dest['mapsUrl'] as String?)
+                                                      ?.trim()
+                                                      .isNotEmpty ==
+                                                  true
+                                              ? const Color(0xFF2D5016)
+                                              : Colors.grey[500],
+                                      fontWeight: FontWeight.w500,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                            const Icon(
+                              Icons.open_in_new,
+                              size: 18,
                               color: Color(0xFF2D5016),
-                              size: 24,
                             ),
-                          ),
-                          const SizedBox(width: 14),
-                          Expanded(
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Text(
-                                  location,
-                                  style: GoogleFonts.poppins(
-                                    fontSize: 13,
-                                    fontWeight: FontWeight.w600,
-                                    color: const Color(0xFF1A1A1A),
-                                  ),
-                                ),
-                                const SizedBox(height: 2),
-                                Text(
-                                  'Buka di Google Maps',
-                                  style: GoogleFonts.poppins(
-                                    fontSize: 12,
-                                    color: const Color(0xFF2D5016),
-                                    fontWeight: FontWeight.w500,
-                                  ),
-                                ),
-                              ],
-                            ),
-                          ),
-                          const Icon(
-                            Icons.arrow_forward_ios,
-                            size: 16,
-                            color: Color(0xFF2D5016),
-                          ),
-                        ],
+                          ],
+                        ),
                       ),
                     ),
                   ),
@@ -563,7 +538,7 @@ class _DestinationDetailScreenState extends State<DestinationDetailScreen> {
       ),
 
       // ─── Bottom Booking Bar ───
-      bottomNavigationBar: bookable && stock > 0
+      bottomNavigationBar: bookable
           ? Container(
               padding: const EdgeInsets.all(16),
               decoration: const BoxDecoration(
@@ -608,10 +583,12 @@ class _DestinationDetailScreenState extends State<DestinationDetailScreen> {
                     SizedBox(
                       height: 48,
                       child: ElevatedButton(
-                        onPressed: _openBooking,
+                        onPressed: stock > 0 ? _openBooking : null,
                         style: ElevatedButton.styleFrom(
                           backgroundColor: const Color(0xFF2D5016),
                           foregroundColor: Colors.white,
+                          disabledBackgroundColor: Colors.grey[300],
+                          disabledForegroundColor: Colors.grey[600],
                           shape: RoundedRectangleBorder(
                             borderRadius: BorderRadius.circular(12),
                           ),
@@ -619,7 +596,7 @@ class _DestinationDetailScreenState extends State<DestinationDetailScreen> {
                           padding: const EdgeInsets.symmetric(horizontal: 32),
                         ),
                         child: Text(
-                          'Booking Sekarang',
+                          stock > 0 ? 'Booking Sekarang' : 'Stok Habis',
                           style: GoogleFonts.poppins(
                             fontSize: 14,
                             fontWeight: FontWeight.w600,
@@ -646,6 +623,75 @@ class _DestinationDetailScreenState extends State<DestinationDetailScreen> {
     );
   }
 
+  Widget _infoCard({required Widget child}) {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(16),
+        boxShadow: const [
+          BoxShadow(
+            color: Color(0x0D000000),
+            blurRadius: 8,
+            offset: Offset(0, 2),
+          ),
+        ],
+      ),
+      child: child,
+    );
+  }
+
+  Widget _buildFacilitiesContent(String facilities) {
+    final items = facilities
+        .split(',')
+        .map((f) => f.trim())
+        .where((f) => f.isNotEmpty)
+        .toList();
+
+    if (items.isEmpty) {
+      return Text(
+        'Belum ada fasilitas',
+        style: GoogleFonts.poppins(fontSize: 13, color: Colors.grey[400]),
+      );
+    }
+
+    return Wrap(
+      spacing: 8,
+      runSpacing: 8,
+      children: items
+          .map(
+            (f) => Container(
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+              decoration: BoxDecoration(
+                color: const Color(0xFFEEF2E8),
+                borderRadius: BorderRadius.circular(10),
+              ),
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  const Icon(
+                    Icons.check_circle,
+                    size: 14,
+                    color: Color(0xFF2D5016),
+                  ),
+                  const SizedBox(width: 6),
+                  Text(
+                    f,
+                    style: GoogleFonts.poppins(
+                      fontSize: 12,
+                      fontWeight: FontWeight.w500,
+                      color: const Color(0xFF333333),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          )
+          .toList(),
+    );
+  }
+
   Widget _verticalDivider() {
     return Container(
       width: 1,
@@ -655,7 +701,12 @@ class _DestinationDetailScreenState extends State<DestinationDetailScreen> {
     );
   }
 
-  Widget _infoRow(IconData icon, String label, String value) {
+  Widget _infoRow(
+    IconData icon,
+    String label,
+    String value, {
+    bool muted = false,
+  }) {
     return Row(
       children: [
         Icon(icon, size: 20, color: const Color(0xFF2D5016)),
@@ -676,7 +727,7 @@ class _DestinationDetailScreenState extends State<DestinationDetailScreen> {
                 style: GoogleFonts.poppins(
                   fontSize: 13,
                   fontWeight: FontWeight.w500,
-                  color: const Color(0xFF333333),
+                  color: muted ? Colors.grey[400] : const Color(0xFF333333),
                 ),
               ),
             ],

@@ -4,8 +4,25 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:desa_wisata/config/app_categories.dart';
 import 'package:desa_wisata/widgets/app_network_image.dart';
 import 'package:desa_wisata/screens/destination_detail_screen.dart';
-import 'package:firebase_auth/firebase_auth.dart';
-import 'package:desa_wisata/screens/user/create_booking_screen.dart';
+
+enum _ExploreSortOption {
+  ratingHigh,
+  newest,
+  locationAz,
+}
+
+extension on _ExploreSortOption {
+  String get label {
+    switch (this) {
+      case _ExploreSortOption.ratingHigh:
+        return 'Rating Tertinggi';
+      case _ExploreSortOption.newest:
+        return 'Terbaru';
+      case _ExploreSortOption.locationAz:
+        return 'Terdekat';
+    }
+  }
+}
 
 class ExploreScreen extends StatefulWidget {
   const ExploreScreen({super.key});
@@ -16,24 +33,62 @@ class ExploreScreen extends StatefulWidget {
 
 class _ExploreScreenState extends State<ExploreScreen> {
   int _selectedFilterIndex = 0;
+  _ExploreSortOption _sortOption = _ExploreSortOption.ratingHigh;
   final TextEditingController _searchController = TextEditingController();
 
   final List<String> _filters = AppCategories.exploreFilters;
 
-  List<Map<String, dynamic>> _filterDestinations(List<Map<String, dynamic>> allDestinations) {
-    final query = _searchController.text.toLowerCase();
+  DateTime _parseCreatedAt(dynamic value) {
+    if (value is Timestamp) return value.toDate();
+    if (value is DateTime) return value;
+    if (value is String) return DateTime.tryParse(value) ?? DateTime(1970);
+    return DateTime(1970);
+  }
+
+  List<Map<String, dynamic>> _filterAndSortDestinations(
+    List<Map<String, dynamic>> allDestinations,
+  ) {
+    final query = _searchController.text.trim().toLowerCase();
     final selectedFilter = _filters[_selectedFilterIndex];
 
-    return allDestinations.where((item) {
-      final matchCategory = AppCategories.matchesFilter(
-        item['category'] as String? ?? '',
-        selectedFilter,
-      );
-      final matchSearch = query.isEmpty || 
-          (item['name'] as String).toLowerCase().contains(query) ||
-          (item['location'] as String).toLowerCase().contains(query);
+    final filtered = allDestinations.where((item) {
+      final name = (item['name'] as String? ?? '').toLowerCase();
+      final location = (item['location'] as String? ?? '').toLowerCase();
+      final category = item['category'] as String? ?? '';
+
+      final matchCategory = AppCategories.matchesFilter(category, selectedFilter);
+      final matchSearch =
+          query.isEmpty || name.contains(query) || location.contains(query);
       return matchCategory && matchSearch;
     }).toList();
+
+    filtered.sort((a, b) {
+      switch (_sortOption) {
+        case _ExploreSortOption.ratingHigh:
+          final ra = (a['rating'] as num?)?.toDouble() ?? 0;
+          final rb = (b['rating'] as num?)?.toDouble() ?? 0;
+          final cmp = rb.compareTo(ra);
+          if (cmp != 0) return cmp;
+          return (a['name'] as String? ?? '')
+              .compareTo(b['name'] as String? ?? '');
+        case _ExploreSortOption.newest:
+          final ta = _parseCreatedAt(a['createdAt']);
+          final tb = _parseCreatedAt(b['createdAt']);
+          final cmp = tb.compareTo(ta);
+          if (cmp != 0) return cmp;
+          return (a['name'] as String? ?? '')
+              .compareTo(b['name'] as String? ?? '');
+        case _ExploreSortOption.locationAz:
+          final la = (a['location'] as String? ?? '').toLowerCase();
+          final lb = (b['location'] as String? ?? '').toLowerCase();
+          final cmp = la.compareTo(lb);
+          if (cmp != 0) return cmp;
+          return (a['name'] as String? ?? '')
+              .compareTo(b['name'] as String? ?? '');
+      }
+    });
+
+    return filtered;
   }
 
   @override
@@ -76,15 +131,17 @@ class _ExploreScreenState extends State<ExploreScreen> {
                 'id': doc.id,
                 'name': data['name'] ?? '',
                 'location': data['location'] ?? '',
-                'category': data['category'] ?? '',
+                'category': AppCategories.normalize(data['category'] as String?),
                 'rating': (data['rating'] as num?)?.toDouble() ?? 0.0,
                 'price': data['price'] ?? '',
                 'imageUrl': data['imageUrl'],
+                'createdAt': data['createdAt'],
                 'raw_data': {'id': doc.id, ...data},
               };
             }).toList();
 
-            final filteredDestinations = _filterDestinations(allDestinations);
+            final filteredDestinations =
+                _filterAndSortDestinations(allDestinations);
 
             return Column(
               children: [
@@ -156,12 +213,14 @@ class _ExploreScreenState extends State<ExploreScreen> {
 
           const SizedBox(width: 10),
 
-          // Tombol filter
+          // Tombol urutkan
           Container(
             width: 48,
             height: 48,
             decoration: BoxDecoration(
-              color: const Color(0xFF2D5016),
+              color: _sortOption != _ExploreSortOption.ratingHigh
+                  ? const Color(0xFF3D6B1E)
+                  : const Color(0xFF2D5016),
               borderRadius: BorderRadius.circular(12),
             ),
             child: IconButton(
@@ -264,25 +323,12 @@ class _ExploreScreenState extends State<ExploreScreen> {
               rating: item['rating'] as double,
               price: item['price'] as String,
               imageUrl: item['imageUrl'] as String?,
-              onBookTap: () {
-                final user = FirebaseAuth.instance.currentUser;
-                if (user == null) {
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    SnackBar(
-                      content: Text(
-                        'Login dulu untuk melakukan booking',
-                        style: GoogleFonts.poppins(fontSize: 13),
-                      ),
-                      backgroundColor: Colors.orange[800],
-                    ),
-                  );
-                  return;
-                }
+              onDetailTap: () {
                 Navigator.push(
                   context,
                   MaterialPageRoute(
-                    builder: (_) => CreateBookingScreen(
-                      destination: item['raw_data'] as Map<String, dynamic>,
+                    builder: (_) => DestinationDetailScreen(
+                      destinationId: item['id'] as String,
                     ),
                   ),
                 );
@@ -297,94 +343,140 @@ class _ExploreScreenState extends State<ExploreScreen> {
   // ─── Filter Bottom Sheet ───────────────────────────────────────────────────
 
   void _showFilterSheet() {
+    var tempSort = _sortOption;
+
     showModalBottomSheet(
       context: context,
       backgroundColor: Colors.white,
       shape: const RoundedRectangleBorder(
         borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
       ),
-      builder: (context) {
-        return Padding(
-          padding: const EdgeInsets.all(24),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              // Handle bar
-              Center(
-                child: Container(
-                  width: 40,
-                  height: 4,
-                  decoration: BoxDecoration(
-                    color: Colors.grey[300],
-                    borderRadius: BorderRadius.circular(2),
-                  ),
-                ),
-              ),
-              const SizedBox(height: 20),
-              Text(
-                'Filter Destinasi',
-                style: GoogleFonts.poppins(
-                  fontSize: 16,
-                  fontWeight: FontWeight.w700,
-                  color: const Color(0xFF1A1A1A),
-                ),
-              ),
-              const SizedBox(height: 16),
-              Text(
-                'Urutkan berdasarkan',
-                style: GoogleFonts.poppins(
-                  fontSize: 13,
-                  fontWeight: FontWeight.w500,
-                  color: Colors.grey[700],
-                ),
-              ),
-              const SizedBox(height: 10),
-              Wrap(
-                spacing: 8,
-                children: ['Rating Tertinggi', 'Terdekat', 'Terbaru']
-                    .map((label) => ChoiceChip(
-                          label: Text(
-                            label,
-                            style: GoogleFonts.poppins(fontSize: 12),
-                          ),
-                          selected: label == 'Rating Tertinggi',
-                          selectedColor: const Color(0xFF2D5016),
-                          labelStyle: TextStyle(
-                            color: label == 'Rating Tertinggi'
-                                ? Colors.white
-                                : Colors.grey[700],
-                          ),
-                          onSelected: (_) {},
-                        ))
-                    .toList(),
-              ),
-              const SizedBox(height: 20),
-              SizedBox(
-                width: double.infinity,
-                height: 48,
-                child: ElevatedButton(
-                  onPressed: () => Navigator.pop(context),
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: const Color(0xFF2D5016),
-                    foregroundColor: Colors.white,
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(12),
+      builder: (sheetContext) {
+        return StatefulBuilder(
+          builder: (context, setSheetState) {
+            return Padding(
+              padding: const EdgeInsets.all(24),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Center(
+                    child: Container(
+                      width: 40,
+                      height: 4,
+                      decoration: BoxDecoration(
+                        color: Colors.grey[300],
+                        borderRadius: BorderRadius.circular(2),
+                      ),
                     ),
-                    elevation: 0,
                   ),
-                  child: Text(
-                    'Terapkan',
+                  const SizedBox(height: 20),
+                  Text(
+                    'Urutkan Destinasi',
                     style: GoogleFonts.poppins(
-                      fontSize: 14,
-                      fontWeight: FontWeight.w600,
+                      fontSize: 16,
+                      fontWeight: FontWeight.w700,
+                      color: const Color(0xFF1A1A1A),
                     ),
                   ),
-                ),
+                  const SizedBox(height: 8),
+                  Text(
+                    'Kategori dipilih lewat chip di atas daftar.',
+                    style: GoogleFonts.poppins(
+                      fontSize: 12,
+                      color: Colors.grey[600],
+                    ),
+                  ),
+                  const SizedBox(height: 16),
+                  Text(
+                    'Urutkan berdasarkan',
+                    style: GoogleFonts.poppins(
+                      fontSize: 13,
+                      fontWeight: FontWeight.w500,
+                      color: Colors.grey[700],
+                    ),
+                  ),
+                  const SizedBox(height: 10),
+                  Wrap(
+                    spacing: 8,
+                    runSpacing: 8,
+                    children: _ExploreSortOption.values.map((option) {
+                      final isSelected = tempSort == option;
+                      return ChoiceChip(
+                        label: Text(
+                          option.label,
+                          style: GoogleFonts.poppins(fontSize: 12),
+                        ),
+                        selected: isSelected,
+                        selectedColor: const Color(0xFF2D5016),
+                        labelStyle: TextStyle(
+                          color: isSelected ? Colors.white : Colors.grey[700],
+                        ),
+                        onSelected: (_) =>
+                            setSheetState(() => tempSort = option),
+                      );
+                    }).toList(),
+                  ),
+                  const SizedBox(height: 20),
+                  Row(
+                    children: [
+                      Expanded(
+                        child: OutlinedButton(
+                          onPressed: () {
+                            setSheetState(
+                              () => tempSort = _ExploreSortOption.ratingHigh,
+                            );
+                          },
+                          style: OutlinedButton.styleFrom(
+                            foregroundColor: const Color(0xFF2D5016),
+                            side: const BorderSide(color: Color(0xFF2D5016)),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(12),
+                            ),
+                            minimumSize: const Size(0, 48),
+                          ),
+                          child: Text(
+                            'Reset',
+                            style: GoogleFonts.poppins(
+                              fontSize: 14,
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
+                        ),
+                      ),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        flex: 2,
+                        child: ElevatedButton(
+                          onPressed: () {
+                            setState(() => _sortOption = tempSort);
+                            Navigator.pop(sheetContext);
+                          },
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: const Color(0xFF2D5016),
+                            foregroundColor: Colors.white,
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(12),
+                            ),
+                            elevation: 0,
+                            minimumSize: const Size(0, 48),
+                          ),
+                          child: Text(
+                            'Terapkan',
+                            style: GoogleFonts.poppins(
+                              fontSize: 14,
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 8),
+                ],
               ),
-              const SizedBox(height: 8),
-            ],
-          ),
+            );
+          },
         );
       },
     );
@@ -400,7 +492,7 @@ class _DestinationCard extends StatelessWidget {
   final double rating;
   final String price;
   final String? imageUrl;
-  final VoidCallback onBookTap;
+  final VoidCallback onDetailTap;
 
   const _DestinationCard({
     required this.name,
@@ -409,7 +501,7 @@ class _DestinationCard extends StatelessWidget {
     required this.rating,
     required this.price,
     this.imageUrl,
-    required this.onBookTap,
+    required this.onDetailTap,
   });
 
   @override
@@ -547,7 +639,7 @@ class _DestinationCard extends StatelessWidget {
                   width: double.infinity,
                   height: 40,
                   child: ElevatedButton(
-                    onPressed: onBookTap,
+                    onPressed: onDetailTap,
                     style: ElevatedButton.styleFrom(
                       backgroundColor: const Color(0xFF2D5016),
                       foregroundColor: Colors.white,
@@ -557,7 +649,7 @@ class _DestinationCard extends StatelessWidget {
                       elevation: 0,
                     ),
                     child: Text(
-                      'Booking',
+                      'Lihat Detail',
                       style: GoogleFonts.poppins(
                         fontSize: 13,
                         fontWeight: FontWeight.w600,

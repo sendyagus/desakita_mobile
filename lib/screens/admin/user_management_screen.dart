@@ -1,8 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import '../../services/user_service.dart';
+import '../../services/auth_service.dart';
 import '../../models/user_model.dart';
+import '../../utils/error_handler.dart';
 
 class UserManagementScreen extends StatefulWidget {
   const UserManagementScreen({super.key});
@@ -91,7 +94,7 @@ class _UserManagementScreenState extends State<UserManagementScreen> {
         },
       ),
       floatingActionButton: FloatingActionButton.extended(
-        onPressed: () => _showComingSoon('Tambah User'),
+        onPressed: () => _showUserForm(context, null),
         backgroundColor: const Color(0xFF2D5016),
         foregroundColor: Colors.white,
         icon: const Icon(Icons.person_add_outlined),
@@ -212,6 +215,7 @@ class _UserManagementScreenState extends State<UserManagementScreen> {
                 phone: data['phone'],
                 role: data['role']?.toLowerCase(),
               );
+              if (!context.mounted) return;
               scaffoldMessenger.showSnackBar(
                 SnackBar(
                   content: Text('${data['name']} berhasil diperbarui', style: GoogleFonts.poppins(fontSize: 13)),
@@ -220,8 +224,35 @@ class _UserManagementScreenState extends State<UserManagementScreen> {
                   shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
                 ),
               );
+            } else {
+              await AuthService.instance.createUserAsAdmin(
+                fullName: data['name']!,
+                email: data['email']!,
+                phone: data['phone']!,
+                password: data['password']!,
+                role: data['role']?.toLowerCase() ?? 'user',
+              );
+              if (!context.mounted) return;
+              scaffoldMessenger.showSnackBar(
+                SnackBar(
+                  content: Text(
+                    'User ${data['name']} berhasil ditambahkan',
+                    style: GoogleFonts.poppins(fontSize: 13),
+                  ),
+                  backgroundColor: const Color(0xFF2D5016),
+                  behavior: SnackBarBehavior.floating,
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                ),
+              );
             }
+          } on FirebaseAuthException catch (e) {
+            if (!context.mounted) return;
+            ErrorHandler.showErrorSnackBar(
+              context,
+              ErrorHandler.getAuthErrorMessage(e),
+            );
           } catch (e) {
+            if (!context.mounted) return;
             scaffoldMessenger.showSnackBar(
               SnackBar(
                 content: Text('Gagal menyimpan: $e', style: GoogleFonts.poppins(fontSize: 13)),
@@ -302,19 +333,6 @@ class _UserManagementScreenState extends State<UserManagementScreen> {
     );
   }
 
-  void _showComingSoon(String feature) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text(
-          '$feature hanya bisa dilakukan melalui registrasi',
-          style: GoogleFonts.poppins(fontSize: 13),
-        ),
-        backgroundColor: const Color(0xFF2D5016),
-        behavior: SnackBarBehavior.floating,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-      ),
-    );
-  }
 }
 
 class _UserCard extends StatelessWidget {
@@ -430,21 +448,42 @@ class _UserFormSheet extends StatefulWidget {
 class _UserFormSheetState extends State<_UserFormSheet> {
   final _formKey = GlobalKey<FormState>();
   late final TextEditingController _nameController;
+  late final TextEditingController _emailController;
   late final TextEditingController _phoneController;
+  late final TextEditingController _passwordController;
+  late final TextEditingController _confirmPasswordController;
   String _selectedRole = 'user';
+  bool _isSaving = false;
+  bool _obscurePassword = true;
+  bool _obscureConfirmPassword = true;
+
+  bool get _isCreate => widget.user == null;
 
   @override
   void initState() {
     super.initState();
     _nameController = TextEditingController(text: widget.user?.fullName ?? '');
+    _emailController = TextEditingController(text: widget.user?.email ?? '');
     _phoneController = TextEditingController(text: widget.user?.phone ?? '');
+    _passwordController = TextEditingController();
+    _confirmPasswordController = TextEditingController();
     _selectedRole = widget.user?.role ?? 'user';
+  }
+
+  String _normalizePhone(String input) {
+    final digitsOnly = input.replaceAll(RegExp(r'[^0-9]'), '');
+    if (digitsOnly.isEmpty) return '';
+    final withoutLeadingZero = digitsOnly.replaceFirst(RegExp(r'^0+'), '');
+    return '+62$withoutLeadingZero';
   }
 
   @override
   void dispose() {
     _nameController.dispose();
+    _emailController.dispose();
     _phoneController.dispose();
+    _passwordController.dispose();
+    _confirmPasswordController.dispose();
     super.dispose();
   }
 
@@ -463,13 +502,86 @@ class _UserFormSheetState extends State<_UserFormSheet> {
               children: [
                 Center(child: Container(width: 40, height: 4, decoration: BoxDecoration(color: Colors.grey[300], borderRadius: BorderRadius.circular(2)))),
                 const SizedBox(height: 20),
-                Text('Edit User', style: GoogleFonts.poppins(fontSize: 18, fontWeight: FontWeight.w700, color: const Color(0xFF1A1A1A))),
+                Text(
+                  _isCreate ? 'Tambah User' : 'Edit User',
+                  style: GoogleFonts.poppins(fontSize: 18, fontWeight: FontWeight.w700, color: const Color(0xFF1A1A1A)),
+                ),
                 const SizedBox(height: 8),
-                Text('Email: ${widget.user?.email ?? ''}', style: GoogleFonts.poppins(fontSize: 13, color: Colors.grey[600])),
+                Text(
+                  _isCreate
+                      ? 'Buat akun baru untuk pengguna aplikasi'
+                      : 'Email: ${widget.user?.email ?? ''}',
+                  style: GoogleFonts.poppins(fontSize: 13, color: Colors.grey[600]),
+                ),
                 const SizedBox(height: 20),
                 _buildTextField('Nama Lengkap', _nameController, Icons.person_outline),
                 const SizedBox(height: 14),
+                if (_isCreate) ...[
+                  _buildTextField(
+                    'Email',
+                    _emailController,
+                    Icons.email_outlined,
+                    keyboardType: TextInputType.emailAddress,
+                    validator: (v) {
+                      if (v == null || v.trim().isEmpty) {
+                        return 'Email tidak boleh kosong';
+                      }
+                      if (!RegExp(r'^[^@]+@[^@]+\.[^@]+').hasMatch(v.trim())) {
+                        return 'Format email tidak valid';
+                      }
+                      return null;
+                    },
+                  ),
+                  const SizedBox(height: 14),
+                ],
                 _buildTextField('Nomor Telepon', _phoneController, Icons.phone_outlined, keyboardType: TextInputType.phone),
+                if (_isCreate) ...[
+                  const SizedBox(height: 14),
+                  _buildTextField(
+                    'Password',
+                    _passwordController,
+                    Icons.lock_outline,
+                    obscureText: _obscurePassword,
+                    suffixIcon: IconButton(
+                      icon: Icon(
+                        _obscurePassword ? Icons.visibility_off : Icons.visibility,
+                        color: Colors.grey[500],
+                        size: 20,
+                      ),
+                      onPressed: () => setState(() => _obscurePassword = !_obscurePassword),
+                    ),
+                    validator: (v) {
+                      if (v == null || v.isEmpty) return 'Password tidak boleh kosong';
+                      if (v.length < 6) return 'Password minimal 6 karakter';
+                      return null;
+                    },
+                  ),
+                  const SizedBox(height: 14),
+                  _buildTextField(
+                    'Konfirmasi Password',
+                    _confirmPasswordController,
+                    Icons.lock_outline,
+                    obscureText: _obscureConfirmPassword,
+                    suffixIcon: IconButton(
+                      icon: Icon(
+                        _obscureConfirmPassword ? Icons.visibility_off : Icons.visibility,
+                        color: Colors.grey[500],
+                        size: 20,
+                      ),
+                      onPressed: () =>
+                          setState(() => _obscureConfirmPassword = !_obscureConfirmPassword),
+                    ),
+                    validator: (v) {
+                      if (v == null || v.isEmpty) {
+                        return 'Konfirmasi password tidak boleh kosong';
+                      }
+                      if (v != _passwordController.text) {
+                        return 'Password tidak cocok';
+                      }
+                      return null;
+                    },
+                  ),
+                ],
                 const SizedBox(height: 14),
                 Text('Role', style: GoogleFonts.poppins(fontSize: 13, fontWeight: FontWeight.w500, color: const Color(0xFF333333))),
                 const SizedBox(height: 8),
@@ -494,18 +606,41 @@ class _UserFormSheetState extends State<_UserFormSheet> {
                   width: double.infinity,
                   height: 52,
                   child: ElevatedButton(
-                    onPressed: () {
-                      if (_formKey.currentState!.validate()) {
-                        widget.onSave({
-                          'name': _nameController.text,
-                          'phone': _phoneController.text,
-                          'role': _selectedRole,
-                        });
-                        Navigator.pop(context);
-                      }
-                    },
+                    onPressed: _isSaving
+                        ? null
+                        : () async {
+                            if (!_formKey.currentState!.validate()) return;
+                            setState(() => _isSaving = true);
+                            try {
+                              final data = <String, String>{
+                                'name': _nameController.text.trim(),
+                                'phone': _normalizePhone(_phoneController.text.trim()),
+                                'role': _selectedRole,
+                              };
+                              if (_isCreate) {
+                                data['email'] = _emailController.text.trim();
+                                data['password'] = _passwordController.text;
+                              }
+                              await widget.onSave(data);
+                              if (context.mounted) Navigator.pop(context);
+                            } finally {
+                              if (mounted) setState(() => _isSaving = false);
+                            }
+                          },
                     style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFF2D5016), foregroundColor: Colors.white, shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)), elevation: 0),
-                    child: Text('Simpan', style: GoogleFonts.poppins(fontSize: 15, fontWeight: FontWeight.w600)),
+                    child: _isSaving
+                        ? const SizedBox(
+                            width: 22,
+                            height: 22,
+                            child: CircularProgressIndicator(
+                              strokeWidth: 2,
+                              color: Colors.white,
+                            ),
+                          )
+                        : Text(
+                            _isCreate ? 'Tambah User' : 'Simpan',
+                            style: GoogleFonts.poppins(fontSize: 15, fontWeight: FontWeight.w600),
+                          ),
                   ),
                 ),
                 const SizedBox(height: 8),
@@ -517,7 +652,15 @@ class _UserFormSheetState extends State<_UserFormSheet> {
     );
   }
 
-  Widget _buildTextField(String label, TextEditingController controller, IconData icon, {TextInputType? keyboardType}) {
+  Widget _buildTextField(
+    String label,
+    TextEditingController controller,
+    IconData icon, {
+    TextInputType? keyboardType,
+    bool obscureText = false,
+    Widget? suffixIcon,
+    String? Function(String?)? validator,
+  }) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -526,15 +669,18 @@ class _UserFormSheetState extends State<_UserFormSheet> {
         TextFormField(
           controller: controller,
           keyboardType: keyboardType,
+          obscureText: obscureText,
           style: GoogleFonts.poppins(fontSize: 14),
           decoration: InputDecoration(
             prefixIcon: Icon(icon, color: Colors.grey[500], size: 20),
+            suffixIcon: suffixIcon,
             filled: true,
             fillColor: const Color(0xFFF5F5F0),
             border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide.none),
             contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
           ),
-          validator: (v) => v == null || v.isEmpty ? '$label tidak boleh kosong' : null,
+          validator: validator ??
+              ((v) => v == null || v.isEmpty ? '$label tidak boleh kosong' : null),
         ),
       ],
     );

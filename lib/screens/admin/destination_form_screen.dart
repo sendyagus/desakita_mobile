@@ -66,8 +66,7 @@ class _DestinationFormScreenState extends State<DestinationFormScreen> {
     _selectedCategory = AppCategories.normalize(dest?['category'] as String?) == ''
         ? 'Alam'
         : AppCategories.normalize(dest?['category'] as String?);
-    _bookable = dest?['bookable'] as bool? ??
-        (_selectedCategory == 'Penginapan');
+    _bookable = dest?['bookable'] as bool? ?? false;
     _existingImageUrl = dest?['image_url'];
   }
 
@@ -186,7 +185,7 @@ class _DestinationFormScreenState extends State<DestinationFormScreen> {
           : _nameController.text.trim();
       final rating = double.tryParse(_ratingController.text.trim()) ?? 0;
       final stock = int.tryParse(_stockController.text.trim()) ?? 0;
-      final bookable = _bookable && AppCategories.isBookableCategory(_selectedCategory);
+      final bookable = _bookable;
 
       final data = {
         'name': name,
@@ -641,10 +640,7 @@ class _DestinationFormScreenState extends State<DestinationFormScreen> {
           children: _categoryOptions.map((cat) {
             final isSelected = cat == _selectedCategory;
             return GestureDetector(
-              onTap: () => setState(() {
-                _selectedCategory = cat;
-                if (cat == 'Penginapan') _bookable = true;
-              }),
+              onTap: () => setState(() => _selectedCategory = cat),
               child: Container(
                 padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
                 decoration: BoxDecoration(
@@ -672,12 +668,11 @@ class _DestinationFormScreenState extends State<DestinationFormScreen> {
   }
 
   Widget _buildBookingOptions() {
-    final canBook = AppCategories.isBookableCategory(_selectedCategory);
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Text(
-          'Booking & Stok',
+          'Pengaturan Booking',
           style: GoogleFonts.poppins(
             fontSize: 14,
             fontWeight: FontWeight.w600,
@@ -687,22 +682,19 @@ class _DestinationFormScreenState extends State<DestinationFormScreen> {
         const SizedBox(height: 8),
         SwitchListTile(
           contentPadding: EdgeInsets.zero,
-          value: _bookable && canBook,
-          onChanged: canBook
-              ? (v) => setState(() => _bookable = v)
-              : null,
+          value: _bookable,
+          onChanged: (v) => setState(() => _bookable = v),
           title: Text(
-            'Bisa dibooking (Penginapan / Wisata Alam)',
+            'Destinasi bisa dibooking',
             style: GoogleFonts.poppins(fontSize: 13),
+          ),
+          subtitle: Text(
+            'Jika aktif, tombol booking akan muncul di halaman detail untuk pengguna.',
+            style: GoogleFonts.poppins(fontSize: 11, color: Colors.grey[600]),
           ),
           activeThumbColor: const Color(0xFF2D5016),
         ),
-        if (!canBook)
-          Text(
-            'Kategori Kuliner/Edukasi tidak ditampilkan di menu booking.',
-            style: GoogleFonts.poppins(fontSize: 11, color: Colors.grey[600]),
-          ),
-        if (_bookable && canBook) ...[
+        if (_bookable) ...[
           const SizedBox(height: 8),
           _buildTextField(
             'Stok tersedia',
