@@ -574,6 +574,9 @@ class _HomeScreenState extends State<HomeScreen> {
     return SizedBox(
       height: 220,
       child: ListView.builder(
+        physics: const BouncingScrollPhysics(
+          parent: AlwaysScrollableScrollPhysics(),
+        ),
         scrollDirection: Axis.horizontal,
         padding: const EdgeInsets.symmetric(horizontal: 16),
         itemCount: recommendations.length,

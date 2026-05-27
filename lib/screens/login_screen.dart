@@ -307,9 +307,7 @@ class _LoginScreenState extends State<LoginScreen> {
                         Expanded(
                           child: SocialLoginButton(
                             label: 'Google',
-                            iconPath: '../assets/img/google.png',
-                            useIconWidget: true,
-                            iconWidget: _googleIcon(),
+                            iconPath: 'assets/icon/google.jpg',
                             onPressed: () {
                               ErrorHandler.showInfoSnackBar(
                                 context,
@@ -322,11 +320,12 @@ class _LoginScreenState extends State<LoginScreen> {
                         Expanded(
                           child: SocialLoginButton(
                             label: 'Facebook',
-                            iconPath: '../assets/img/facebook.png',
-                            useIconWidget: true,
-                            iconWidget: _facebookIcon(),
+                            iconPath: 'assets/icon/faceboook.jpg',
                             onPressed: () {
-                              // TODO: login dengan Facebook
+                              ErrorHandler.showInfoSnackBar(
+                                context,
+                                'Login Facebook belum tersedia. Gunakan email & kata sandi.',
+                              );
                             },
                           ),
                         ),
@@ -380,50 +379,4 @@ class _LoginScreenState extends State<LoginScreen> {
     );
   }
 
-  Widget _googleIcon() {
-    return Container(
-      width: 24,
-      height: 24,
-      decoration: BoxDecoration(
-        shape: BoxShape.circle,
-        color: Colors.white,
-        border: Border.all(
-          color: const Color(0xFFDDDDDD),
-          width: 0.5,
-        ),
-      ),
-      child: const Center(
-        child: Text(
-          'G',
-          style: TextStyle(
-            fontSize: 12,
-            fontWeight: FontWeight.w700,
-            color: Color(0xFF4285F4),
-          ),
-        ),
-      ),
-    );
-  }
-
-  Widget _facebookIcon() {
-    return Container(
-      width: 24,
-      height: 24,
-      decoration: const BoxDecoration(
-        shape: BoxShape.circle,
-        color: Color(0xFF1877F2),
-      ),
-      child: const Center(
-        child: Text(
-          'f',
-          style: TextStyle(
-            fontSize: 14,
-            fontWeight: FontWeight.w700,
-            color: Colors.white,
-            height: 1.3,
-          ),
-        ),
-      ),
-    );
-  }
 }

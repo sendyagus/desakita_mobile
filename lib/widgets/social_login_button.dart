@@ -23,11 +23,13 @@ class SocialLoginButton extends StatelessWidget {
       onPressed: onPressed,
       style: OutlinedButton.styleFrom(
         padding: const EdgeInsets.symmetric(vertical: 12),
-        side: const BorderSide(color: Color(0xFFDDDDDD), width: 1.5),
+        side: const BorderSide(color: Color(0xFFE2E8F0), width: 1.5),
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(12),
         ),
         backgroundColor: Colors.white,
+        elevation: 0,
+        shadowColor: Colors.black.withOpacity(0.02),
       ),
       child: Row(
         mainAxisAlignment: MainAxisAlignment.center,
@@ -35,13 +37,34 @@ class SocialLoginButton extends StatelessWidget {
           if (useIconWidget && iconWidget != null) ...[
             iconWidget!,
             const SizedBox(width: 8),
+          ] else if (iconPath != null) ...[
+            Container(
+              width: 24,
+              height: 24,
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                border: Border.all(
+                  color: const Color(0xFFF1F5F9),
+                  width: 0.5,
+                ),
+              ),
+              child: ClipOval(
+                child: Image.asset(
+                  iconPath!,
+                  width: 24,
+                  height: 24,
+                  fit: BoxFit.cover,
+                ),
+              ),
+            ),
+            const SizedBox(width: 8),
           ],
           Text(
             label,
             style: GoogleFonts.poppins(
               fontSize: 13,
-              fontWeight: FontWeight.w500,
-              color: const Color(0xFF333333),
+              fontWeight: FontWeight.w600,
+              color: const Color(0xFF334155),
             ),
           ),
         ],

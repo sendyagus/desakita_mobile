@@ -6,6 +6,7 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:desa_wisata/widgets/auth_header.dart';
 import 'package:desa_wisata/widgets/custom_text_field.dart';
 import 'package:desa_wisata/widgets/social_login_button.dart';
+
 class RegisterScreen extends StatefulWidget {
   const RegisterScreen({super.key});
 
@@ -143,8 +144,9 @@ class _RegisterScreenState extends State<RegisterScreen> {
                         if (value == null || value.isEmpty) {
                           return 'Email tidak boleh kosong';
                         }
-                        if (!RegExp(r'^[\w-.]+@([\w-]+\.)+[\w-]{2,4}$')
-                            .hasMatch(value)) {
+                        if (!RegExp(
+                          r'^[\w-.]+@([\w-]+\.)+[\w-]{2,4}$',
+                        ).hasMatch(value)) {
                           return 'Format email tidak valid';
                         }
                         return null;
@@ -268,7 +270,9 @@ class _RegisterScreenState extends State<RegisterScreen> {
                     // Divider "atau masuk dengan"
                     Row(
                       children: [
-                        const Expanded(child: Divider(color: Color(0xFFDDDDDD))),
+                        const Expanded(
+                          child: Divider(color: Color(0xFFDDDDDD)),
+                        ),
                         Padding(
                           padding: const EdgeInsets.symmetric(horizontal: 12),
                           child: Text(
@@ -279,7 +283,9 @@ class _RegisterScreenState extends State<RegisterScreen> {
                             ),
                           ),
                         ),
-                        const Expanded(child: Divider(color: Color(0xFFDDDDDD))),
+                        const Expanded(
+                          child: Divider(color: Color(0xFFDDDDDD)),
+                        ),
                       ],
                     ),
 
@@ -291,8 +297,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
                         Expanded(
                           child: SocialLoginButton(
                             label: 'Google',
-                            useIconWidget: true,
-                            iconWidget: _googleIcon(),
+                            iconPath: 'assets/icon/google.jpg',
                             onPressed: () {
                               ErrorHandler.showInfoSnackBar(
                                 context,
@@ -305,10 +310,12 @@ class _RegisterScreenState extends State<RegisterScreen> {
                         Expanded(
                           child: SocialLoginButton(
                             label: 'Facebook',
-                            useIconWidget: true,
-                            iconWidget: _facebookIcon(),
+                            iconPath: 'assets/icon/faceboook.jpg',
                             onPressed: () {
-                              // TODO: daftar dengan Facebook
+                              ErrorHandler.showInfoSnackBar(
+                                context,
+                                'Daftar dengan Facebook belum tersedia.',
+                              );
                             },
                           ),
                         ),
@@ -422,54 +429,6 @@ class _RegisterScreenState extends State<RegisterScreen> {
             ),
           ),
         ],
-      ),
-    );
-  }
-
-  Widget _googleIcon() {
-    return Container(
-      width: 20,
-      height: 20,
-      decoration: BoxDecoration(
-        shape: BoxShape.circle,
-        color: Colors.white,
-        border: Border.all(
-          color: const Color(0xFFDDDDDD),
-          width: 0.5,
-        ),
-      ),
-      child: const Center(
-        child: Text(
-          'G',
-          textAlign: TextAlign.center,
-          style: TextStyle(
-            fontSize: 12,
-            fontWeight: FontWeight.bold,
-            color: Color(0xFF4285F4),
-          ),
-        ),
-      ),
-    );
-  }
-
-  Widget _facebookIcon() {
-    return Container(
-      width: 20,
-      height: 20,
-      decoration: const BoxDecoration(
-        shape: BoxShape.circle,
-        color: Color(0xFF1877F2),
-      ),
-      child: const Center(
-        child: Text(
-          'f',
-          style: TextStyle(
-            fontSize: 13,
-            fontWeight: FontWeight.bold,
-            color: Colors.white,
-            height: 1.3,
-          ),
-        ),
       ),
     );
   }

@@ -1,3 +1,4 @@
+import 'dart:ui';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/foundation.dart';
@@ -6,6 +7,15 @@ import 'package:desa_wisata/screens/home_screen.dart';
 import 'package:desa_wisata/screens/login_screen.dart';
 import 'package:desa_wisata/widgets/auth_gate.dart';
 import 'package:desa_wisata/firebase_options.dart';
+
+class MyCustomScrollBehavior extends MaterialScrollBehavior {
+  @override
+  Set<PointerDeviceKind> get dragDevices => {
+        PointerDeviceKind.touch,
+        PointerDeviceKind.mouse,
+        PointerDeviceKind.trackpad,
+      };
+}
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -39,6 +49,7 @@ class DesaKitaApp extends StatelessWidget {
       // DevicePreview configuration
       locale: DevicePreview.locale(context),
       builder: DevicePreview.appBuilder,
+      scrollBehavior: MyCustomScrollBehavior(),
 
       title: 'DesaKita',
       debugShowCheckedModeBanner: false,
