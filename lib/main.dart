@@ -5,6 +5,8 @@ import 'package:flutter/foundation.dart';
 import 'package:device_preview/device_preview.dart';
 import 'package:desa_wisata/screens/home_screen.dart';
 import 'package:desa_wisata/screens/login_screen.dart';
+import 'package:desa_wisata/screens/opening_screen.dart';
+import 'package:desa_wisata/screens/onboarding_screen.dart';
 import 'package:desa_wisata/widgets/auth_gate.dart';
 import 'package:desa_wisata/firebase_options.dart';
 
@@ -63,8 +65,10 @@ class DesaKitaApp extends StatelessWidget {
       routes: {
         '/home': (context) => const HomeScreen(),
         '/login': (context) => const LoginScreen(),
+        '/auth': (context) => const AuthGate(),
+        '/onboarding': (context) => const OnboardingScreen(),
       },
-      home: const AuthGate(),
+      home: const OpeningScreen(),
     );
   }
 }

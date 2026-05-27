@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'dart:async';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:desa_wisata/screens/explore_screen.dart';
@@ -38,6 +39,8 @@ class _HomeScreenState extends State<HomeScreen> {
   List<Map<String, dynamic>> _events = [];
   bool _isLoadingEvents = true;
 
+  Timer? _bannerTimer;
+
   final List<Map<String, String>> _categories = [
     {'icon': 'semua', 'label': 'Semua'},
     {'icon': 'alam', 'label': 'Alam'},
@@ -60,8 +63,8 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   final List<String> banners = [
-    'assets/img/cs1.jpg',
-    'assets/img/cs2.jpg',
+    'assets/img/cs1.png',
+    'assets/img/cs2.png',
     'assets/img/cs3.jpg',
   ];
 
@@ -71,6 +74,24 @@ class _HomeScreenState extends State<HomeScreen> {
     _loadUserData();
     _loadDestinations();
     _loadEvents();
+    _startBannerAutoPlay();
+  }
+
+  void _startBannerAutoPlay() {
+    _bannerTimer?.cancel();
+    _bannerTimer = Timer.periodic(const Duration(seconds: 4), (timer) {
+      if (_bannerController.hasClients) {
+        int nextPage = _currentBannerIndex + 1;
+        if (nextPage >= banners.length) {
+          nextPage = 0;
+        }
+        _bannerController.animateToPage(
+          nextPage,
+          duration: const Duration(milliseconds: 800),
+          curve: Curves.easeInOutCubic,
+        );
+      }
+    });
   }
 
   Future<void> _loadUserData() async {
@@ -170,6 +191,7 @@ class _HomeScreenState extends State<HomeScreen> {
 
   @override
   void dispose() {
+    _bannerTimer?.cancel();
     _bannerController.dispose();
     super.dispose();
   }
@@ -406,22 +428,41 @@ class _HomeScreenState extends State<HomeScreen> {
       children: [
         SizedBox(
           height: 180,
-          child: PageView.builder(
-            controller: _bannerController,
-            itemCount: 3,
-            onPageChanged: (index) {
-              setState(() => _currentBannerIndex = index);
+          child: NotificationListener<ScrollNotification>(
+            onNotification: (notification) {
+              if (notification is UserScrollNotification) {
+                _startBannerAutoPlay();
+              }
+              return false;
             },
-            itemBuilder: (context, index) {
-              return Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 16),
-                child: Image.asset(
-                  banners[index],
-                  fit: BoxFit.cover,
-                  width: double.infinity,
-                ),
-              );
-            },
+            child: PageView.builder(
+              controller: _bannerController,
+              itemCount: 3,
+              onPageChanged: (index) {
+                setState(() => _currentBannerIndex = index);
+              },
+              itemBuilder: (context, index) {
+                return Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 16),
+                  child: ClipRRect(
+                    borderRadius: BorderRadius.circular(16),
+                    child: Container(
+                      color: const Color(0xFF2D5016), // Brand dark green frame
+                      padding: const EdgeInsets.all(6), // Concentric safe margin
+                      child: ClipRRect(
+                        borderRadius: BorderRadius.circular(10), // Parallel concentric curve
+                        child: Image.asset(
+                          banners[index],
+                          fit: BoxFit.fill,
+                          width: double.infinity,
+                          height: double.infinity,
+                        ),
+                      ),
+                    ),
+                  ),
+                );
+              },
+            ),
           ),
         ),
 
@@ -453,20 +494,20 @@ class _HomeScreenState extends State<HomeScreen> {
   // ─── Kategori ──────────────────────────────────────────────────────────────
 
   Widget _buildCategories() {
-    return SizedBox(
-      height: 80,
-      child: ListView.builder(
-        scrollDirection: Axis.horizontal,
-        padding: const EdgeInsets.symmetric(horizontal: 12),
-        itemCount: _categories.length,
-        itemBuilder: (context, index) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 16),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        children: List.generate(_categories.length, (index) {
           final cat = _categories[index];
           final isSelected = index == _selectedCategoryIndex;
-          return GestureDetector(
-            onTap: () => setState(() => _selectedCategoryIndex = index),
-            child: Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 12),
+          return Expanded(
+            child: GestureDetector(
+              onTap: () => setState(() => _selectedCategoryIndex = index),
+              behavior: HitTestBehavior.opaque,
               child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.center,
                 children: [
                   Container(
                     width: 52,
@@ -485,9 +526,12 @@ class _HomeScreenState extends State<HomeScreen> {
                           : const Color(0xFF2D5016),
                     ),
                   ),
-                  const SizedBox(height: 6),
+                  const SizedBox(height: 8),
                   Text(
                     cat['label']!,
+                    textAlign: TextAlign.center,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
                     style: GoogleFonts.poppins(
                       fontSize: 11,
                       fontWeight: isSelected
@@ -502,7 +546,7 @@ class _HomeScreenState extends State<HomeScreen> {
               ),
             ),
           );
-        },
+        }),
       ),
     );
   }
