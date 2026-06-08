@@ -99,83 +99,77 @@ class _OnboardingScreenState extends State<OnboardingScreen>
 
   @override
   Widget build(BuildContext context) {
-    final size = MediaQuery.of(context).size;
     final isLastPage = _currentPage == _pages.length - 1;
 
     return Scaffold(
-      backgroundColor: Colors.black,
+      backgroundColor: const Color(0xFF000000),
       body: Stack(
         children: [
           // ── Background PageView (full screen image) ─────────────────────
-          PageView.builder(
-            controller: _pageController,
-            itemCount: _pages.length,
-            onPageChanged: _onPageChanged,
-            itemBuilder: (context, index) {
-              return Image.asset(
-                _pages[index].image,
-                fit: BoxFit.cover,
-                width: double.infinity,
-                height: double.infinity,
-              );
-            },
+          Positioned(
+            top: 0,
+            left: 0,
+            right: 0,
+            bottom: 260, // tinggi card
+            child: PageView.builder(
+              controller: _pageController,
+              itemCount: _pages.length,
+              onPageChanged: _onPageChanged,
+              physics: const BouncingScrollPhysics(),
+              itemBuilder: (context, index) {
+                return Stack(
+                  fit: StackFit.expand,
+                  children: [
+                    // Background Image
+                    Image.asset(
+                      _pages[index].image,
+                      width: double.infinity,
+                      fit: BoxFit.fill,
+
+                      alignment: const Alignment(-0.2, -0.3),
+                      errorBuilder: (context, error, stackTrace) {
+                        debugPrint(
+                          'Error loading image: ${_pages[index].image}',
+                        );
+                        return Container(
+                          color: const Color(0xFF2D5016),
+                          child: const Center(
+                            child: Icon(
+                              Icons.landscape_outlined,
+                              size: 80,
+                              color: Colors.white24,
+                            ),
+                          ),
+                        );
+                      },
+                    ),
+                    // Dark overlay for better text readability
+                    Container(
+                      decoration: const BoxDecoration(
+                        gradient: LinearGradient(
+                          begin: Alignment.topCenter,
+                          end: Alignment.bottomCenter,
+                          colors: [
+                            Color(0x22000000),
+                            Color(0x00000000),
+                            Color(0x00000000),
+                            Color(0xDD0D1A05),
+                          ],
+                          stops: [0.0, 0.25, 0.45, 0.85],
+                        ),
+                      ),
+                    ),
+                  ],
+                );
+              },
+            ),
           ),
 
           // ── Full top-to-bottom gradient overlay ─────────────────────────
-          Positioned.fill(
-            child: Container(
-              decoration: const BoxDecoration(
-                gradient: LinearGradient(
-                  begin: Alignment.topCenter,
-                  end: Alignment.bottomCenter,
-                  colors: [
-                    Color(0x22000000),
-                    Color(0x00000000),
-                    Color(0x00000000),
-                    Color(0xFF0D1A05),
-                  ],
-                  stops: [0.0, 0.25, 0.40, 0.72],
-                ),
-              ),
-            ),
-          ),
+          // (Sudah digabung dalam PageView.builder untuk smoother transition)
 
           // ── Logo top-left ────────────────────────────────────────────────
-          SafeArea(
-            child: Padding(
-              padding: const EdgeInsets.fromLTRB(20, 16, 20, 0),
-              child: Row(
-                children: [
-                  Container(
-                    padding: const EdgeInsets.all(8),
-                    decoration: BoxDecoration(
-                      color: Colors.white.withOpacity(0.18),
-                      borderRadius: BorderRadius.circular(12),
-                      border: Border.all(
-                        color: Colors.white.withOpacity(0.3),
-                        width: 1,
-                      ),
-                    ),
-                    child: const Icon(
-                      Icons.home_work_rounded,
-                      color: Colors.white,
-                      size: 20,
-                    ),
-                  ),
-                  const SizedBox(width: 10),
-                  Text(
-                    'DesaKita',
-                    style: GoogleFonts.poppins(
-                      fontSize: 18,
-                      fontWeight: FontWeight.w700,
-                      color: Colors.white,
-                      letterSpacing: 0.5,
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          ),
+         
 
           // ── Bottom white card ────────────────────────────────────────────
           Align(
@@ -245,8 +239,7 @@ class _OnboardingScreenState extends State<OnboardingScreen>
                               final isActive = index == _currentPage;
                               return AnimatedContainer(
                                 duration: const Duration(milliseconds: 300),
-                                margin:
-                                    const EdgeInsets.only(right: 6),
+                                margin: const EdgeInsets.only(right: 6),
                                 width: isActive ? 24 : 8,
                                 height: 8,
                                 decoration: BoxDecoration(
