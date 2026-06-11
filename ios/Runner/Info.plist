@@ -66,5 +66,9 @@
 		<string>UIInterfaceOrientationLandscapeLeft</string>
 		<string>UIInterfaceOrientationLandscapeRight</string>
 	</array>
+	<key>NSSpeechRecognitionUsageDescription</key>
+	<string>Aplikasi ini memerlukan akses ke pengenal suara untuk mengonversi ucapan Anda menjadi teks.</string>
+	<key>NSMicrophoneUsageDescription</key>
+	<string>Aplikasi ini memerlukan akses ke mikrofon untuk merekam suara Anda.</string>
 </dict>
 </plist>

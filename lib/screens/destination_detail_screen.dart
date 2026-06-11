@@ -1,7 +1,11 @@
 import 'package:flutter/material.dart';
+import 'dart:async';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:desa_wisata/services/destination_service.dart';
+import 'package:desa_wisata/services/user_service.dart';
+import 'package:desa_wisata/screens/login_screen.dart';
 import 'package:desa_wisata/widgets/app_network_image.dart';
 import 'package:desa_wisata/screens/user/create_booking_screen.dart';
 import 'package:url_launcher/url_launcher.dart';
@@ -18,13 +22,89 @@ class DestinationDetailScreen extends StatefulWidget {
 
 class _DestinationDetailScreenState extends State<DestinationDetailScreen> {
   final DestinationService _destinationService = DestinationService();
+  final UserService _userService = UserService();
   Map<String, dynamic>? _destination;
   bool _isLoading = true;
+  StreamSubscription? _authSub;
+  StreamSubscription? _favSub;
+  bool _isFavorite = false;
 
   @override
   void initState() {
     super.initState();
     _loadDestination();
+    _authSub = FirebaseAuth.instance.userChanges().listen((user) {
+      _subscribeToFavorites(user?.uid);
+    });
+  }
+
+  void _subscribeToFavorites(String? uid) {
+    _favSub?.cancel();
+    if (uid != null) {
+      _favSub = FirebaseFirestore.instance
+          .collection('users')
+          .doc(uid)
+          .snapshots()
+          .listen((doc) {
+        if (doc.exists) {
+          final favs = List<String>.from(doc.data()?['favorites'] ?? []);
+          if (mounted) {
+            setState(() {
+              _isFavorite = favs.contains(widget.destinationId);
+            });
+          }
+        }
+      });
+    } else {
+      if (mounted) {
+        setState(() {
+          _isFavorite = false;
+        });
+      }
+    }
+  }
+
+  Future<void> _toggleFavorite() async {
+    final user = FirebaseAuth.instance.currentUser;
+    if (user == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            'Silakan login terlebih dahulu untuk menyimpan favorit',
+            style: GoogleFonts.poppins(fontSize: 13, color: Colors.white),
+          ),
+          backgroundColor: const Color(0xFF2D5016),
+          behavior: SnackBarBehavior.floating,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(10),
+          ),
+          action: SnackBarAction(
+            label: 'Login',
+            textColor: Colors.white,
+            onPressed: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(builder: (_) => const LoginScreen()),
+              );
+            },
+          ),
+        ),
+      );
+      return;
+    }
+
+    try {
+      await _userService.toggleFavorite(user.uid, widget.destinationId);
+    } catch (e) {
+      debugPrint('Error toggling favorite: $e');
+    }
+  }
+
+  @override
+  void dispose() {
+    _authSub?.cancel();
+    _favSub?.cancel();
+    super.dispose();
   }
 
   Future<void> _loadDestination() async {
@@ -222,6 +302,24 @@ class _DestinationDetailScreenState extends State<DestinationDetailScreen> {
               ),
             ),
             actions: [
+              // Favorite button
+              Padding(
+                padding: const EdgeInsets.all(8),
+                child: Container(
+                  decoration: BoxDecoration(
+                    color: Colors.black.withValues(alpha: 0.35),
+                    shape: BoxShape.circle,
+                  ),
+                  child: IconButton(
+                    icon: Icon(
+                      _isFavorite ? Icons.favorite : Icons.favorite_border,
+                      color: _isFavorite ? Colors.red[400] : Colors.white,
+                      size: 20,
+                    ),
+                    onPressed: _toggleFavorite,
+                  ),
+                ),
+              ),
               Padding(
                 padding: const EdgeInsets.all(8),
                 child: Container(

@@ -1,7 +1,11 @@
 import 'package:flutter/material.dart';
+import 'dart:async';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:desa_wisata/config/app_categories.dart';
+import 'package:desa_wisata/services/user_service.dart';
+import 'package:desa_wisata/screens/login_screen.dart';
 import 'package:desa_wisata/widgets/app_network_image.dart';
 import 'package:desa_wisata/screens/destination_detail_screen.dart';
 
@@ -37,6 +41,10 @@ class _ExploreScreenState extends State<ExploreScreen> {
   final TextEditingController _searchController = TextEditingController();
 
   final List<String> _filters = AppCategories.exploreFilters;
+  final UserService _userService = UserService();
+  StreamSubscription? _authSub;
+  StreamSubscription? _favSub;
+  Set<String> _favoriteIds = {};
 
   DateTime _parseCreatedAt(dynamic value) {
     if (value is Timestamp) return value.toDate();
@@ -92,7 +100,79 @@ class _ExploreScreenState extends State<ExploreScreen> {
   }
 
   @override
+  void initState() {
+    super.initState();
+    _authSub = FirebaseAuth.instance.userChanges().listen((user) {
+      _subscribeToFavorites(user?.uid);
+    });
+  }
+
+  void _subscribeToFavorites(String? uid) {
+    _favSub?.cancel();
+    if (uid != null) {
+      _favSub = FirebaseFirestore.instance
+          .collection('users')
+          .doc(uid)
+          .snapshots()
+          .listen((doc) {
+        if (doc.exists) {
+          final favs = List<String>.from(doc.data()?['favorites'] ?? []);
+          if (mounted) {
+            setState(() {
+              _favoriteIds = favs.toSet();
+            });
+          }
+        }
+      });
+    } else {
+      if (mounted) {
+        setState(() {
+          _favoriteIds = {};
+        });
+      }
+    }
+  }
+
+  Future<void> _handleFavoriteToggle(String destinationId) async {
+    final user = FirebaseAuth.instance.currentUser;
+    if (user == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            'Silakan login terlebih dahulu untuk menyimpan favorit',
+            style: GoogleFonts.poppins(fontSize: 13, color: Colors.white),
+          ),
+          backgroundColor: const Color(0xFF2D5016),
+          behavior: SnackBarBehavior.floating,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(10),
+          ),
+          action: SnackBarAction(
+            label: 'Login',
+            textColor: Colors.white,
+            onPressed: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(builder: (_) => const LoginScreen()),
+              );
+            },
+          ),
+        ),
+      );
+      return;
+    }
+
+    try {
+      await _userService.toggleFavorite(user.uid, destinationId);
+    } catch (e) {
+      debugPrint('Error toggling favorite: $e');
+    }
+  }
+
+  @override
   void dispose() {
+    _authSub?.cancel();
+    _favSub?.cancel();
     _searchController.dispose();
     super.dispose();
   }
@@ -303,6 +383,7 @@ class _ExploreScreenState extends State<ExploreScreen> {
       itemCount: destinations.length,
       itemBuilder: (context, index) {
         final item = destinations[index];
+        final destinationId = item['id'] as String;
         return Padding(
           padding: const EdgeInsets.only(bottom: 20),
           child: GestureDetector(
@@ -311,7 +392,7 @@ class _ExploreScreenState extends State<ExploreScreen> {
                 context,
                 MaterialPageRoute(
                   builder: (_) => DestinationDetailScreen(
-                    destinationId: item['id'] as String,
+                    destinationId: destinationId,
                   ),
                 ),
               );
@@ -323,12 +404,14 @@ class _ExploreScreenState extends State<ExploreScreen> {
               rating: item['rating'] as double,
               price: item['price'] as String,
               imageUrl: item['imageUrl'] as String?,
+              isFavorite: _favoriteIds.contains(destinationId),
+              onFavoriteTap: () => _handleFavoriteToggle(destinationId),
               onDetailTap: () {
                 Navigator.push(
                   context,
                   MaterialPageRoute(
                     builder: (_) => DestinationDetailScreen(
-                      destinationId: item['id'] as String,
+                      destinationId: destinationId,
                     ),
                   ),
                 );
@@ -492,6 +575,8 @@ class _DestinationCard extends StatelessWidget {
   final double rating;
   final String price;
   final String? imageUrl;
+  final bool isFavorite;
+  final VoidCallback onFavoriteTap;
   final VoidCallback onDetailTap;
 
   const _DestinationCard({
@@ -501,6 +586,8 @@ class _DestinationCard extends StatelessWidget {
     required this.rating,
     required this.price,
     this.imageUrl,
+    required this.isFavorite,
+    required this.onFavoriteTap,
     required this.onDetailTap,
   });
 
@@ -565,6 +652,33 @@ class _DestinationCard extends StatelessWidget {
                         ),
                       ),
                     ],
+                  ),
+                ),
+              ),
+
+              // Favorite button kanan atas
+              Positioned(
+                top: 12,
+                right: 12,
+                child: GestureDetector(
+                  onTap: onFavoriteTap,
+                  child: Container(
+                    padding: const EdgeInsets.all(8),
+                    decoration: const BoxDecoration(
+                      color: Colors.white,
+                      shape: BoxShape.circle,
+                      boxShadow: [
+                        BoxShadow(
+                          color: Color(0x20000000),
+                          blurRadius: 4,
+                        ),
+                      ],
+                    ),
+                    child: Icon(
+                      isFavorite ? Icons.favorite : Icons.favorite_border,
+                      size: 18,
+                      color: isFavorite ? Colors.red : const Color(0xFF2D5016),
+                    ),
                   ),
                 ),
               ),

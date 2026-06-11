@@ -9,6 +9,7 @@ import 'package:desa_wisata/models/user_model.dart';
 import 'package:desa_wisata/screens/login_screen.dart';
 import 'package:desa_wisata/screens/register_screen.dart';
 import 'package:desa_wisata/screens/user/user_booking_history_screen.dart';
+import 'package:desa_wisata/screens/user/favorite_destinations_screen.dart';
 
 class ProfileScreen extends StatefulWidget {
   const ProfileScreen({super.key});
@@ -133,6 +134,10 @@ class _ProfileScreenState extends State<ProfileScreen> {
     {
       'icon': Icons.history_outlined,
       'label': 'Riwayat Booking',
+    },
+    {
+      'icon': Icons.favorite_outline,
+      'label': 'Destinasi Favorit',
     },
     {
       'icon': Icons.location_on_outlined,
@@ -508,11 +513,30 @@ class _ProfileScreenState extends State<ProfileScreen> {
     return Row(
       children: [
         Expanded(
-          child: _StatCard(value: '$_bookingCount', label: 'Booking'),
+          child: GestureDetector(
+            onTap: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(builder: (_) => const UserBookingHistoryScreen()),
+              ).then((_) => _loadUserData());
+            },
+            child: _StatCard(value: '$_bookingCount', label: 'Booking'),
+          ),
         ),
         const SizedBox(width: 12),
         Expanded(
-          child: _StatCard(value: '0', label: 'Favorit'),
+          child: GestureDetector(
+            onTap: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(builder: (_) => const FavoriteDestinationsScreen()),
+              ).then((_) => _loadUserData());
+            },
+            child: _StatCard(
+              value: '${_currentUser?.favorites.length ?? 0}',
+              label: 'Favorit',
+            ),
+          ),
         ),
       ],
     );
@@ -587,6 +611,13 @@ class _ProfileScreenState extends State<ProfileScreen> {
       Navigator.push(
         context,
         MaterialPageRoute(builder: (_) => const UserBookingHistoryScreen()),
+      ).then((_) => _loadUserData());
+      return;
+    }
+    if (label == 'Destinasi Favorit') {
+      Navigator.push(
+        context,
+        MaterialPageRoute(builder: (_) => const FavoriteDestinationsScreen()),
       ).then((_) => _loadUserData());
       return;
     }

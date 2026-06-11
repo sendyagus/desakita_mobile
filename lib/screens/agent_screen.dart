@@ -1,5 +1,12 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:google_generative_ai/google_generative_ai.dart' as gemini;
+import 'package:speech_to_text/speech_to_text.dart' as stt;
+import 'package:flutter_tts/flutter_tts.dart';
+import 'package:permission_handler/permission_handler.dart';
+import 'package:flutter/foundation.dart' show kIsWeb, defaultTargetPlatform, TargetPlatform;
+import 'package:desa_wisata/services/gemini_service.dart';
 
 class AgentScreen extends StatefulWidget {
   const AgentScreen({super.key});
@@ -12,9 +19,30 @@ class _AgentScreenState extends State<AgentScreen>
     with TickerProviderStateMixin {
   final TextEditingController _inputController = TextEditingController();
   final ScrollController _scrollController = ScrollController();
+  final FocusNode _inputFocusNode = FocusNode();
   final List<_ChatMessage> _messages = [];
   bool _isTyping = false;
   bool _showSuggestions = true;
+  bool _speechSendScheduled = false;
+  String? _speechLocaleId;
+
+  // Services
+  final GeminiService _geminiService = GeminiService();
+  final List<gemini.Content> _geminiHistory = [];
+
+  // Speech to Text
+  final stt.SpeechToText _speech = stt.SpeechToText();
+  bool _speechEnabled = false;
+  bool _isListening = false;
+
+  // Text to Speech
+  final FlutterTts _flutterTts = FlutterTts();
+  bool _isTtsActive = true; // Global auto-read toggle
+  bool _isSpeaking = false;
+  String? _currentlySpeakingText;
+
+  // Animation
+  late final AnimationController _pulseController;
 
   final List<String> _suggestions = [
     '🏕️  Rekomendasikan tempat camping',
@@ -24,19 +52,17 @@ class _AgentScreenState extends State<AgentScreen>
     '🗺️  Rute wisata alam terbaik',
   ];
 
-  // Simulasi respons bot berdasarkan kata kunci
-  final Map<String, String> _botResponses = {
-    'camping': '''Berikut rekomendasi tempat camping terbaik di sekitar desa:\n\n🏕️ **Camp 91 Outbound** — Kemiling, 2.5 km\nFasilitas lengkap, cocok untuk keluarga.\n\n🌲 **Lembah Durian Farm** — Sukarame, 5 km\nGlamping di tengah kebun durian.\n\n⛺ **Bukit Hijau Camp** — Langkapura, 7 km\nPemandangan sunrise terbaik.\n\nMau info lebih lanjut tentang salah satunya?''',
-    'kuliner': '''Kuliner khas desa yang wajib dicoba:\n\n🍜 **Mie Ayam Pak Slamet** — Buka 07.00–15.00\n📍 Jl. Desa Pujon, 1.2 km\n\n🍚 **Nasi Liwet Bu Darmi** — Buka 10.00–20.00\n📍 Pasar Desa Sade, 2.0 km\n\n🥘 **Soto Desa Mbah Karto** — Buka 06.00–12.00\n📍 Alun-alun Desa, 0.8 km\n\nSemua tempat sudah terverifikasi dan direkomendasikan warga lokal! 😊''',
-    'acara': '''Acara budaya yang akan datang:\n\n🎭 **Festival Panen Raya**\n📅 24 Oktober 2025 | 08.00 – Selesai\n📍 Desa Pujon Kidul, Malang\n\n🎪 **Pasar Budaya Nusantara**\n📅 5 November 2025 | 09.00 – 17.00\n📍 Desa Sade, Lombok\n\n🎶 **Festival Kuliner Desa**\n📅 12 November 2025 | 10.00 – Selesai\n📍 Desa Penglipuran, Bali\n\nIngin saya bantu booking tiket?''',
-    'penginapan': '''Penginapan terjangkau di desa:\n\n🏡 **Homestay Desa Pujon**\nMulai Rp 200.000/malam ⭐ 4.4\n\n🛖 **Jukung Villa Lampung**\nMulai Rp 450.000/malam ⭐ 4.8\n\n⛺ **Lembah Durian Farm Stable**\nMulai Rp 350.000/malam ⭐ 4.6\n\nSemua tersedia untuk booking langsung di tab Booking! 🎉''',
-    'rute': '''Rute wisata alam terbaik:\n\n🗺️ **Rute Pagi (3–4 jam)**\nStart: Alun-alun Desa → Kebun Teh → Air Terjun Hijau → Bukit Panorama\n\n🌄 **Rute Seharian**\nStart: Desa Pujon → Danau Hijau → Hutan Pinus → Camp 91 → Sunset Point\n\n💡 Tips: Berangkat sebelum jam 07.00 untuk menghindari keramaian dan mendapat cahaya terbaik untuk foto!\n\nMau saya buatkan itinerary lengkap?''',
-    'default': '''Halo! Saya **Kita**, asisten virtual DesaKita 🌿\n\nSaya bisa membantu kamu dengan:\n• Rekomendasi destinasi wisata desa\n• Info kuliner dan penginapan\n• Jadwal acara budaya\n• Rute perjalanan\n• Booking layanan\n\nCoba tanyakan sesuatu, atau pilih topik di bawah! 😊''',
-  };
-
   @override
   void initState() {
     super.initState();
+    _initSpeech();
+    _initTts();
+
+    _pulseController = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 1000),
+    );
+
     // Pesan sambutan awal
     Future.delayed(const Duration(milliseconds: 400), () {
       _addBotMessage(
@@ -48,59 +74,425 @@ class _AgentScreenState extends State<AgentScreen>
   @override
   void dispose() {
     _inputController.dispose();
+    _inputFocusNode.dispose();
     _scrollController.dispose();
+    _pulseController.dispose();
+    _flutterTts.stop();
+    _speech.stop();
     super.dispose();
   }
 
-  void _addBotMessage(String text) {
+  // ─── Speech to Text Initialization ─────────────────────────────────────────
+
+  void _initSpeech() async {
+    try {
+      _speechEnabled = await _speech.initialize(
+        onStatus: (status) {
+          debugPrint('STT status: $status');
+          if (status == 'notListening' || status == 'done') {
+            if (mounted) {
+              setState(() {
+                _isListening = false;
+              });
+            }
+            _pulseController.stop();
+          }
+        },
+        onError: (errorNotification) {
+          debugPrint('STT error: $errorNotification');
+          if (mounted) {
+            setState(() {
+              _isListening = false;
+            });
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(
+                content: Text(
+                  'Gagal mendeteksi suara. Pastikan izin mikrofon aktif.',
+                  style: GoogleFonts.poppins(fontSize: 12),
+                ),
+                backgroundColor: Colors.orange[800],
+                behavior: SnackBarBehavior.floating,
+              ),
+            );
+          }
+          _pulseController.stop();
+        },
+      );
+
+      if (_speechEnabled) {
+        _speechLocaleId = await _resolveSpeechLocale();
+        debugPrint('🎤 [AgentScreen] STT locale: $_speechLocaleId');
+      } else {
+        debugPrint('⚠️ [AgentScreen] STT tidak tersedia di perangkat ini');
+      }
+
+      if (mounted) setState(() {});
+    } catch (e) {
+      debugPrint('Error STT initialization: $e');
+    }
+  }
+
+  Future<String> _resolveSpeechLocale() async {
+    final locales = await _speech.locales();
+    const preferred = ['id-ID', 'id_ID', 'in-ID', 'in_ID', 'id-IN'];
+
+    for (final pref in preferred) {
+      if (locales.any((l) => l.localeId == pref)) return pref;
+    }
+
+    for (final locale in locales) {
+      if (locale.localeId.toLowerCase().startsWith('id')) {
+        return locale.localeId;
+      }
+    }
+
+    return locales.isNotEmpty ? locales.first.localeId : 'id-ID';
+  }
+
+  void _startListening() async {
+    if (_isTyping) return;
+
+    if (!kIsWeb) {
+      var micStatus = await Permission.microphone.status;
+      if (micStatus.isDenied || micStatus.isLimited) {
+        micStatus = await Permission.microphone.request();
+      }
+      if (!micStatus.isGranted) {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text(
+                'Izin mikrofon diperlukan untuk fitur suara.',
+                style: GoogleFonts.poppins(fontSize: 12),
+              ),
+              backgroundColor: Colors.orange,
+              behavior: SnackBarBehavior.floating,
+            ),
+          );
+        }
+        return;
+      }
+
+      if (defaultTargetPlatform == TargetPlatform.iOS) {
+        final speechStatus = await Permission.speech.status;
+        if (speechStatus.isDenied) {
+          await Permission.speech.request();
+        }
+      }
+    }
+
+    if (!_speechEnabled) {
+      final success = await _speech.initialize();
+      if (!success) {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text(
+                'Pengenalan suara tidak tersedia di perangkat ini.',
+                style: GoogleFonts.poppins(fontSize: 12),
+              ),
+              backgroundColor: Colors.orange,
+            ),
+          );
+        }
+        return;
+      }
+      _speechEnabled = true;
+      _speechLocaleId = await _resolveSpeechLocale();
+    }
+
+    _speechSendScheduled = false;
+    _inputController.clear();
+
+    setState(() {
+      _isListening = true;
+    });
+    _pulseController.repeat(reverse: true);
+
+    await _speech.listen(
+      onResult: (result) {
+        if (!mounted) return;
+        setState(() {
+          _inputController.text = result.recognizedWords;
+          _inputController.selection = TextSelection.fromPosition(
+            TextPosition(offset: _inputController.text.length),
+          );
+        });
+
+        if (result.finalResult) {
+          final words = result.recognizedWords.trim();
+          if (words.isNotEmpty && !_speechSendScheduled) {
+            _speechSendScheduled = true;
+            Future.delayed(const Duration(milliseconds: 400), () {
+              if (!mounted || !_speechSendScheduled) return;
+              _speechSendScheduled = false;
+              _finishListeningAndSend(words);
+            });
+          }
+        }
+      },
+      localeId: _speechLocaleId,
+      listenFor: const Duration(seconds: 30),
+      pauseFor: const Duration(seconds: 2),
+      partialResults: true,
+      cancelOnError: false,
+      listenMode: stt.ListenMode.dictation,
+    );
+  }
+
+  Future<void> _finishListeningAndSend(String text) async {
+    await _speech.stop();
+    if (mounted) {
+      setState(() {
+        _isListening = false;
+      });
+    }
+    _pulseController.stop();
+    if (text.trim().isNotEmpty && !_isTyping) {
+      _sendMessage(text.trim());
+    }
+  }
+
+  void _stopListening() async {
+    final text = _inputController.text.trim();
+    _speechSendScheduled = false;
+    await _speech.stop();
+    if (mounted) {
+      setState(() {
+        _isListening = false;
+      });
+    }
+    _pulseController.stop();
+
+    if (text.isNotEmpty && !_isTyping) {
+      _sendMessage(text);
+    }
+  }
+
+  // ─── Text to Speech Initialization ─────────────────────────────────────────
+
+  void _initTts() async {
+    await _flutterTts.stop();
+    await _flutterTts.awaitSpeakCompletion(true);
+
+    if (!kIsWeb) {
+      await _flutterTts.setSharedInstance(true);
+    }
+
+    await _flutterTts.setLanguage('id-ID');
+    await _flutterTts.setSpeechRate(0.45);
+    await _flutterTts.setPitch(1.08);
+    await _flutterTts.setVolume(1.0);
+
+    await _selectIndonesianFemaleVoice();
+
+    _flutterTts.setStartHandler(() {
+      if (mounted) {
+        setState(() {
+          _isSpeaking = true;
+        });
+      }
+    });
+
+    _flutterTts.setCompletionHandler(() {
+      if (mounted) {
+        setState(() {
+          _isSpeaking = false;
+          _currentlySpeakingText = null;
+        });
+      }
+    });
+
+    _flutterTts.setErrorHandler((msg) {
+      if (mounted) {
+        setState(() {
+          _isSpeaking = false;
+          _currentlySpeakingText = null;
+        });
+      }
+      debugPrint('TTS error: $msg');
+    });
+  }
+
+  Future<void> _selectIndonesianFemaleVoice() async {
+    if (kIsWeb) return;
+
+    try {
+      final voicesDynamic = await _flutterTts.getVoices;
+      if (voicesDynamic is! List) return;
+
+      final voices = voicesDynamic.cast<dynamic>();
+      final idVoices = voices.where((v) {
+        if (v is! Map) return false;
+        final locale = (v['locale'] ?? '').toString().toLowerCase();
+        return locale.startsWith('id');
+      }).cast<Map>().toList();
+
+      if (idVoices.isEmpty) {
+        debugPrint('🔊 [AgentScreen] Tidak ada voice id-ID, pakai default sistem');
+        return;
+      }
+
+      const femaleHints = [
+        'female',
+        'woman',
+        'perempuan',
+        'gadis',
+        'siti',
+        'ara',
+        'zira',
+        'nova',
+        'ida',
+        'nanda',
+      ];
+
+      Map<dynamic, dynamic>? selected;
+      for (final hint in femaleHints) {
+        for (final voice in idVoices) {
+          final name = (voice['name'] ?? '').toString().toLowerCase();
+          if (name.contains(hint)) {
+            selected = voice;
+            break;
+          }
+        }
+        if (selected != null) break;
+      }
+
+      selected ??= idVoices.first;
+
+      await _flutterTts.setVoice({
+        'name': selected['name'],
+        'locale': selected['locale'],
+      });
+      debugPrint(
+        '🔊 [AgentScreen] TTS voice: ${selected['name']} (${selected['locale']})',
+      );
+    } catch (e) {
+      debugPrint('🔊 [AgentScreen] Gagal memilih voice TTS: $e');
+    }
+  }
+
+  Future<void> _speak(String text) async {
+    if (text.isEmpty) return;
+
+    final cleanText = text
+        .replaceAll(RegExp(r'[\u{1F300}-\u{1FAFF}]', unicode: true), '')
+        .replaceAll('**', '')
+        .replaceAll('###', '')
+        .replaceAll('##', '')
+        .replaceAll('#', '')
+        .replaceAll('*', '')
+        .replaceAll('•', '')
+        .replaceAll('-', ' ')
+        .replaceAll(RegExp(r'\s+'), ' ')
+        .trim();
+
+    if (cleanText.isEmpty) return;
+
+    await _flutterTts.setLanguage('id-ID');
+    await _flutterTts.speak(cleanText);
+  }
+
+  Future<void> _stopTts() async {
+    await _flutterTts.stop();
+    setState(() {
+      _isSpeaking = false;
+      _currentlySpeakingText = null;
+    });
+  }
+
+  Future<void> _toggleSpeakMessage(String text) async {
+    if (_isSpeaking && _currentlySpeakingText == text) {
+      await _stopTts();
+    } else {
+      await _stopTts();
+      setState(() {
+        _currentlySpeakingText = text;
+        _isSpeaking = true;
+      });
+      await _speak(text);
+    }
+  }
+
+  // ─── Helper Message ────────────────────────────────────────────────────────
+
+  void _addBotMessage(String text, {bool addToGeminiHistory = false}) {
     setState(() {
       _messages.add(_ChatMessage(text: text, isUser: false));
     });
+    if (addToGeminiHistory) {
+      _geminiHistory.add(gemini.Content.model([gemini.TextPart(text)]));
+    }
     _scrollToBottom();
   }
 
-  void _sendMessage(String text) {
-    if (text.trim().isEmpty) return;
+  void _sendMessage(String text) async {
+    if (text.trim().isEmpty || _isTyping) return;
+
+    final userText = text.trim();
 
     setState(() {
-      _messages.add(_ChatMessage(text: text.trim(), isUser: true));
+      _messages.add(_ChatMessage(text: userText, isUser: true));
       _isTyping = true;
       _showSuggestions = false;
     });
     _inputController.clear();
     _scrollToBottom();
 
-    // Simulasi delay respons bot
-    Future.delayed(const Duration(milliseconds: 1200), () {
-      if (!mounted) return;
-      final response = _getBotResponse(text.toLowerCase());
+    // Hentikan suara jika sedang memutar saat mengirim pesan baru
+    if (_isSpeaking) {
+      await _stopTts();
+    }
+
+    // Tambah ke riwayat Gemini
+    _geminiHistory.add(gemini.Content.text(userText));
+
+    final result = await _geminiService.generateResponse(_geminiHistory);
+
+    if (!mounted) return;
+
+    if (result.success) {
+      _geminiHistory.add(gemini.Content.model([gemini.TextPart(result.text)]));
+
       setState(() {
         _isTyping = false;
-        _messages.add(_ChatMessage(text: response, isUser: false));
+        _messages.add(_ChatMessage(text: result.text, isUser: false));
       });
       _scrollToBottom();
-    });
-  }
 
-  String _getBotResponse(String input) {
-    if (input.contains('camp') || input.contains('camping') ||
-        input.contains('kemah')) {
-      return _botResponses['camping']!;
-    } else if (input.contains('kuliner') || input.contains('makan') ||
-        input.contains('makanan') || input.contains('resto')) {
-      return _botResponses['kuliner']!;
-    } else if (input.contains('acara') || input.contains('event') ||
-        input.contains('festival') || input.contains('budaya')) {
-      return _botResponses['acara']!;
-    } else if (input.contains('penginapan') || input.contains('hotel') ||
-        input.contains('villa') || input.contains('homestay') ||
-        input.contains('murah')) {
-      return _botResponses['penginapan']!;
-    } else if (input.contains('rute') || input.contains('jalan') ||
-        input.contains('wisata') || input.contains('alam')) {
-      return _botResponses['rute']!;
+      if (_isTtsActive) {
+        setState(() {
+          _currentlySpeakingText = result.text;
+        });
+        await _speak(result.text);
+      }
     } else {
-      return 'Maaf, saya belum mengerti pertanyaan itu 😅\n\nCoba tanyakan tentang:\n• Tempat wisata & camping\n• Kuliner khas desa\n• Acara & festival budaya\n• Penginapan & homestay\n• Rute perjalanan';
+      debugPrint(
+        '❌ [AgentScreen] Gemini error: ${result.errorDetail ?? result.text}',
+      );
+      setState(() {
+        _isTyping = false;
+        _messages.add(_ChatMessage(
+          text: result.text,
+          isUser: false,
+          isError: true,
+        ));
+      });
+      _scrollToBottom();
+
+      if (mounted && result.errorDetail != null) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(
+              result.errorDetail!,
+              style: GoogleFonts.poppins(fontSize: 12),
+            ),
+            backgroundColor: Colors.red[700],
+            behavior: SnackBarBehavior.floating,
+            duration: const Duration(seconds: 5),
+          ),
+        );
+      }
     }
   }
 
@@ -227,6 +619,34 @@ class _AgentScreenState extends State<AgentScreen>
                 ),
               ),
 
+              // Tombol Toggle TTS (Auto-Read)
+              IconButton(
+                onPressed: () {
+                  setState(() {
+                    _isTtsActive = !_isTtsActive;
+                  });
+                  if (!_isTtsActive) {
+                    _stopTts();
+                  }
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(
+                      content: Text(
+                        _isTtsActive
+                            ? 'Suara respons otomatis aktif 🔊'
+                            : 'Suara respons otomatis dinonaktifkan 🔇',
+                        style: GoogleFonts.poppins(fontSize: 12),
+                      ),
+                      duration: const Duration(seconds: 1),
+                    ),
+                  );
+                },
+                icon: Icon(
+                  _isTtsActive ? Icons.volume_up_rounded : Icons.volume_off_rounded,
+                  color: _isTtsActive ? const Color(0xFF2D5016) : Colors.grey[400],
+                  size: 22,
+                ),
+              ),
+
               // Tombol hapus riwayat
               IconButton(
                 onPressed: _messages.isEmpty ? null : _confirmClearChat,
@@ -306,7 +726,15 @@ class _AgentScreenState extends State<AgentScreen>
         if (_isTyping && index == _messages.length) {
           return _TypingIndicator();
         }
-        return _MessageBubble(message: _messages[index]);
+        final message = _messages[index];
+        final isSpeakingThis = _isSpeaking && _currentlySpeakingText == message.text;
+        return _MessageBubble(
+          message: message,
+          isCurrentlySpeaking: isSpeakingThis,
+          onSpeakPressed: message.isUser || message.isError
+              ? null
+              : () => _toggleSpeakMessage(message.text),
+        );
       },
     );
   }
@@ -336,9 +764,12 @@ class _AgentScreenState extends State<AgentScreen>
               itemCount: _suggestions.length,
               itemBuilder: (context, index) {
                 return GestureDetector(
-                  onTap: () => _sendMessage(_suggestions[index]
-                      .replaceAll(RegExp(r'[^\w\s]'), '')
-                      .trim()),
+                  onTap: () {
+                    final cleanText = _suggestions[index]
+                        .replaceAll(RegExp(r'[^\w\s]'), '')
+                        .trim();
+                    _sendMessage(cleanText);
+                  },
                   child: Container(
                     margin: const EdgeInsets.only(right: 8),
                     padding: const EdgeInsets.symmetric(
@@ -386,39 +817,110 @@ class _AgentScreenState extends State<AgentScreen>
         children: [
           // Input field
           Expanded(
-            child: Container(
-              decoration: BoxDecoration(
-                color: const Color(0xFFF5F5F0),
-                borderRadius: BorderRadius.circular(24),
-              ),
-              child: TextField(
-                controller: _inputController,
-                style: GoogleFonts.poppins(fontSize: 14),
-                maxLines: 4,
-                minLines: 1,
-                textCapitalization: TextCapitalization.sentences,
-                decoration: InputDecoration(
-                  hintText: 'Tanyakan sesuatu...',
-                  hintStyle: GoogleFonts.poppins(
-                    fontSize: 14,
-                    color: Colors.grey[400],
-                  ),
-                  border: InputBorder.none,
-                  contentPadding: const EdgeInsets.symmetric(
-                    horizontal: 16,
-                    vertical: 10,
-                  ),
+            child: Focus(
+              onKeyEvent: (node, event) {
+                if (event is! KeyDownEvent) return KeyEventResult.ignored;
+                if (event.logicalKey != LogicalKeyboardKey.enter) {
+                  return KeyEventResult.ignored;
+                }
+                if (HardwareKeyboard.instance.isShiftPressed) {
+                  return KeyEventResult.ignored;
+                }
+                final text = _inputController.text.trim();
+                if (text.isNotEmpty && !_isTyping) {
+                  _sendMessage(text);
+                  return KeyEventResult.handled;
+                }
+                return KeyEventResult.ignored;
+              },
+              child: Container(
+                decoration: BoxDecoration(
+                  color: const Color(0xFFF5F5F0),
+                  borderRadius: BorderRadius.circular(24),
                 ),
-                onSubmitted: _sendMessage,
+                child: TextField(
+                  controller: _inputController,
+                  focusNode: _inputFocusNode,
+                  style: GoogleFonts.poppins(fontSize: 14),
+                  maxLines: 1,
+                  minLines: 1,
+                  textInputAction: TextInputAction.send,
+                  textCapitalization: TextCapitalization.sentences,
+                  keyboardType: TextInputType.text,
+                  decoration: InputDecoration(
+                    hintText: 'Tanyakan sesuatu... (Enter = kirim)',
+                    hintStyle: GoogleFonts.poppins(
+                      fontSize: 14,
+                      color: Colors.grey[400],
+                    ),
+                    border: InputBorder.none,
+                    contentPadding: const EdgeInsets.symmetric(
+                      horizontal: 16,
+                      vertical: 10,
+                    ),
+                  ),
+                  onSubmitted: (value) {
+                    if (value.trim().isNotEmpty) {
+                      _sendMessage(value);
+                    }
+                  },
+                ),
               ),
             ),
           ),
 
           const SizedBox(width: 10),
 
+          // Tombol Mic / Audio dengan Efek Detak (Pulse Animation)
+          GestureDetector(
+            onTap: _isListening ? _stopListening : _startListening,
+            child: AnimatedBuilder(
+              animation: _pulseController,
+              builder: (context, child) {
+                final double scale = _isListening
+                    ? 1.0 + (_pulseController.value * 0.12)
+                    : 1.0;
+                return Transform.scale(
+                  scale: scale,
+                  child: Container(
+                    width: 44,
+                    height: 44,
+                    decoration: BoxDecoration(
+                      shape: BoxShape.circle,
+                      color: _isListening ? Colors.red[600] : const Color(0xFFE8F0E3),
+                      boxShadow: [
+                        if (_isListening)
+                          BoxShadow(
+                            color: Colors.red.withOpacity(0.4),
+                            blurRadius: 10 + (_pulseController.value * 6),
+                            spreadRadius: 2 + (_pulseController.value * 2),
+                          )
+                        else
+                          BoxShadow(
+                            color: Colors.black.withOpacity(0.05),
+                            blurRadius: 4,
+                            offset: const Offset(0, 2),
+                          ),
+                      ],
+                    ),
+                    child: Icon(
+                      _isListening ? Icons.mic_rounded : Icons.mic_none_rounded,
+                      color: _isListening ? Colors.white : const Color(0xFF2D5016),
+                      size: 20,
+                    ),
+                  ),
+                );
+              },
+            ),
+          ),
+
+          const SizedBox(width: 8),
+
           // Tombol kirim
           GestureDetector(
-            onTap: () => _sendMessage(_inputController.text),
+            onTap: _isTyping
+                ? null
+                : () => _sendMessage(_inputController.text),
             child: Container(
               width: 44,
               height: 44,
@@ -480,8 +982,10 @@ class _AgentScreenState extends State<AgentScreen>
           ElevatedButton(
             onPressed: () {
               Navigator.pop(ctx);
+              _stopTts();
               setState(() {
                 _messages.clear();
+                _geminiHistory.clear();
                 _showSuggestions = true;
               });
             },
@@ -506,11 +1010,13 @@ class _AgentScreenState extends State<AgentScreen>
 class _ChatMessage {
   final String text;
   final bool isUser;
+  final bool isError;
   final DateTime time;
 
   _ChatMessage({
     required this.text,
     required this.isUser,
+    this.isError = false,
   }) : time = DateTime.now();
 }
 
@@ -518,8 +1024,14 @@ class _ChatMessage {
 
 class _MessageBubble extends StatelessWidget {
   final _ChatMessage message;
+  final bool isCurrentlySpeaking;
+  final VoidCallback? onSpeakPressed;
 
-  const _MessageBubble({required this.message});
+  const _MessageBubble({
+    required this.message,
+    this.isCurrentlySpeaking = false,
+    this.onSpeakPressed,
+  });
 
   String _formatTime(DateTime time) {
     final h = time.hour.toString().padLeft(2, '0');
@@ -530,6 +1042,7 @@ class _MessageBubble extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final isUser = message.isUser;
+    final isError = message.isError;
 
     return Padding(
       padding: const EdgeInsets.only(bottom: 12),
@@ -570,7 +1083,9 @@ class _MessageBubble extends StatelessWidget {
                   decoration: BoxDecoration(
                     color: isUser
                         ? const Color(0xFF2D5016)
-                        : Colors.white,
+                        : isError
+                            ? const Color(0xFFFFEBEE)
+                            : Colors.white,
                     borderRadius: BorderRadius.only(
                       topLeft: const Radius.circular(16),
                       topRight: const Radius.circular(16),
@@ -585,15 +1100,35 @@ class _MessageBubble extends StatelessWidget {
                       ),
                     ],
                   ),
-                  child: _buildMessageText(message.text, isUser),
+                  child: _buildMessageText(message.text, isUser, isError: isError),
                 ),
                 const SizedBox(height: 4),
-                Text(
-                  _formatTime(message.time),
-                  style: GoogleFonts.poppins(
-                    fontSize: 10,
-                    color: Colors.grey[400],
-                  ),
+                Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Text(
+                      _formatTime(message.time),
+                      style: GoogleFonts.poppins(
+                        fontSize: 10,
+                        color: Colors.grey[400],
+                      ),
+                    ),
+                    if (!isUser && onSpeakPressed != null) ...[
+                      const SizedBox(width: 8),
+                      GestureDetector(
+                        onTap: onSpeakPressed,
+                        child: Icon(
+                          isCurrentlySpeaking
+                              ? Icons.volume_up_rounded
+                              : Icons.volume_mute_rounded,
+                          size: 14,
+                          color: isCurrentlySpeaking
+                              ? const Color(0xFF2D5016)
+                              : Colors.grey[400],
+                        ),
+                      ),
+                    ],
+                  ],
                 ),
               ],
             ),
@@ -606,10 +1141,18 @@ class _MessageBubble extends StatelessWidget {
     );
   }
 
-  Widget _buildMessageText(String text, bool isUser) {
+  Widget _buildMessageText(String text, bool isUser, {bool isError = false}) {
+    // Ubah bullet list asteriks (*) ke bullet bulat (•) untuk tampilan rapi
+    var formattedText = text.replaceAll('\n* ', '\n• ').replaceAll('\n- ', '\n• ');
+    if (formattedText.startsWith('* ')) {
+      formattedText = '• ${formattedText.substring(2)}';
+    } else if (formattedText.startsWith('- ')) {
+      formattedText = '• ${formattedText.substring(2)}';
+    }
+
     // Parse **bold** sederhana
     final spans = <TextSpan>[];
-    final parts = text.split('**');
+    final parts = formattedText.split('**');
     for (int i = 0; i < parts.length; i++) {
       spans.add(TextSpan(
         text: parts[i],
@@ -623,7 +1166,11 @@ class _MessageBubble extends StatelessWidget {
       text: TextSpan(
         style: GoogleFonts.poppins(
           fontSize: 13,
-          color: isUser ? Colors.white : const Color(0xFF1A1A1A),
+          color: isUser
+              ? Colors.white
+              : isError
+                  ? const Color(0xFFC62828)
+                  : const Color(0xFF1A1A1A),
           height: 1.5,
         ),
         children: spans,

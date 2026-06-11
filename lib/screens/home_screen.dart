@@ -2,9 +2,11 @@ import 'package:flutter/material.dart';
 import 'dart:async';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:desa_wisata/screens/explore_screen.dart';
 import 'package:desa_wisata/screens/profile_screen.dart';
 import 'package:desa_wisata/screens/agent_screen.dart';
+import 'package:desa_wisata/screens/login_screen.dart';
 import 'package:desa_wisata/screens/destination_detail_screen.dart';
 import 'package:desa_wisata/services/user_service.dart';
 import 'package:desa_wisata/services/destination_service.dart';
@@ -40,6 +42,9 @@ class _HomeScreenState extends State<HomeScreen> {
   bool _isLoadingEvents = true;
 
   Timer? _bannerTimer;
+  StreamSubscription? _authSub;
+  StreamSubscription? _favSub;
+  Set<String> _favoriteIds = {};
 
   final List<Map<String, String>> _categories = [
     {'icon': 'semua', 'label': 'Semua'},
@@ -75,6 +80,73 @@ class _HomeScreenState extends State<HomeScreen> {
     _loadDestinations();
     _loadEvents();
     _startBannerAutoPlay();
+    _authSub = FirebaseAuth.instance.userChanges().listen((user) {
+      _subscribeToFavorites(user?.uid);
+    });
+  }
+
+  void _subscribeToFavorites(String? uid) {
+    _favSub?.cancel();
+    if (uid != null) {
+      _favSub = FirebaseFirestore.instance
+          .collection('users')
+          .doc(uid)
+          .snapshots()
+          .listen((doc) {
+        if (doc.exists) {
+          final favs = List<String>.from(doc.data()?['favorites'] ?? []);
+          if (mounted) {
+            setState(() {
+              _favoriteIds = favs.toSet();
+            });
+          }
+        }
+      });
+    } else {
+      if (mounted) {
+        setState(() {
+          _favoriteIds = {};
+        });
+      }
+    }
+  }
+
+  Future<void> _handleFavoriteToggle(String destinationId) async {
+    final user = FirebaseAuth.instance.currentUser;
+    if (user == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            'Silakan login terlebih dahulu untuk menyimpan favorit',
+            style: GoogleFonts.poppins(fontSize: 13, color: Colors.white),
+          ),
+          backgroundColor: const Color(0xFF2D5016),
+          behavior: SnackBarBehavior.floating,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(10),
+          ),
+          action: SnackBarAction(
+            label: 'Login',
+            textColor: Colors.white,
+            onPressed: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(builder: (_) => const LoginScreen()),
+              ).then((_) {
+                _loadUserData();
+              });
+            },
+          ),
+        ),
+      );
+      return;
+    }
+
+    try {
+      await _userService.toggleFavorite(user.uid, destinationId);
+    } catch (e) {
+      debugPrint('Error toggling favorite: $e');
+    }
   }
 
   void _startBannerAutoPlay() {
@@ -193,6 +265,8 @@ class _HomeScreenState extends State<HomeScreen> {
   void dispose() {
     _bannerTimer?.cancel();
     _bannerController.dispose();
+    _authSub?.cancel();
+    _favSub?.cancel();
     super.dispose();
   }
 
@@ -273,7 +347,9 @@ class _HomeScreenState extends State<HomeScreen> {
                         );
                       },
                 ),
-              );
+              ).then((_) {
+                _loadUserData();
+              });
             },
             child: Container(
               width: 44,
@@ -337,7 +413,9 @@ class _HomeScreenState extends State<HomeScreen> {
                 Navigator.push(
                   context,
                   MaterialPageRoute(builder: (_) => const ProfileScreen()),
-                );
+                ).then((_) {
+                  _loadUserData();
+                });
               },
               behavior: HitTestBehavior.opaque,
               child: Column(
@@ -626,12 +704,15 @@ class _HomeScreenState extends State<HomeScreen> {
         itemCount: recommendations.length,
         itemBuilder: (context, index) {
           final item = recommendations[index];
+          final destinationId = item['id'] as String? ?? '';
           return _RecommendationCard(
-            destinationId: item['id'] as String? ?? '',
+            destinationId: destinationId,
             name: item['name'] as String? ?? 'Destinasi',
             location: item['location'] as String? ?? 'Lokasi',
             rating: (item['rating'] as num?)?.toDouble() ?? 0.0,
             imageUrl: item['image_url'] as String?,
+            isFavorite: _favoriteIds.contains(destinationId),
+            onFavoriteTap: () => _handleFavoriteToggle(destinationId),
           );
         },
       ),
@@ -770,6 +851,8 @@ class _RecommendationCard extends StatelessWidget {
   final String location;
   final double rating;
   final String? imageUrl;
+  final bool isFavorite;
+  final VoidCallback onFavoriteTap;
 
   const _RecommendationCard({
     required this.destinationId,
@@ -777,6 +860,8 @@ class _RecommendationCard extends StatelessWidget {
     required this.location,
     required this.rating,
     this.imageUrl,
+    required this.isFavorite,
+    required this.onFavoriteTap,
   });
 
   @override
@@ -825,6 +910,32 @@ class _RecommendationCard extends StatelessWidget {
                       top: Radius.circular(16),
                     ),
                     placeholderLabel: name,
+                  ),
+                ),
+                // Favorite Button
+                Positioned(
+                  top: 8,
+                  left: 8,
+                  child: GestureDetector(
+                    onTap: onFavoriteTap,
+                    child: Container(
+                      padding: const EdgeInsets.all(5),
+                      decoration: BoxDecoration(
+                        color: Colors.white.withOpacity(0.9),
+                        shape: BoxShape.circle,
+                        boxShadow: const [
+                          BoxShadow(
+                            color: Color(0x20000000),
+                            blurRadius: 4,
+                          ),
+                        ],
+                      ),
+                      child: Icon(
+                        isFavorite ? Icons.favorite : Icons.favorite_border,
+                        size: 16,
+                        color: isFavorite ? Colors.red : const Color(0xFF2D5016),
+                      ),
+                    ),
                   ),
                 ),
                 // Rating badge

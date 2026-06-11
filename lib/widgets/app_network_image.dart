@@ -1,6 +1,5 @@
 import 'package:flutter/foundation.dart' show debugPrint, kIsWeb;
 import 'package:flutter/material.dart';
-import 'package:flutter/painting.dart' show WebHtmlElementStrategy;
 import 'package:google_fonts/google_fonts.dart';
 import '../utils/image_url_helper.dart';
 

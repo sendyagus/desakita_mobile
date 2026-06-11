@@ -10,6 +10,7 @@ class UserModel {
   final bool isActive;
   final DateTime createdAt;
   final DateTime updatedAt;
+  final List<String> favorites;
 
   const UserModel({
     required this.id,
@@ -21,6 +22,7 @@ class UserModel {
     required this.isActive,
     required this.createdAt,
     required this.updatedAt,
+    this.favorites = const [],
   });
 
   bool get isAdmin => role == 'admin';
@@ -45,6 +47,7 @@ class UserModel {
       isActive: data['isActive'] as bool? ?? true,
       createdAt: parseDt(data['createdAt']),
       updatedAt: parseDt(data['updatedAt']),
+      favorites: List<String>.from(data['favorites'] ?? []),
     );
   }
 
@@ -60,6 +63,7 @@ class UserModel {
       isActive: map['is_active'] as bool? ?? true,
       createdAt: DateTime.parse(map['created_at'] as String),
       updatedAt: DateTime.parse(map['updated_at'] as String),
+      favorites: List<String>.from(map['favorites'] ?? []),
     );
   }
 
@@ -71,6 +75,7 @@ class UserModel {
       'avatarUrl': avatarUrl,
       'role': role,
       'isActive': isActive,
+      'favorites': favorites,
       'updatedAt': FieldValue.serverTimestamp(),
     };
   }
@@ -84,6 +89,7 @@ class UserModel {
       'avatar_url': avatarUrl,
       'role': role,
       'is_active': isActive,
+      'favorites': favorites,
     };
   }
 
@@ -93,6 +99,7 @@ class UserModel {
     String? avatarUrl,
     String? role,
     bool? isActive,
+    List<String>? favorites,
   }) {
     return UserModel(
       id: id,
@@ -104,6 +111,7 @@ class UserModel {
       isActive: isActive ?? this.isActive,
       createdAt: createdAt,
       updatedAt: DateTime.now(),
+      favorites: favorites ?? this.favorites,
     );
   }
 }

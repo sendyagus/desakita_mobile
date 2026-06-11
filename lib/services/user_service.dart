@@ -93,4 +93,30 @@ class UserService {
         .get();
     return snap.count ?? 0;
   }
+
+  Future<void> toggleFavorite(String userId, String destinationId) async {
+    final docRef = _db.collection(_col).doc(userId);
+    final doc = await docRef.get();
+    if (!doc.exists) return;
+
+    final data = doc.data()!;
+    final List<dynamic> favorites = data['favorites'] ?? [];
+    if (favorites.contains(destinationId)) {
+      await docRef.update({
+        'favorites': FieldValue.arrayRemove([destinationId]),
+        'updatedAt': FieldValue.serverTimestamp(),
+      });
+    } else {
+      await docRef.update({
+        'favorites': FieldValue.arrayUnion([destinationId]),
+        'updatedAt': FieldValue.serverTimestamp(),
+      });
+    }
+  }
+
+  Future<List<String>> getFavorites(String userId) async {
+    final doc = await _db.collection(_col).doc(userId).get();
+    if (!doc.exists || doc.data() == null) return [];
+    return List<String>.from(doc.data()!['favorites'] ?? []);
+  }
 }
