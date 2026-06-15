@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:desa_wisata/app/theme/theme_notifier.dart';
 import 'package:desa_wisata/services/auth_service.dart';
 import 'package:desa_wisata/services/user_service.dart';
 import 'package:desa_wisata/services/storage_service.dart';
@@ -222,6 +223,8 @@ class _ProfileScreenState extends State<ProfileScreen> {
                       _buildStats(),
                       const SizedBox(height: 24),
                       _buildMenuList(context),
+                      const SizedBox(height: 16),
+                      _buildDarkModeToggle(context),
                       const SizedBox(height: 20),
                       _buildLogoutButton(context),
                       const SizedBox(height: 32),
@@ -569,6 +572,64 @@ class _ProfileScreenState extends State<ProfileScreen> {
           );
         }),
       ),
+    );
+  }
+
+  // ─── Dark Mode Toggle ──────────────────────────────────────────────────────
+
+  Widget _buildDarkModeToggle(BuildContext context) {
+    return ListenableBuilder(
+      listenable: ThemeNotifier.instance,
+      builder: (context, _) {
+        final isDark = ThemeNotifier.instance.isDark;
+        return Container(
+          decoration: BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.circular(16),
+            boxShadow: const [
+              BoxShadow(
+                color: Color(0x08000000),
+                blurRadius: 8,
+                offset: Offset(0, 2),
+              ),
+            ],
+          ),
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+          child: Row(
+            children: [
+              Container(
+                width: 36,
+                height: 36,
+                decoration: BoxDecoration(
+                  color: const Color(0xFF2D5016).withValues(alpha: 0.1),
+                  borderRadius: BorderRadius.circular(10),
+                ),
+                child: Icon(
+                  isDark ? Icons.dark_mode_rounded : Icons.light_mode_rounded,
+                  color: const Color(0xFF2D5016),
+                  size: 20,
+                ),
+              ),
+              const SizedBox(width: 14),
+              Expanded(
+                child: Text(
+                  'Mode Gelap',
+                  style: GoogleFonts.poppins(
+                    fontSize: 14,
+                    fontWeight: FontWeight.w500,
+                    color: const Color(0xFF1A1A1A),
+                  ),
+                ),
+              ),
+              Switch.adaptive(
+                value: isDark,
+                onChanged: (_) => ThemeNotifier.instance.toggle(),
+                activeTrackColor: const Color(0xFF2D5016),
+              ),
+            ],
+          ),
+        );
+      },
     );
   }
 

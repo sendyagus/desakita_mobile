@@ -1,8 +1,9 @@
 import 'package:flutter/material.dart';
+import 'package:desa_wisata/app/app_assets.dart';
 import 'dart:async';
+import 'dart:ui';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:firebase_auth/firebase_auth.dart';
-import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:desa_wisata/screens/explore_screen.dart';
 import 'package:desa_wisata/screens/profile_screen.dart';
 import 'package:desa_wisata/screens/agent_screen.dart';
@@ -14,6 +15,7 @@ import 'package:desa_wisata/services/event_service.dart';
 import 'package:desa_wisata/models/user_model.dart';
 import 'package:desa_wisata/config/app_categories.dart';
 import 'package:desa_wisata/widgets/app_network_image.dart';
+import 'package:desa_wisata/widgets/home_banner_slider.dart';
 import 'package:desa_wisata/screens/notification_screen.dart';
 
 class HomeScreen extends StatefulWidget {
@@ -23,12 +25,14 @@ class HomeScreen extends StatefulWidget {
   State<HomeScreen> createState() => _HomeScreenState();
 }
 
-class _HomeScreenState extends State<HomeScreen> {
-  int _currentBannerIndex = 0;
+class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
   int _selectedCategoryIndex = 0;
   int _selectedNavIndex = 0;
 
-  final PageController _bannerController = PageController();
+  late final AnimationController _ctaAnimController;
+  late final Animation<double> _ctaScaleAnimation;
+  late final Animation<double> _ctaWidthAnimation;
+
   final UserService _userService = UserService();
   final DestinationService _destinationService = DestinationService();
   final EventService _eventService = EventService();
@@ -41,7 +45,6 @@ class _HomeScreenState extends State<HomeScreen> {
   List<Map<String, dynamic>> _events = [];
   bool _isLoadingEvents = true;
 
-  Timer? _bannerTimer;
   StreamSubscription? _authSub;
   StreamSubscription? _favSub;
   Set<String> _favoriteIds = {};
@@ -67,19 +70,31 @@ class _HomeScreenState extends State<HomeScreen> {
         .toList();
   }
 
-  final List<String> banners = [
-    'assets/img/cs1.png',
-    'assets/img/cs2.png',
-    'assets/img/cs3.jpg',
-  ];
-
+  final List<String> banners = AppAssets.homeBanners;
   @override
   void initState() {
     super.initState();
+    _ctaAnimController = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 800),
+    );
+    _ctaScaleAnimation = Tween<double>(begin: 0.0, end: 1.0).animate(
+      CurvedAnimation(
+        parent: _ctaAnimController,
+        curve: const Interval(0.0, 0.4, curve: Curves.easeOutBack),
+      ),
+    );
+    _ctaWidthAnimation = Tween<double>(begin: 0.0, end: 1.0).animate(
+      CurvedAnimation(
+        parent: _ctaAnimController,
+        curve: const Interval(0.5, 1.0, curve: Curves.easeOutCubic),
+      ),
+    );
+    _ctaAnimController.forward();
+
     _loadUserData();
     _loadDestinations();
     _loadEvents();
-    _startBannerAutoPlay();
     _authSub = FirebaseAuth.instance.userChanges().listen((user) {
       _subscribeToFavorites(user?.uid);
     });
@@ -88,26 +103,11 @@ class _HomeScreenState extends State<HomeScreen> {
   void _subscribeToFavorites(String? uid) {
     _favSub?.cancel();
     if (uid != null) {
-      _favSub = FirebaseFirestore.instance
-          .collection('users')
-          .doc(uid)
-          .snapshots()
-          .listen((doc) {
-        if (doc.exists) {
-          final favs = List<String>.from(doc.data()?['favorites'] ?? []);
-          if (mounted) {
-            setState(() {
-              _favoriteIds = favs.toSet();
-            });
-          }
-        }
+      _favSub = _userService.watchFavorites(uid).listen((favs) {
+        if (mounted) setState(() => _favoriteIds = favs.toSet());
       });
     } else {
-      if (mounted) {
-        setState(() {
-          _favoriteIds = {};
-        });
-      }
+      if (mounted) setState(() => _favoriteIds = {});
     }
   }
 
@@ -147,23 +147,6 @@ class _HomeScreenState extends State<HomeScreen> {
     } catch (e) {
       debugPrint('Error toggling favorite: $e');
     }
-  }
-
-  void _startBannerAutoPlay() {
-    _bannerTimer?.cancel();
-    _bannerTimer = Timer.periodic(const Duration(seconds: 4), (timer) {
-      if (_bannerController.hasClients) {
-        int nextPage = _currentBannerIndex + 1;
-        if (nextPage >= banners.length) {
-          nextPage = 0;
-        }
-        _bannerController.animateToPage(
-          nextPage,
-          duration: const Duration(milliseconds: 800),
-          curve: Curves.easeInOutCubic,
-        );
-      }
-    });
   }
 
   Future<void> _loadUserData() async {
@@ -263,8 +246,7 @@ class _HomeScreenState extends State<HomeScreen> {
 
   @override
   void dispose() {
-    _bannerTimer?.cancel();
-    _bannerController.dispose();
+    _ctaAnimController.dispose();
     _authSub?.cancel();
     _favSub?.cancel();
     super.dispose();
@@ -281,7 +263,7 @@ class _HomeScreenState extends State<HomeScreen> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                _buildBannerSlider(),
+                HomeBannerSlider(banners: banners),
                 const SizedBox(height: 20),
                 _buildCategories(),
                 const SizedBox(height: 20),
@@ -311,8 +293,96 @@ class _HomeScreenState extends State<HomeScreen> {
           SafeArea(bottom: false, child: _buildBerandaContent()),
           const SafeArea(bottom: false, child: ExploreScreen()),
           const AgentScreen(), // AgentScreen manages its own SafeArea internally for full-bleed header
+          const ProfileScreen(),
         ],
       ),
+      floatingActionButton: _selectedNavIndex == 0
+          ? ScaleTransition(
+              scale: _ctaScaleAnimation,
+              child: Container(
+                height:
+                    52, // Menambahkan constraint tinggi statis agar terhindar dari bug stretch vertikal
+                decoration: BoxDecoration(
+                  borderRadius: BorderRadius.circular(30),
+                  boxShadow: [
+                    BoxShadow(
+                      color: Colors.black.withValues(alpha: 0.15),
+                      blurRadius: 10,
+                      spreadRadius: 1,
+                      offset: const Offset(0, 4),
+                    ),
+                  ],
+                ),
+                child: ClipRRect(
+                  borderRadius: BorderRadius.circular(30),
+                  child: BackdropFilter(
+                    filter: ImageFilter.blur(sigmaX: 8, sigmaY: 8),
+                    child: Container(
+                      decoration: BoxDecoration(
+                        color: Colors.white.withValues(alpha: 0.6),
+                        borderRadius: BorderRadius.circular(30),
+                        border: Border.all(
+                          color: Colors.white.withValues(alpha: 0.8),
+                          width: 1.5,
+                        ),
+                      ),
+                      child: Material(
+                        color: Colors.transparent,
+                        child: InkWell(
+                          onTap: () {
+                            setState(() => _selectedNavIndex = 2);
+                          },
+                          borderRadius: BorderRadius.circular(30),
+                          child: Padding(
+                            padding: const EdgeInsets.symmetric(horizontal: 16),
+                            child: SizedBox(
+                              height: 52,
+                              child: Row(
+                                mainAxisSize: MainAxisSize.min,
+                                crossAxisAlignment: CrossAxisAlignment.center,
+                                children: [
+                                  Image.asset(
+                                    AppAssets.kitaAiIcon,
+                                    width: 36,
+                                    height: 36,
+                                  ),
+                                  AnimatedBuilder(
+                                    animation: _ctaWidthAnimation,
+                                    builder: (context, child) {
+                                      return ClipRect(
+                                        child: Align(
+                                          alignment: Alignment.centerLeft,
+                                          widthFactor: _ctaWidthAnimation.value,
+                                          child: child,
+                                        ),
+                                      );
+                                    },
+                                    child: Padding(
+                                      padding: const EdgeInsets.only(left: 8),
+                                      child: Text(
+                                        'KITA ASISTEN',
+                                        style: GoogleFonts.poppins(
+                                          fontSize: 14,
+                                          fontWeight: FontWeight.w800,
+                                          color: const Color(0xFF2D5016),
+                                        ),
+                                        maxLines: 1,
+                                        softWrap: false,
+                                      ),
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ),
+                        ),
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+            )
+          : null,
       bottomNavigationBar: _buildBottomNav(),
     );
   }
@@ -501,73 +571,7 @@ class _HomeScreenState extends State<HomeScreen> {
 
   // ─── Banner Slider ─────────────────────────────────────────────────────────
 
-  Widget _buildBannerSlider() {
-    return Column(
-      children: [
-        SizedBox(
-          height: 180,
-          child: NotificationListener<ScrollNotification>(
-            onNotification: (notification) {
-              if (notification is UserScrollNotification) {
-                _startBannerAutoPlay();
-              }
-              return false;
-            },
-            child: PageView.builder(
-              controller: _bannerController,
-              itemCount: 3,
-              onPageChanged: (index) {
-                setState(() => _currentBannerIndex = index);
-              },
-              itemBuilder: (context, index) {
-                return Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 16),
-                  child: ClipRRect(
-                    borderRadius: BorderRadius.circular(16),
-                    child: Container(
-                      color: const Color(0xFF2D5016), // Brand dark green frame
-                      padding: const EdgeInsets.all(6), // Concentric safe margin
-                      child: ClipRRect(
-                        borderRadius: BorderRadius.circular(10), // Parallel concentric curve
-                        child: Image.asset(
-                          banners[index],
-                          fit: BoxFit.fill,
-                          width: double.infinity,
-                          height: double.infinity,
-                        ),
-                      ),
-                    ),
-                  ),
-                );
-              },
-            ),
-          ),
-        ),
-
-        const SizedBox(height: 10),
-
-        // Dot indicator
-        Row(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: List.generate(3, (index) {
-            final isActive = index == _currentBannerIndex;
-            return AnimatedContainer(
-              duration: const Duration(milliseconds: 250),
-              margin: const EdgeInsets.symmetric(horizontal: 3),
-              width: isActive ? 24 : 8,
-              height: 8,
-              decoration: BoxDecoration(
-                color: isActive
-                    ? const Color(0xFF2D5016)
-                    : const Color(0xFFCCCCCC),
-                borderRadius: BorderRadius.circular(4),
-              ),
-            );
-          }),
-        ),
-      ],
-    );
-  }
+  // Banner Slider diekstrak ke widgets/home_banner_slider.dart
 
   // ─── Kategori ──────────────────────────────────────────────────────────────
 
@@ -776,8 +780,9 @@ class _HomeScreenState extends State<HomeScreen> {
   Widget _buildBottomNav() {
     final items = [
       {'icon': Icons.home_rounded, 'label': 'Beranda'},
-      {'icon': Icons.explore_outlined, 'label': 'Explorasi'},
-      {'icon': Icons.smart_toy_outlined, 'label': 'Agent'},
+      {'icon': Icons.explore_outlined, 'label': 'Eksplorasi'},
+      {'icon': Icons.smart_toy_outlined, 'label': 'KITA'},
+      {'icon': Icons.person_outline, 'label': 'Profil'},
     ];
 
     return Container(
@@ -800,7 +805,12 @@ class _HomeScreenState extends State<HomeScreen> {
             children: List.generate(items.length, (index) {
               final isSelected = index == _selectedNavIndex;
               return GestureDetector(
-                onTap: () => setState(() => _selectedNavIndex = index),
+                onTap: () {
+                  setState(() => _selectedNavIndex = index);
+                  if (index == 0) {
+                    _ctaAnimController.forward(from: 0.0);
+                  }
+                },
                 behavior: HitTestBehavior.opaque,
                 child: SizedBox(
                   width: MediaQuery.of(context).size.width / items.length - 8,
@@ -921,19 +931,18 @@ class _RecommendationCard extends StatelessWidget {
                     child: Container(
                       padding: const EdgeInsets.all(5),
                       decoration: BoxDecoration(
-                        color: Colors.white.withOpacity(0.9),
+                        color: Colors.white.withValues(alpha: 0.9),
                         shape: BoxShape.circle,
                         boxShadow: const [
-                          BoxShadow(
-                            color: Color(0x20000000),
-                            blurRadius: 4,
-                          ),
+                          BoxShadow(color: Color(0x20000000), blurRadius: 4),
                         ],
                       ),
                       child: Icon(
                         isFavorite ? Icons.favorite : Icons.favorite_border,
                         size: 16,
-                        color: isFavorite ? Colors.red : const Color(0xFF2D5016),
+                        color: isFavorite
+                            ? Colors.red
+                            : const Color(0xFF2D5016),
                       ),
                     ),
                   ),

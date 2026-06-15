@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import 'dart:async';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:firebase_auth/firebase_auth.dart';
-import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:desa_wisata/services/destination_service.dart';
 import 'package:desa_wisata/services/user_service.dart';
 import 'package:desa_wisata/screens/login_screen.dart';
@@ -41,26 +40,11 @@ class _DestinationDetailScreenState extends State<DestinationDetailScreen> {
   void _subscribeToFavorites(String? uid) {
     _favSub?.cancel();
     if (uid != null) {
-      _favSub = FirebaseFirestore.instance
-          .collection('users')
-          .doc(uid)
-          .snapshots()
-          .listen((doc) {
-        if (doc.exists) {
-          final favs = List<String>.from(doc.data()?['favorites'] ?? []);
-          if (mounted) {
-            setState(() {
-              _isFavorite = favs.contains(widget.destinationId);
-            });
-          }
-        }
+      _favSub = _userService.isFavorite(uid, widget.destinationId).listen((fav) {
+        if (mounted) setState(() => _isFavorite = fav);
       });
     } else {
-      if (mounted) {
-        setState(() {
-          _isFavorite = false;
-        });
-      }
+      if (mounted) setState(() => _isFavorite = false);
     }
   }
 

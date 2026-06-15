@@ -29,7 +29,7 @@ class SocialLoginButton extends StatelessWidget {
         ),
         backgroundColor: Colors.white,
         elevation: 0,
-        shadowColor: Colors.black.withOpacity(0.02),
+        shadowColor: Colors.black.withValues(alpha: 0.02),
       ),
       child: Row(
         mainAxisAlignment: MainAxisAlignment.center,

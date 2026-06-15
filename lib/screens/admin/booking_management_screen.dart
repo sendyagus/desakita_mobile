@@ -352,7 +352,7 @@ class _BookingCard extends StatelessWidget {
                   Container(
                     padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
                     decoration: BoxDecoration(
-                      color: getStatusColor(status).withOpacity(0.1),
+                      color: getStatusColor(status).withValues(alpha: 0.1),
                       borderRadius: BorderRadius.circular(20),
                     ),
                     child: Text(
@@ -475,7 +475,7 @@ class _BookingDetailSheet extends StatelessWidget {
               Container(
                 padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
                 decoration: BoxDecoration(
-                  color: getStatusColor(status).withOpacity(0.1),
+                  color: getStatusColor(status).withValues(alpha: 0.1),
                   borderRadius: BorderRadius.circular(20),
                 ),
                 child: Text(

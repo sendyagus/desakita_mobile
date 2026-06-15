@@ -1,0 +1,22 @@
+{
+  "version": "0.2.0",
+  "configurations": [
+    {
+      "name": "DesaKita (env.json)",
+      "request": "launch",
+      "type": "dart",
+      "toolArgs": [
+        "--dart-define-from-file=env.json"
+      ]
+    },
+    {
+      "name": "DesaKita (Chrome + env.json)",
+      "request": "launch",
+      "type": "dart",
+      "deviceId": "chrome",
+      "toolArgs": [
+        "--dart-define-from-file=env.json"
+      ]
+    }
+  ]
+}

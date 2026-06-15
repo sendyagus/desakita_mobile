@@ -220,7 +220,7 @@ class _NotificationScreenState extends State<NotificationScreen> {
                           vertical: 4,
                         ),
                         decoration: BoxDecoration(
-                          color: const Color(0xFF2D5016).withOpacity(0.1),
+                          color: const Color(0xFF2D5016).withValues(alpha: 0.1),
                           borderRadius: BorderRadius.circular(20),
                         ),
                         child: Text(
@@ -257,7 +257,6 @@ class _NotificationScreenState extends State<NotificationScreen> {
                         key: Key(item.id),
                         direction: DismissDirection.endToStart,
                         onDismissed: (direction) {
-                          final title = item.title;
                           _deleteNotification(item.id);
                           ScaffoldMessenger.of(context).showSnackBar(
                             SnackBar(
@@ -313,17 +312,19 @@ class _NotificationScreenState extends State<NotificationScreen> {
                               borderRadius: BorderRadius.circular(16),
                               border: Border.all(
                                 color: item.isRead
-                                    ? Colors.grey.withOpacity(0.08)
-                                    : const Color(0xFF2D5016).withOpacity(0.12),
+                                    ? Colors.grey.withValues(alpha: 0.08)
+                                    : const Color(
+                                        0xFF2D5016,
+                                      ).withValues(alpha: 0.12),
                                 width: 1.5,
                               ),
                               boxShadow: [
                                 BoxShadow(
                                   color: item.isRead
-                                      ? Colors.black.withOpacity(0.02)
+                                      ? Colors.black.withValues(alpha: 0.02)
                                       : const Color(
                                           0xFF2D5016,
-                                        ).withOpacity(0.04),
+                                        ).withValues(alpha: 0.04),
                                   blurRadius: 8,
                                   offset: const Offset(0, 4),
                                 ),
@@ -339,7 +340,7 @@ class _NotificationScreenState extends State<NotificationScreen> {
                                   decoration: BoxDecoration(
                                     color: _getTypeColor(
                                       item.type,
-                                    ).withOpacity(0.1),
+                                    ).withValues(alpha: 0.1),
                                     shape: BoxShape.circle,
                                   ),
                                   child: Icon(
@@ -367,7 +368,7 @@ class _NotificationScreenState extends State<NotificationScreen> {
                                             decoration: BoxDecoration(
                                               color: _getTypeColor(
                                                 item.type,
-                                              ).withOpacity(0.12),
+                                              ).withValues(alpha: 0.12),
                                               borderRadius:
                                                   BorderRadius.circular(6),
                                             ),

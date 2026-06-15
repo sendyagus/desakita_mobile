@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:intl/intl.dart';
+import 'package:desa_wisata/utils/price_helper.dart';
 import 'payment_screen.dart';
 
 class CreateBookingScreen extends StatefulWidget {
@@ -29,20 +30,14 @@ class _CreateBookingScreenState extends State<CreateBookingScreen> {
     return _checkOutDate!.difference(_checkInDate!).inDays;
   }
 
-  double get _pricePerDay {
-    final priceStr = _destinationPrice.replaceAll(RegExp(r'[^0-9]'), '');
-    return double.tryParse(priceStr) ?? 0;
-  }
+  double get _pricePerDay => PriceHelper.toNumber(_destinationPrice);
 
   double get _totalPrice {
     if (_numberOfDays <= 0) return 0;
     return _pricePerDay * _numberOfDays * _guestCount;
   }
 
-  String get _formattedTotalPrice {
-    final formatter = NumberFormat.currency(locale: 'id_ID', symbol: 'Rp ', decimalDigits: 0);
-    return formatter.format(_totalPrice);
-  }
+  String get _formattedTotalPrice => PriceHelper.format(_totalPrice);
 
   Future<void> _selectCheckInDate() async {
     final now = DateTime.now();
@@ -381,7 +376,7 @@ class _CreateBookingScreenState extends State<CreateBookingScreen> {
       decoration: BoxDecoration(
         color: const Color(0xFFEEF2E8),
         borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: const Color(0xFF2D5016).withOpacity(0.2)),
+        border: Border.all(color: const Color(0xFF2D5016).withValues(alpha: 0.2)),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,

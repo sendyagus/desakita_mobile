@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:desa_wisata/app/app_assets.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:desa_wisata/screens/register_screen.dart';
 import 'package:desa_wisata/screens/home_screen.dart';
@@ -10,6 +11,7 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:desa_wisata/widgets/auth_header.dart';
 import 'package:desa_wisata/widgets/custom_text_field.dart';
 import 'package:desa_wisata/widgets/social_login_button.dart';
+
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
 
@@ -59,11 +61,13 @@ class _LoginScreenState extends State<LoginScreen> {
 
       await _navigateAfterAuth(user);
     } on FirebaseAuthException catch (error) {
+      if (!mounted) return;
       ErrorHandler.showErrorSnackBar(
         context,
         ErrorHandler.getAuthErrorMessage(error),
       );
     } catch (_) {
+      if (!mounted) return;
       ErrorHandler.showErrorSnackBar(
         context,
         'Login gagal. Periksa koneksi internet Anda',
@@ -146,8 +150,9 @@ class _LoginScreenState extends State<LoginScreen> {
                           return 'Email tidak boleh kosong';
                         }
                         final email = value.trim();
-                        if (!RegExp(r'^[\w-.]+@([\w-]+\.)+[\w-]{2,}$')
-                            .hasMatch(email)) {
+                        if (!RegExp(
+                          r'^[\w-.]+@([\w-]+\.)+[\w-]{2,}$',
+                        ).hasMatch(email)) {
                           return 'Format email tidak valid';
                         }
                         return null;
@@ -258,7 +263,8 @@ class _LoginScreenState extends State<LoginScreen> {
                           Navigator.pushReplacement(
                             context,
                             MaterialPageRoute(
-                                builder: (_) => const HomeScreen()),
+                              builder: (_) => const HomeScreen(),
+                            ),
                           );
                         },
                         style: ElevatedButton.styleFrom(
@@ -284,7 +290,9 @@ class _LoginScreenState extends State<LoginScreen> {
                     // Divider "atau masuk dengan"
                     Row(
                       children: [
-                        const Expanded(child: Divider(color: Color(0xFFDDDDDD))),
+                        const Expanded(
+                          child: Divider(color: Color(0xFFDDDDDD)),
+                        ),
                         Padding(
                           padding: const EdgeInsets.symmetric(horizontal: 12),
                           child: Text(
@@ -295,7 +303,9 @@ class _LoginScreenState extends State<LoginScreen> {
                             ),
                           ),
                         ),
-                        const Expanded(child: Divider(color: Color(0xFFDDDDDD))),
+                        const Expanded(
+                          child: Divider(color: Color(0xFFDDDDDD)),
+                        ),
                       ],
                     ),
 
@@ -307,7 +317,7 @@ class _LoginScreenState extends State<LoginScreen> {
                         Expanded(
                           child: SocialLoginButton(
                             label: 'Google',
-                            iconPath: 'assets/icon/google.jpg',
+                            iconPath: AppAssets.googleIcon,
                             onPressed: () {
                               ErrorHandler.showInfoSnackBar(
                                 context,
@@ -320,7 +330,7 @@ class _LoginScreenState extends State<LoginScreen> {
                         Expanded(
                           child: SocialLoginButton(
                             label: 'Facebook',
-                            iconPath: 'assets/icon/faceboook.jpg',
+                            iconPath: AppAssets.facebookIcon,
                             onPressed: () {
                               ErrorHandler.showInfoSnackBar(
                                 context,
@@ -378,5 +388,4 @@ class _LoginScreenState extends State<LoginScreen> {
       ),
     );
   }
-
 }

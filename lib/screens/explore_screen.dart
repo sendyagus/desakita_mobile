@@ -39,6 +39,7 @@ class _ExploreScreenState extends State<ExploreScreen> {
   int _selectedFilterIndex = 0;
   _ExploreSortOption _sortOption = _ExploreSortOption.ratingHigh;
   final TextEditingController _searchController = TextEditingController();
+  late final Stream<QuerySnapshot> _destinationsStream;
 
   final List<String> _filters = AppCategories.exploreFilters;
   final UserService _userService = UserService();
@@ -102,6 +103,10 @@ class _ExploreScreenState extends State<ExploreScreen> {
   @override
   void initState() {
     super.initState();
+    _destinationsStream = FirebaseFirestore.instance
+        .collection('destinations')
+        .where('status', isEqualTo: true)
+        .snapshots();
     _authSub = FirebaseAuth.instance.userChanges().listen((user) {
       _subscribeToFavorites(user?.uid);
     });
@@ -183,10 +188,7 @@ class _ExploreScreenState extends State<ExploreScreen> {
       backgroundColor: const Color(0xFFF5F5F0),
       body: SafeArea(
         child: StreamBuilder<QuerySnapshot>(
-          stream: FirebaseFirestore.instance
-              .collection('destinations')
-              .where('status', isEqualTo: true)
-              .snapshots(),
+          stream: _destinationsStream,
           builder: (context, snapshot) {
             if (snapshot.hasError) {
               return Center(

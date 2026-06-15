@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:desa_wisata/app/app_assets.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:desa_wisata/services/auth_service.dart';
 import 'package:desa_wisata/utils/error_handler.dart';
@@ -297,7 +298,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
                         Expanded(
                           child: SocialLoginButton(
                             label: 'Google',
-                            iconPath: 'assets/icon/google.jpg',
+                            iconPath: AppAssets.googleIcon,
                             onPressed: () {
                               ErrorHandler.showInfoSnackBar(
                                 context,
@@ -310,7 +311,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
                         Expanded(
                           child: SocialLoginButton(
                             label: 'Facebook',
-                            iconPath: 'assets/icon/faceboook.jpg',
+                            iconPath: AppAssets.facebookIcon,
                             onPressed: () {
                               ErrorHandler.showInfoSnackBar(
                                 context,

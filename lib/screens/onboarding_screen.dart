@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
+import 'package:desa_wisata/app/app_assets.dart';
+import 'package:desa_wisata/app/app_routes.dart';
 import 'package:google_fonts/google_fonts.dart';
-import 'package:desa_wisata/widgets/auth_gate.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 class OnboardingScreen extends StatefulWidget {
   const OnboardingScreen({super.key});
@@ -20,21 +22,21 @@ class _OnboardingScreenState extends State<OnboardingScreen>
 
   final List<_OnboardingData> _pages = const [
     _OnboardingData(
-      image: 'assets/img/cs1.png',
+      image: AppAssets.onboardingCommunity,
       title: 'Selamat Datang di\nDesaKita',
       description:
           'Discover the best rural destinations in Kemiling, Bandar Lampung. Explore nature, culture, and more!',
       icon: Icons.explore_rounded,
     ),
     _OnboardingData(
-      image: 'assets/img/cs2.png',
+      image: AppAssets.onboardingExplore,
       title: 'Informasi lengkap\ndan terpercaya',
       description:
           'Akses informasi destinasi wisata, fasilitas, aktivitas, serta rekomendasi terbaik untuk perjalanan anda.',
       icon: Icons.verified_rounded,
     ),
     _OnboardingData(
-      image: 'assets/img/cs3.jpg',
+      image: AppAssets.onboardingBooking,
       title: 'Rencanakan perjalanan\ndengan mudah',
       description:
           'Tanpa agen! Cari destinasi wisata terbaik, nikmati pemandangan dan aktivitas terbaik di desa wisata Kemiling.',
@@ -84,17 +86,11 @@ class _OnboardingScreenState extends State<OnboardingScreen>
     }
   }
 
-  void _goToApp() {
-    Navigator.of(context).pushReplacement(
-      PageRouteBuilder(
-        pageBuilder: (context, animation, secondaryAnimation) =>
-            const AuthGate(),
-        transitionsBuilder: (context, animation, secondaryAnimation, child) {
-          return FadeTransition(opacity: animation, child: child);
-        },
-        transitionDuration: const Duration(milliseconds: 500),
-      ),
-    );
+  Future<void> _goToApp() async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setBool('has_seen_onboarding', true);
+    if (!mounted) return;
+    Navigator.of(context).pushReplacementNamed(AppRoutes.auth);
   }
 
   @override
@@ -169,7 +165,6 @@ class _OnboardingScreenState extends State<OnboardingScreen>
           // (Sudah digabung dalam PageView.builder untuk smoother transition)
 
           // ── Logo top-left ────────────────────────────────────────────────
-         
 
           // ── Bottom white card ────────────────────────────────────────────
           Align(

@@ -1,4 +1,5 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:desa_wisata/utils/price_helper.dart';
 
 /// Service untuk mendapatkan statistik dashboard admin
 class StatsService {
@@ -81,22 +82,10 @@ class StatsService {
     
     int total = 0;
     for (var doc in snap.docs) {
-      final priceStr = doc.data()['totalPrice'] as String? ?? '0';
-      // Extract numbers from price string (e.g., "Rp 450.000" -> 450000)
-      final numStr = priceStr.replaceAll(RegExp(r'[^0-9]'), '');
-      total += int.tryParse(numStr) ?? 0;
+      total += PriceHelper.toInt(doc.data()['totalPrice']);
     }
 
-    // Format to Indonesian currency
-    if (total >= 1000000) {
-      final juta = (total / 1000000).toStringAsFixed(1);
-      return 'Rp $juta Jt';
-    } else if (total >= 1000) {
-      final ribu = (total / 1000).toStringAsFixed(0);
-      return 'Rp $ribu Rb';
-    } else {
-      return 'Rp $total';
-    }
+    return PriceHelper.format(total);
   }
 
   /// Get all stats at once

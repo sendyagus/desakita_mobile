@@ -1,4 +1,5 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:desa_wisata/utils/firestore_pager.dart';
 
 /// Booking di Firestore (`bookings`) dengan snapshot destinasi untuk ganti join SQL.
 class BookingService {
@@ -63,11 +64,6 @@ class BookingService {
     };
   }
 
-  Future<int> _getDestinationStock(String destinationId) async {
-    final doc = await _db.collection(_destinations).doc(destinationId).get();
-    return (doc.data()?['stock'] as num?)?.toInt() ?? 0;
-  }
-
   Future<Map<String, dynamic>> createBooking({
     required String destinationId,
     required String userId,
@@ -76,44 +72,56 @@ class BookingService {
     required int guestCount,
     required String totalPrice,
   }) async {
-    final stock = await _getDestinationStock(destinationId);
-    if (stock <= 0) {
-      throw Exception('Stok habis. Pilih tempat lain atau hubungi admin.');
-    }
+    final destRef = _db.collection(_destinations).doc(destinationId);
+    final userRef = _db.collection(_users).doc(userId);
+    final bookingRef = _db.collection(_bookings).doc();
 
-    final destSnap = await _db.collection(_destinations).doc(destinationId).get();
-    final dest = destSnap.data() ?? {};
-    if (dest['bookable'] != true) {
-      throw Exception('Destinasi ini tidak tersedia untuk booking.');
-    }
+    await _db.runTransaction((tx) async {
+      // Baca destinasi & user di dalam transaction (atomic)
+      final destSnap = await tx.get(destRef);
+      final userSnap = await tx.get(userRef);
 
-    final userSnap = await _db.collection(_users).doc(userId).get();
-    final user = userSnap.data() ?? {};
+      if (!destSnap.exists) {
+        throw Exception('Destinasi tidak ditemukan.');
+      }
 
-    final now = FieldValue.serverTimestamp();
-    final ref = _db.collection(_bookings).doc();
-    await ref.set({
-      'destinationId': destinationId,
-      'userId': userId,
-      'checkIn': Timestamp.fromDate(checkIn),
-      'checkOut': Timestamp.fromDate(checkOut),
-      'guestCount': guestCount,
-      'totalPrice': totalPrice,
-      'status': 'pending',
-      'destinationName': dest['name'] ?? '',
-      'destinationCategory': dest['category'],
-      'destinationLocation': dest['location'],
-      'destinationRating': dest['rating'],
-      'destinationPrice': dest['price'],
-      'destinationImageUrl': dest['imageUrl'],
-      'userFullName': user['fullName'] ?? '',
-      'userEmail': user['email'] ?? '',
-      'userPhone': user['phone'] ?? '',
-      'createdAt': now,
-      'updatedAt': now,
+      final dest = destSnap.data()!;
+
+      if (dest['bookable'] != true) {
+        throw Exception('Destinasi ini tidak tersedia untuk booking.');
+      }
+
+      final stock = (dest['stock'] as num?)?.toInt() ?? 0;
+      if (stock <= 0) {
+        throw Exception('Stok habis. Pilih tempat lain atau hubungi admin.');
+      }
+
+      final user = userSnap.data() ?? {};
+
+      // Buat dokumen booking di dalam transaction
+      tx.set(bookingRef, {
+        'destinationId': destinationId,
+        'userId': userId,
+        'checkIn': Timestamp.fromDate(checkIn),
+        'checkOut': Timestamp.fromDate(checkOut),
+        'guestCount': guestCount,
+        'totalPrice': totalPrice,
+        'status': 'pending',
+        'destinationName': dest['name'] ?? '',
+        'destinationCategory': dest['category'],
+        'destinationLocation': dest['location'],
+        'destinationRating': dest['rating'],
+        'destinationPrice': dest['price'],
+        'destinationImageUrl': dest['imageUrl'],
+        'userFullName': user['fullName'] ?? '',
+        'userEmail': user['email'] ?? '',
+        'userPhone': user['phone'] ?? '',
+        'createdAt': FieldValue.serverTimestamp(),
+        'updatedAt': FieldValue.serverTimestamp(),
+      });
     });
 
-    final doc = await ref.get();
+    final doc = await bookingRef.get();
     return _docToBookingMap(doc.id, doc.data()!);
   }
 
@@ -159,6 +167,38 @@ class BookingService {
         return cb.compareTo(ca);
       });
     return list;
+  }
+
+  /// Ambil semua booking dengan paginasi cursor-based (terbaru dulu).
+  Future<PagedResult<Map<String, dynamic>>> getBookingsPaged({
+    int pageSize = 20,
+    DocumentSnapshot? startAfter,
+  }) async {
+    return FirestorePager.queryMap(
+      collection: _db
+          .collection(_bookings)
+          .orderBy('createdAt', descending: true),
+      pageSize: pageSize,
+      startAfter: startAfter,
+      mapper: (id, data) => _docToBookingMap(id, data),
+    );
+  }
+
+  /// Ambil booking milik satu user dengan paginasi.
+  Future<PagedResult<Map<String, dynamic>>> getUserBookingsPaged({
+    required String userId,
+    int pageSize = 10,
+    DocumentSnapshot? startAfter,
+  }) async {
+    return FirestorePager.queryMap(
+      collection: _db
+          .collection(_bookings)
+          .where('userId', isEqualTo: userId)
+          .orderBy('createdAt', descending: true),
+      pageSize: pageSize,
+      startAfter: startAfter,
+      mapper: (id, data) => _docToBookingMap(id, data),
+    );
   }
 
   Future<void> updateBookingStatus(String bookingId, String status) async {

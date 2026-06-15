@@ -1,7 +1,9 @@
 import 'dart:async';
+import 'package:desa_wisata/app/app_assets.dart';
+import 'package:desa_wisata/app/app_routes.dart';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
-import 'package:desa_wisata/screens/onboarding_screen.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 class OpeningScreen extends StatefulWidget {
   const OpeningScreen({super.key});
@@ -41,18 +43,20 @@ class _OpeningScreenState extends State<OpeningScreen>
     _logoScale = Tween<double>(begin: 0.4, end: 1.0).animate(
       CurvedAnimation(parent: _logoController, curve: Curves.elasticOut),
     );
-    _logoOpacity = Tween<double>(begin: 0.0, end: 1.0).animate(
-      CurvedAnimation(parent: _logoController, curve: Curves.easeIn),
-    );
+    _logoOpacity = Tween<double>(
+      begin: 0.0,
+      end: 1.0,
+    ).animate(CurvedAnimation(parent: _logoController, curve: Curves.easeIn));
 
     // Text slide up + fade
     _textController = AnimationController(
       vsync: this,
       duration: const Duration(milliseconds: 700),
     );
-    _textOpacity = Tween<double>(begin: 0.0, end: 1.0).animate(
-      CurvedAnimation(parent: _textController, curve: Curves.easeIn),
-    );
+    _textOpacity = Tween<double>(
+      begin: 0.0,
+      end: 1.0,
+    ).animate(CurvedAnimation(parent: _textController, curve: Curves.easeIn));
     _textSlide = Tween<Offset>(
       begin: const Offset(0, 0.5),
       end: Offset.zero,
@@ -62,6 +66,10 @@ class _OpeningScreenState extends State<OpeningScreen>
   }
 
   Future<void> _runAnimationSequence() async {
+    // Cek apakah pengguna sudah pernah melihat onboarding
+    final prefs = await SharedPreferences.getInstance();
+    final hasSeenOnboarding = prefs.getBool('has_seen_onboarding') ?? false;
+
     // 1. Background fade in
     await _bgController.forward();
 
@@ -77,16 +85,12 @@ class _OpeningScreenState extends State<OpeningScreen>
     await Future.delayed(const Duration(milliseconds: 1400));
 
     if (mounted) {
-      Navigator.of(context).pushReplacement(
-        PageRouteBuilder(
-          pageBuilder: (context, animation, secondaryAnimation) =>
-              const OnboardingScreen(),
-          transitionsBuilder: (context, animation, secondaryAnimation, child) {
-            return FadeTransition(opacity: animation, child: child);
-          },
-          transitionDuration: const Duration(milliseconds: 600),
-        ),
-      );
+      if (hasSeenOnboarding) {
+        // Langsung ke AuthGate jika sudah pernah melihat onboarding
+        Navigator.of(context).pushReplacementNamed(AppRoutes.auth);
+      } else {
+        Navigator.of(context).pushReplacementNamed(AppRoutes.onboarding);
+      }
     }
   }
 
@@ -108,10 +112,7 @@ class _OpeningScreenState extends State<OpeningScreen>
           fit: StackFit.expand,
           children: [
             // ── Background image ──────────────────────────────────────────
-            Image.asset(
-              'assets/img/desakita.jpg',
-              fit: BoxFit.cover,
-            ),
+            Image.asset(AppAssets.desakitaLogo, fit: BoxFit.cover),
 
             // ── Dark gradient overlay ─────────────────────────────────────
             Container(
@@ -143,10 +144,10 @@ class _OpeningScreenState extends State<OpeningScreen>
                         width: 100,
                         height: 100,
                         decoration: BoxDecoration(
-                          color: Colors.white.withOpacity(0.15),
+                          color: Colors.white.withValues(alpha: 0.15),
                           shape: BoxShape.circle,
                           border: Border.all(
-                            color: Colors.white.withOpacity(0.4),
+                            color: Colors.white.withValues(alpha: 0.4),
                             width: 2,
                           ),
                         ),
@@ -190,7 +191,7 @@ class _OpeningScreenState extends State<OpeningScreen>
                             style: GoogleFonts.poppins(
                               fontSize: 13,
                               fontWeight: FontWeight.w400,
-                              color: Colors.white.withOpacity(0.82),
+                              color: Colors.white.withValues(alpha: 0.82),
                               letterSpacing: 0.4,
                             ),
                           ),
@@ -214,7 +215,7 @@ class _OpeningScreenState extends State<OpeningScreen>
                     width: 28,
                     height: 28,
                     child: CircularProgressIndicator(
-                      color: Colors.white.withOpacity(0.7),
+                      color: Colors.white.withValues(alpha: 0.7),
                       strokeWidth: 2.5,
                     ),
                   ),

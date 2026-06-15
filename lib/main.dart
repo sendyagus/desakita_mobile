@@ -1,74 +1,49 @@
-import 'dart:ui';
-import 'package:firebase_core/firebase_core.dart';
-import 'package:flutter/material.dart';
-import 'package:flutter/foundation.dart';
+import 'dart:async';
+
 import 'package:device_preview/device_preview.dart';
-import 'package:desa_wisata/screens/home_screen.dart';
-import 'package:desa_wisata/screens/login_screen.dart';
-import 'package:desa_wisata/screens/opening_screen.dart';
-import 'package:desa_wisata/screens/onboarding_screen.dart';
-import 'package:desa_wisata/widgets/auth_gate.dart';
+import 'package:firebase_core/firebase_core.dart';
+import 'package:flutter/foundation.dart';
+import 'package:flutter/material.dart';
+
+import 'package:desa_wisata/app/desa_kita_app.dart';
+import 'package:desa_wisata/app/theme/theme_notifier.dart';
 import 'package:desa_wisata/firebase_options.dart';
 
-class MyCustomScrollBehavior extends MaterialScrollBehavior {
-  @override
-  Set<PointerDeviceKind> get dragDevices => {
-        PointerDeviceKind.touch,
-        PointerDeviceKind.mouse,
-        PointerDeviceKind.trackpad,
-      };
-}
-
 Future<void> main() async {
-  WidgetsFlutterBinding.ensureInitialized();
+  // Global error handler — tangkap error yang tidak di-handle oleh try/catch.
+  runZonedGuarded(() async {
+    WidgetsFlutterBinding.ensureInitialized();
 
-  // Initialize Firebase dengan options untuk semua platform
-  try {
-    await Firebase.initializeApp(
-      options: DefaultFirebaseOptions.currentPlatform,
-    );
-    debugPrint('✅ Firebase initialized successfully');
-  } catch (e) {
-    debugPrint('❌ Firebase initialization error: $e');
-  }
+    // Muat preferensi tema dari SharedPreferences
+    await ThemeNotifier.instance.load();
 
-  // Run app dengan DevicePreview
-  // Aktif hanya di debug mode, non-aktif di release mode
-  runApp(
-    DevicePreview(
-      enabled: !kReleaseMode, // Aktif di debug mode, non-aktif di release
-      builder: (context) => const DesaKitaApp(),
-    ),
-  );
-}
+    // Tangkap error dari widget build / framework Flutter.
+    FlutterError.onError = (details) {
+      debugPrint('🔴 FlutterError: ${details.exceptionAsString()}');
+      if (details.stack != null) debugPrint(details.stack.toString());
+    };
 
-class DesaKitaApp extends StatelessWidget {
-  const DesaKitaApp({super.key});
+    // Initialize Firebase dengan options untuk semua platform
+    try {
+      await Firebase.initializeApp(
+        options: DefaultFirebaseOptions.currentPlatform,
+      );
+      debugPrint('✅ Firebase initialized successfully');
+    } catch (e) {
+      debugPrint('❌ Firebase initialization error: $e');
+    }
 
-  @override
-  Widget build(BuildContext context) {
-    return MaterialApp(
-      // DevicePreview configuration
-      locale: DevicePreview.locale(context),
-      builder: DevicePreview.appBuilder,
-      scrollBehavior: MyCustomScrollBehavior(),
-
-      title: 'DesaKita',
-      debugShowCheckedModeBanner: false,
-      theme: ThemeData(
-        colorScheme: ColorScheme.fromSeed(
-          seedColor: const Color(0xFF2D5016),
-          primary: const Color(0xFF2D5016),
-        ),
-        useMaterial3: true,
+    // Run app dengan DevicePreview
+    // Aktif hanya di debug mode, non-aktif di release mode
+    runApp(
+      DevicePreview(
+        enabled: !kReleaseMode,
+        builder: (context) => const DesaKitaApp(),
       ),
-      routes: {
-        '/home': (context) => const HomeScreen(),
-        '/login': (context) => const LoginScreen(),
-        '/auth': (context) => const AuthGate(),
-        '/onboarding': (context) => const OnboardingScreen(),
-      },
-      home: const OpeningScreen(),
     );
-  }
+  }, (error, stack) {
+    // Tangkap error async yang lolos dari zona (uncaught).
+    debugPrint('🔴 Uncaught error: $error');
+    debugPrint(stack.toString());
+  });
 }

@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:desa_wisata/app/app_assets.dart';
 import 'package:google_fonts/google_fonts.dart';
 
 class AuthHeader extends StatelessWidget {
@@ -16,16 +17,14 @@ class AuthHeader extends StatelessWidget {
           Container(
             decoration: const BoxDecoration(
               image: DecorationImage(
-                image: AssetImage('assets/img/desakita.jpg'),
+                image: AssetImage(AppAssets.desakitaLogo),
                 fit: BoxFit.cover,
               ),
             ),
           ),
 
           // Overlay pattern untuk efek sawah/alam
-          CustomPaint(
-            painter: _NaturePainter(),
-          ),
+          CustomPaint(painter: _NaturePainter()),
 
           // Overlay gelap di bagian bawah untuk transisi
           Positioned(
@@ -38,10 +37,7 @@ class AuthHeader extends StatelessWidget {
                 gradient: LinearGradient(
                   begin: Alignment.topCenter,
                   end: Alignment.bottomCenter,
-                  colors: [
-                    Colors.transparent,
-                    Color(0x662D5016),
-                  ],
+                  colors: [Colors.transparent, Color(0x662D5016)],
                 ),
               ),
             ),
@@ -92,11 +88,7 @@ class AuthHeader extends StatelessWidget {
                 ),
                 const SizedBox(height: 4),
                 // Ikon daun kecil
-                const Icon(
-                  Icons.eco,
-                  color: Color(0xFFB8E06A),
-                  size: 20,
-                ),
+                const Icon(Icons.eco, color: Color(0xFFB8E06A), size: 20),
               ],
             ),
           ),
@@ -111,7 +103,7 @@ class _NaturePainter extends CustomPainter {
   @override
   void paint(Canvas canvas, Size size) {
     final paint = Paint()
-      ..color = Colors.white.withOpacity(0.04)
+      ..color = Colors.white.withValues(alpha: 0.04)
       ..style = PaintingStyle.stroke
       ..strokeWidth = 1.5;
 
@@ -133,7 +125,7 @@ class _NaturePainter extends CustomPainter {
 
     // Titik-titik kecil seperti tanaman
     final dotPaint = Paint()
-      ..color = Colors.white.withOpacity(0.06)
+      ..color = Colors.white.withValues(alpha: 0.06)
       ..style = PaintingStyle.fill;
 
     for (int row = 0; row < 6; row++) {

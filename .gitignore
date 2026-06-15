@@ -47,7 +47,28 @@ app.*.map.json
 # Firebase / Google (jangan commit kunci)
 **/serviceAccountKey.json
 lib/services/*.json
+lib/config/gemini_secrets.dart
+lib/config/gemini_secrets.local.dart
+env.json
+secrets.json
+.env
+.env.*
+!.env.example
+!env.example.json
 !android/app/google-services.json
 !firebase.json
 !firestore.indexes.json
 tools/migrate_supabase_to_firestore/export.json
+
+# Android signing (jangan commit keystore & credentials)
+android/key.properties
+**/*.keystore
+**/*.jks
+**/*.p12
+**/*.pfx
+**/*.pem
+!ios/**/*.p12
+
+# Credential dumps
+**/credentials.json
+**/service-account*.json

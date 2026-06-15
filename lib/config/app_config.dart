@@ -7,35 +7,42 @@ class AppConfig {
   static const String webGoogleClientId =
       '866210125594-sbafjaiafirlc7bt98snnd78gcfrb2ni.apps.googleusercontent.com';
 
-  /// Google Gemini API Key.
-  /// Load from --dart-define=GEMINI_API_KEY=your_key or fallback.
-  static const String geminiApiKey = String.fromEnvironment(
-    'GEMINI_API_KEY',
-    defaultValue: 'AIzaSyD9Dm7MJjAnIR46nYPDl4pKBAPlZSUAc0o',
-  );
+  // ─── Groq AI Configuration ──────────────────────────────────────────────
 
-  /// Nama model Gemini (Generative Language API).
+  /// Groq API Key — hanya dari compile-time define (env.json / CI).
   ///
-  /// Model lama seperti `gemini-1.5-flash` sudah di-shutdown dan mengembalikan 404.
-  /// Override via `--dart-define=GEMINI_MODEL=gemini-2.5-flash`.
-  static const String geminiModel = String.fromEnvironment(
-    'GEMINI_MODEL',
-    defaultValue: 'gemini-2.5-flash',
+  /// Jalankan dengan:
+  /// `flutter run --dart-define-from-file=env.json`
+  ///
+  /// File [env.json] ada di .gitignore dan tidak pernah di-commit.
+  static const String groqApiKey = String.fromEnvironment('GROQ_API_KEY');
+
+  /// API key yang dibersihkan dari spasi, kutip dua, atau kutip satu akibat parsing terminal.
+  static String get cleanGroqApiKey =>
+      groqApiKey.trim().replaceAll('"', '').replaceAll("'", "");
+
+  /// Apakah API key Groq sudah dikonfigurasi.
+  static bool get isGroqConfigured {
+    final cleanKey = cleanGroqApiKey;
+    return cleanKey.isNotEmpty && cleanKey != 'YOUR_GROQ_API_KEY_HERE';
+  }
+
+  /// Nama model Groq utama.
+  static const String groqModel = String.fromEnvironment(
+    'GROQ_MODEL',
+    defaultValue: 'llama-3.3-70b-versatile',
   );
 
-  /// Model cadangan jika model utama sibuk (503) atau overload.
-  static const String geminiFallbackModel = String.fromEnvironment(
-    'GEMINI_FALLBACK_MODEL',
-    defaultValue: 'gemini-2.5-flash-lite',
+  /// Model cadangan jika model utama sibuk (429) atau overload.
+  static const String groqFallbackModel = String.fromEnvironment(
+    'GROQ_FALLBACK_MODEL',
+    defaultValue: 'deepseek-r1-distill-llama-70b',
   );
 
-  /// Jumlah percobaan ulang saat server Gemini sibuk (503/429).
-  static const int geminiMaxRetries = 3;
+  /// Jumlah percobaan ulang saat server Groq sibuk (429/503).
+  static const int groqMaxRetries = 3;
 
-  /// Versi API yang dipakai package `google_generative_ai` (default: v1beta).
-  static const String geminiApiVersion = 'v1beta';
-
-  /// Endpoint base Generative Language API.
-  static String geminiGenerateContentEndpoint(String model) =>
-      'https://generativelanguage.googleapis.com/$geminiApiVersion/models/$model:generateContent';
+  /// Endpoint Groq Chat Completions (OpenAI-compatible).
+  static const String groqEndpoint =
+      'https://api.groq.com/openai/v1/chat/completions';
 }

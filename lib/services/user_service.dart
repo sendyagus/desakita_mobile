@@ -119,4 +119,22 @@ class UserService {
     if (!doc.exists || doc.data() == null) return [];
     return List<String>.from(doc.data()!['favorites'] ?? []);
   }
+
+  /// Stream favorit secara real-time. Pakai ini di screen agar tidak perlu
+  /// subscribe manual ke Firestore collection('users').doc(uid).snapshots().
+  Stream<List<String>> watchFavorites(String userId) {
+    return _db
+        .collection(_col)
+        .doc(userId)
+        .snapshots()
+        .map((doc) {
+          if (!doc.exists || doc.data() == null) return <String>[];
+          return List<String>.from(doc.data()!['favorites'] ?? []);
+        });
+  }
+
+  /// Cek apakah satu destinasi ada di favorit user (real-time).
+  Stream<bool> isFavorite(String userId, String destinationId) {
+    return watchFavorites(userId).map((favs) => favs.contains(destinationId));
+  }
 }

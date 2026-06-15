@@ -1,5 +1,6 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:desa_wisata/config/app_categories.dart';
+import 'package:desa_wisata/utils/firestore_pager.dart';
 
 /// CRUD destinasi wisata di Firestore (`destinations`).
 /// Map yang dikembalikan memakai key snake_case agar kompatibel dengan kode lama.
@@ -114,6 +115,22 @@ class DestinationService {
       return rb.compareTo(ra);
     });
     return list;
+  }
+
+  /// Ambil destinasi aktif dengan paginasi cursor-based.
+  ///
+  /// - [pageSize]: jumlah item per halaman (default 20)
+  /// - [startAfter]: dokumen terakhir halaman sebelumnya (null = halaman pertama)
+  Future<PagedResult<Map<String, dynamic>>> getDestinationsPaged({
+    int pageSize = 20,
+    DocumentSnapshot? startAfter,
+  }) async {
+    return FirestorePager.queryMap(
+      collection: _db.collection(_col).where('status', isEqualTo: true),
+      pageSize: pageSize,
+      startAfter: startAfter,
+      mapper: (id, data) => _docToMap(id, data),
+    );
   }
 
   Future<List<Map<String, dynamic>>> getDestinationsByCategory(

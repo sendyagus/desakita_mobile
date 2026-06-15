@@ -58,28 +58,50 @@ class EventService {
   Future<List<Map<String, dynamic>>> getUpcomingEvents() async {
     final now = DateTime.now();
     final today = DateTime(now.year, now.month, now.day);
-    final all = await getAllEvents();
-    return all.where((event) {
-      final start = DateTime.tryParse(event['start_date'] as String? ?? '');
-      return start != null && !DateTime(start.year, start.month, start.day).isBefore(today);
-    }).toList();
+    final snap = await _db
+        .collection(_col)
+        .where('status', isEqualTo: true)
+        .where('startDate', isGreaterThanOrEqualTo: Timestamp.fromDate(today))
+        .orderBy('startDate')
+        .get();
+    return snap.docs
+        .map((d) => _docToMap(d.id, d.data()))
+        .toList();
   }
 
   /// Acara mendatang atau sedang berjalan — untuk tampilan beranda.
+  /// Mengambil event yang endDate-nya belum lewat (sedang berjalan atau akan datang).
   Future<List<Map<String, dynamic>>> getHomeEvents() async {
     final now = DateTime.now();
     final today = DateTime(now.year, now.month, now.day);
-    final all = await getAllEvents();
-    return all.where((event) {
-      final end = DateTime.tryParse(event['end_date'] as String? ?? '');
-      final start = DateTime.tryParse(event['start_date'] as String? ?? '');
-      final endDay = end != null
-          ? DateTime(end.year, end.month, end.day)
-          : (start != null
-              ? DateTime(start.year, start.month, start.day)
-              : today);
-      return !endDay.isBefore(today);
-    }).toList();
+
+    // Ambil semua event aktif, lalu filter endDate di client
+    // (karena butuh inequality di 2 field berbeda: startDate & endDate)
+    final snap = await _db
+        .collection(_col)
+        .where('status', isEqualTo: true)
+        .get();
+
+    return snap.docs
+        .map((d) => _docToMap(d.id, d.data()))
+        .where((event) {
+          final end = DateTime.tryParse(event['end_date'] as String? ?? '');
+          final start = DateTime.tryParse(event['start_date'] as String? ?? '');
+          final endDay = end != null
+              ? DateTime(end.year, end.month, end.day)
+              : (start != null
+                  ? DateTime(start.year, start.month, start.day)
+                  : today);
+          return !endDay.isBefore(today);
+        })
+        .toList()
+      ..sort((a, b) {
+        final da = DateTime.tryParse(a['start_date'] as String? ?? '') ??
+            DateTime.fromMillisecondsSinceEpoch(0);
+        final db = DateTime.tryParse(b['start_date'] as String? ?? '') ??
+            DateTime.fromMillisecondsSinceEpoch(0);
+        return da.compareTo(db);
+      });
   }
 
   static String eventPhaseLabel(Map<String, dynamic> event) {
@@ -186,16 +208,42 @@ class EventService {
   }
 
   Future<void> registerParticipant(String eventId) async {
-    await _db.collection(_col).doc(eventId).update({
-      'currentParticipants': FieldValue.increment(1),
-      'updatedAt': FieldValue.serverTimestamp(),
+    final ref = _db.collection(_col).doc(eventId);
+    await _db.runTransaction((tx) async {
+      final doc = await tx.get(ref);
+      if (!doc.exists) throw Exception('Event tidak ditemukan.');
+
+      final data = doc.data()!;
+      final max = (data['maxParticipants'] as num?)?.toInt() ?? 0;
+      final current = (data['currentParticipants'] as num?)?.toInt() ?? 0;
+
+      if (max > 0 && current >= max) {
+        throw Exception('Kuota event sudah penuh.');
+      }
+
+      tx.update(ref, {
+        'currentParticipants': current + 1,
+        'updatedAt': FieldValue.serverTimestamp(),
+      });
     });
   }
 
   Future<void> unregisterParticipant(String eventId) async {
-    await _db.collection(_col).doc(eventId).update({
-      'currentParticipants': FieldValue.increment(-1),
-      'updatedAt': FieldValue.serverTimestamp(),
+    final ref = _db.collection(_col).doc(eventId);
+    await _db.runTransaction((tx) async {
+      final doc = await tx.get(ref);
+      if (!doc.exists) return;
+
+      final data = doc.data()!;
+      final current = (data['currentParticipants'] as num?)?.toInt() ?? 0;
+
+      // Cegah nilai negatif
+      if (current <= 0) return;
+
+      tx.update(ref, {
+        'currentParticipants': current - 1,
+        'updatedAt': FieldValue.serverTimestamp(),
+      });
     });
   }
 }
