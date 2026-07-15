@@ -896,7 +896,6 @@ class _AgentScreenState extends State<AgentScreen>
 
   // Header, EmptyState, Suggestions, dan InputBar diekstrak ke widgets/
 
-
   // ─── Chat Area ─────────────────────────────────────────────────────────────
 
   Widget _buildChatArea() {

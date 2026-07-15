@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:firebase_auth/firebase_auth.dart';
@@ -63,8 +65,17 @@ class _ProfileScreenState extends State<ProfileScreen> {
   }
 
   Future<void> _uploadProfilePhoto() async {
+    if (_currentUser == null) return;
+
+    var isDialogOpen = false;
+
     try {
-      // Show loading
+      // Pick image first, so the app does not show an endless loading dialog
+      // while the gallery permission/picker is still waiting for user input.
+      final image = await _storageService.pickImageFromGallery();
+      if (image == null) return;
+
+      if (!mounted) return;
       showDialog(
         context: context,
         barrierDismissible: false,
@@ -72,38 +83,56 @@ class _ProfileScreenState extends State<ProfileScreen> {
           child: CircularProgressIndicator(color: Color(0xFF2D5016)),
         ),
       );
+      isDialogOpen = true;
 
-      // Pick image
-      final image = await _storageService.pickImageFromGallery();
-      if (image == null) {
-        if (mounted) Navigator.pop(context);
-        return;
-      }
+      // Upload to Firebase Storage with a clear timeout instead of hanging.
+      final imageUrl = await _storageService
+          .uploadImage(
+            folder: 'users/${_currentUser!.id}',
+            file: image,
+          )
+          .timeout(const Duration(seconds: 45));
 
-      // Upload to Firebase Storage
-      final imageUrl = await _storageService.uploadImage(
-        folder: 'users/${_currentUser!.id}',
-        file: image,
-      );
+      // Update user profile.
+      final updatedUser = await _userService
+          .updateUser(
+            id: _currentUser!.id,
+            avatarUrl: imageUrl,
+          )
+          .timeout(const Duration(seconds: 20));
 
-      // Update user profile
-      await _userService.updateUser(
-        id: _currentUser!.id,
-        avatarUrl: imageUrl,
-      );
+      if (!mounted) return;
+      setState(() {
+        _currentUser = updatedUser;
+      });
 
-      // Reload user data
-      await _loadUserData();
-
-      if (mounted) {
+      if (isDialogOpen) {
         Navigator.pop(context); // Close loading
+        isDialogOpen = false;
+      }
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            'Foto profil berhasil diperbarui',
+            style: GoogleFonts.poppins(fontSize: 13),
+          ),
+          backgroundColor: const Color(0xFF2D5016),
+          behavior: SnackBarBehavior.floating,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(10),
+          ),
+        ),
+      );
+    } on TimeoutException {
+      if (mounted) {
+        if (isDialogOpen) Navigator.pop(context);
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text(
-              'Foto profil berhasil diperbarui',
+              'Upload foto terlalu lama. Periksa koneksi internet lalu coba lagi.',
               style: GoogleFonts.poppins(fontSize: 13),
             ),
-            backgroundColor: const Color(0xFF2D5016),
+            backgroundColor: Colors.red,
             behavior: SnackBarBehavior.floating,
             shape: RoundedRectangleBorder(
               borderRadius: BorderRadius.circular(10),
@@ -113,7 +142,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
       }
     } catch (e) {
       if (mounted) {
-        Navigator.pop(context); // Close loading
+        if (isDialogOpen) Navigator.pop(context); // Close loading
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text(
@@ -421,28 +450,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
           ),
           child: ClipOval(
             child: _currentUser?.avatarUrl != null && _currentUser!.avatarUrl!.isNotEmpty
-                ? Image.network(
-                    _currentUser!.avatarUrl!,
-                    width: 96,
-                    height: 96,
-                    fit: BoxFit.cover,
-                    errorBuilder: (context, error, stackTrace) {
-                      return const Icon(
-                        Icons.person,
-                        size: 52,
-                        color: Colors.white70,
-                      );
-                    },
-                    loadingBuilder: (context, child, loadingProgress) {
-                      if (loadingProgress == null) return child;
-                      return const Center(
-                        child: CircularProgressIndicator(
-                          color: Color(0xFF2D5016),
-                          strokeWidth: 2,
-                        ),
-                      );
-                    },
-                  )
+                ? _TimedAvatarImage(imageUrl: _currentUser!.avatarUrl!)
                 : const Icon(
                     Icons.person,
                     size: 52,
@@ -753,7 +761,88 @@ class _ProfileScreenState extends State<ProfileScreen> {
     );
   }
 
+}
 
+class _TimedAvatarImage extends StatefulWidget {
+  final String imageUrl;
+
+  const _TimedAvatarImage({required this.imageUrl});
+
+  @override
+  State<_TimedAvatarImage> createState() => _TimedAvatarImageState();
+}
+
+class _TimedAvatarImageState extends State<_TimedAvatarImage> {
+  Timer? _timer;
+  bool _isTakingTooLong = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _startTimeout();
+  }
+
+  @override
+  void didUpdateWidget(covariant _TimedAvatarImage oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.imageUrl != widget.imageUrl) {
+      _isTakingTooLong = false;
+      _startTimeout();
+    }
+  }
+
+  @override
+  void dispose() {
+    _timer?.cancel();
+    super.dispose();
+  }
+
+  void _startTimeout() {
+    _timer?.cancel();
+    _timer = Timer(const Duration(seconds: 12), () {
+      if (mounted) {
+        setState(() => _isTakingTooLong = true);
+      }
+    });
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    if (_isTakingTooLong) {
+      return const Icon(
+        Icons.person,
+        size: 52,
+        color: Colors.white70,
+      );
+    }
+
+    return Image.network(
+      widget.imageUrl,
+      width: 96,
+      height: 96,
+      fit: BoxFit.cover,
+      errorBuilder: (context, error, stackTrace) {
+        _timer?.cancel();
+        return const Icon(
+          Icons.person,
+          size: 52,
+          color: Colors.white70,
+        );
+      },
+      loadingBuilder: (context, child, loadingProgress) {
+        if (loadingProgress == null) {
+          _timer?.cancel();
+          return child;
+        }
+        return const Center(
+          child: CircularProgressIndicator(
+            color: Color(0xFF2D5016),
+            strokeWidth: 2,
+          ),
+        );
+      },
+    );
+  }
 }
 
 // ─── Stat Card ────────────────────────────────────────────────────────────────

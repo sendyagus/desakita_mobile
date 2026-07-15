@@ -1,4 +1,4 @@
-rules_version = '2';
+﻿rules_version = '2';
 
 service cloud.firestore {
   match /databases/{database}/documents {
@@ -17,7 +17,7 @@ service cloud.firestore {
       allow read: if isSignedIn()
         && (request.auth.uid == userId || isAdmin());
       // Allow create for authenticated users creating their own profile
-      allow create: if request.auth != null 
+      allow create: if request.auth != null
         && request.auth.uid == userId
         && request.resource.data.keys().hasAll(['fullName', 'email', 'phone', 'role', 'isActive', 'createdAt', 'updatedAt']);
       allow update: if isSignedIn()
@@ -44,11 +44,35 @@ service cloud.firestore {
     }
 
     match /reviews/{reviewId} {
+      // Anyone can read reviews
       allow read: if true;
-      allow create: if isSignedIn()
-        && request.resource.data.userId == request.auth.uid;
-      allow update, delete: if isSignedIn()
-        && (resource.data.userId == request.auth.uid || isAdmin());
+
+      // Create review - authenticated user only
+      // Validate required fields and rating range
+      allow create: if request.auth != null
+                    && request.resource.data.userId == request.auth.uid
+                    && request.resource.data.rating >= 1
+                    && request.resource.data.rating <= 5
+                    && request.resource.data.comment.size() >= 20
+                    && request.resource.data.comment.size() <= 1000
+                    && request.resource.data.photos is list
+                    && (request.resource.data.photos.size() == 0 || request.resource.data.photos.size() <= 5)
+                    && (!request.resource.data.hasKey('title') || request.resource.data.title.size() <= 100);
+
+      // Update review - only owner or admin can update
+      // Must validate rating range on update too
+      allow update: if request.auth != null
+                    && (resource.data.userId == request.auth.uid || isAdmin())
+                    && ( !request.resource.data.hasKey('rating')
+                         || (request.resource.data.rating >= 1 && request.resource.data.rating <= 5)
+                       )
+                    && ( !request.resource.data.hasKey('comment')
+                         || request.resource.data.comment.size() <= 1000
+                       );
+
+      // Delete review - only owner or admin
+      allow delete: if request.auth != null
+                    && (resource.data.userId == request.auth.uid || isAdmin());
     }
 
     match /events/{eventId} {

@@ -1,6 +1,9 @@
+import 'dart:async';
+import 'dart:typed_data';
 import 'package:flutter/foundation.dart' show debugPrint, kIsWeb;
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:http/http.dart' as http;
 import '../utils/image_url_helper.dart';
 
 /// Gambar dari URL (Firebase Storage / Google Drive) dengan fallback placeholder.
@@ -32,6 +35,10 @@ class _AppNetworkImageState extends State<AppNetworkImage> {
   int _index = 0;
   bool _advanceScheduled = false;
 
+  // Fallback: byte-fetch via HTTP saat Image.network gagal.
+  Uint8List? _fallbackBytes;
+  bool _fallbackLoading = false;
+
   @override
   void initState() {
     super.initState();
@@ -49,6 +56,8 @@ class _AppNetworkImageState extends State<AppNetworkImage> {
       _urls = _buildUrlList();
       _index = 0;
       _advanceScheduled = false;
+      _fallbackBytes = null;
+      _fallbackLoading = false;
     }
   }
 
@@ -67,16 +76,66 @@ class _AppNetworkImageState extends State<AppNetworkImage> {
   }
 
   void _scheduleNextDriveUrl() {
-    if (_index + 1 >= _urls.length || _advanceScheduled) return;
-    _advanceScheduled = true;
-    debugPrint('⚠️ Image load failed, trying next URL (${_index + 1}/${_urls.length})');
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      _advanceScheduled = false;
+    if (_advanceScheduled) return;
+
+    // Masih ada URL kandidat lain? Coba URL berikutnya.
+    if (_index + 1 < _urls.length) {
+      _advanceScheduled = true;
+      debugPrint('⚠️ Image load failed, trying next URL (${_index + 1}/${_urls.length})');
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        _advanceScheduled = false;
+        if (!mounted) return;
+        if (_index + 1 < _urls.length) {
+          setState(() => _index++);
+        }
+      });
+      return;
+    }
+
+    // Semua URL gagal — coba byte-fetch manual sebagai fallback terakhir.
+    if (!_fallbackLoading && _fallbackBytes == null && _urls.isNotEmpty) {
+      _tryFallbackByteFetch();
+    }
+  }
+
+  /// Fetch gambar via HTTP dengan headers yang tepat agar tidak diblokir oleh
+  /// Google Drive / lh3. Berguna saat Image.network mendapat EncodingError
+  /// (server mengembalikan HTML bukan gambar).
+  Future<void> _tryFallbackByteFetch() async {
+    _fallbackLoading = true;
+    final url = _urls.first;
+    debugPrint('🔄 Fallback: byte-fetch dari $url');
+
+    try {
+      final response = await http.get(
+        Uri.parse(url),
+        headers: {
+          'User-Agent':
+              'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 '
+              '(KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+          'Accept': 'image/webp,image/apng,image/*,*/*;q=0.8',
+        },
+      ).timeout(const Duration(seconds: 8));
+
       if (!mounted) return;
-      if (_index + 1 < _urls.length) {
-        setState(() => _index++);
+
+      if (response.statusCode == 200) {
+        final contentType = response.headers['content-type'] ?? '';
+        if (contentType.startsWith('image/')) {
+          debugPrint('✅ Fallback byte-fetch berhasil (${response.bodyBytes.length} bytes)');
+          setState(() => _fallbackBytes = response.bodyBytes);
+          return;
+        } else {
+          debugPrint('⚠️ Fallback: content-type bukan image ($contentType)');
+        }
+      } else {
+        debugPrint('⚠️ Fallback: HTTP ${response.statusCode}');
       }
-    });
+    } catch (e) {
+      debugPrint('❌ Fallback byte-fetch gagal: $e');
+    }
+
+    if (mounted) setState(() => _fallbackLoading = false);
   }
 
   @override
@@ -85,31 +144,26 @@ class _AppNetworkImageState extends State<AppNetworkImage> {
       return _wrap(_placeholder());
     }
 
-    final url = _urls[_index];
-    final image = Image.network(
-      url,
-      key: ValueKey('$url-$_index'),
+    // Fallback: tampilkan gambar dari byte-fetch jika tersedia.
+    if (_fallbackBytes != null) {
+      return _wrap(Image.memory(
+        _fallbackBytes!,
+        width: widget.width,
+        height: widget.height,
+        fit: widget.fit,
+      ));
+    }
+
+    return _wrap(_TimedNetworkImage(
+      url: _urls[_index],
+      imageKey: ValueKey('${_urls[_index]}-$_index'),
       width: widget.width,
       height: widget.height,
       fit: widget.fit,
-      // Web: pakai <img> agar gambar Google Drive tidak diblokir CORS (CanvasKit fetch).
-      webHtmlElementStrategy:
-          kIsWeb ? WebHtmlElementStrategy.prefer : WebHtmlElementStrategy.never,
-      errorBuilder: (context, error, stackTrace) {
-        debugPrint('❌ Image error at index $_index: $error');
-        _scheduleNextDriveUrl();
-        return _index + 1 < _urls.length ? _loadingBox() : _placeholder();
-      },
-      loadingBuilder: (context, child, progress) {
-        if (progress == null) {
-          debugPrint('✅ Image loaded successfully: $url');
-          return child;
-        }
-        return _loadingBox();
-      },
-    );
-
-    return _wrap(image);
+      onTimeoutOrError: _scheduleNextDriveUrl,
+      loadingBuilder: _loadingBox,
+      placeholderBuilder: _placeholder,
+    ));
   }
 
   Widget _wrap(Widget child) {
@@ -164,6 +218,103 @@ class _AppNetworkImageState extends State<AppNetworkImage> {
           ],
         ],
       ),
+    );
+  }
+}
+
+class _TimedNetworkImage extends StatefulWidget {
+  final String url;
+  final Key imageKey;
+  final double? width;
+  final double? height;
+  final BoxFit fit;
+  final VoidCallback onTimeoutOrError;
+  final Widget Function() loadingBuilder;
+  final Widget Function() placeholderBuilder;
+
+  const _TimedNetworkImage({
+    required this.url,
+    required this.imageKey,
+    required this.width,
+    required this.height,
+    required this.fit,
+    required this.onTimeoutOrError,
+    required this.loadingBuilder,
+    required this.placeholderBuilder,
+  });
+
+  @override
+  State<_TimedNetworkImage> createState() => _TimedNetworkImageState();
+}
+
+class _TimedNetworkImageState extends State<_TimedNetworkImage> {
+  Timer? _timer;
+  bool _timedOut = false;
+  bool _hasCompleted = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _startTimer();
+  }
+
+  @override
+  void didUpdateWidget(covariant _TimedNetworkImage oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.url != widget.url) {
+      _timer?.cancel();
+      _timedOut = false;
+      _hasCompleted = false;
+      _startTimer();
+    }
+  }
+
+  @override
+  void dispose() {
+    _timer?.cancel();
+    super.dispose();
+  }
+
+  void _startTimer() {
+    _timer = Timer(const Duration(seconds: 6), () {
+      if (!mounted || _hasCompleted) return;
+      setState(() => _timedOut = true);
+      widget.onTimeoutOrError();
+    });
+  }
+
+  void _markCompleted() {
+    _hasCompleted = true;
+    _timer?.cancel();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    if (_timedOut) return widget.placeholderBuilder();
+
+    return Image.network(
+      widget.url,
+      key: widget.imageKey,
+      width: widget.width,
+      height: widget.height,
+      fit: widget.fit,
+      // Web: pakai <img> agar gambar Google Drive tidak diblokir CORS (CanvasKit fetch).
+      webHtmlElementStrategy:
+          kIsWeb ? WebHtmlElementStrategy.prefer : WebHtmlElementStrategy.never,
+      errorBuilder: (context, error, stackTrace) {
+        debugPrint('❌ Image error: $error');
+        _markCompleted();
+        widget.onTimeoutOrError();
+        return widget.loadingBuilder();
+      },
+      loadingBuilder: (context, child, progress) {
+        if (progress == null) {
+          debugPrint('✅ Image loaded successfully: ${widget.url}');
+          _markCompleted();
+          return child;
+        }
+        return widget.loadingBuilder();
+      },
     );
   }
 }

@@ -1,22 +1,23 @@
 /// Normalisasi URL gambar (Google Drive, Firebase Storage, dll.) agar bisa ditampilkan di [Image.network].
 class ImageUrlHelper {
-  /// URL kandidat untuk file Google Drive publik (urutan: paling kompatibel dengan Flutter Web).
+  /// URL kandidat untuk file Google Drive publik (urutan: paling stabil di mobile).
   static List<String> googleDriveDisplayUrls(String fileId) {
     return [
-      // Thumbnail API - paling stabil untuk Flutter Web (tidak kena CORS)
-      'https://drive.google.com/thumbnail?id=$fileId&sz=w2000',
-      'https://drive.google.com/thumbnail?id=$fileId&sz=w1920',
-      'https://drive.google.com/thumbnail?id=$fileId&sz=w1000',
-      // Domain usercontent - alternatif yang bagus
+      // lh3.googleusercontent — paling stabil untuk Flutter mobile (tidak kena CORS/redirect).
+      'https://lh3.googleusercontent.com/d/$fileId=s2000',
+      'https://lh3.googleusercontent.com/d/$fileId=s1000',
+      'https://lh3.googleusercontent.com/d/$fileId',
+      // Domain usercontent — download langsung, sering berhasil.
       'https://drive.usercontent.google.com/download?id=$fileId&export=view&authuser=0',
       'https://drive.usercontent.google.com/download?id=$fileId&export=view',
-      // uc endpoint - klasik tapi kadang kena CORS di web
+      // Thumbnail API — kadang diblokir di mobile karena CORS.
+      'https://drive.google.com/thumbnail?id=$fileId&sz=w2000',
+      'https://drive.google.com/thumbnail?id=$fileId&sz=w1000',
+      // uc endpoint — klasik tapi sering kena CORS/redirect.
       'https://drive.google.com/uc?export=view&id=$fileId',
       'https://drive.google.com/uc?id=$fileId&export=download',
-      // lh3 googleusercontent - kadang work untuk file publik
-      'https://lh3.googleusercontent.com/d/$fileId=w2000',
-      'https://lh3.googleusercontent.com/d/$fileId',
-      'https://lh3.googleusercontent.com/d/$fileId=s1000',
+      // Fallback: proxy via drive.google.com/thumbnail ukuran kecil.
+      'https://drive.google.com/thumbnail?id=$fileId&sz=w400',
     ];
   }
 
