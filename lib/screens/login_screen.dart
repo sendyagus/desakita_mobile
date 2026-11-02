@@ -1,16 +1,16 @@
 import 'package:flutter/material.dart';
-import 'package:desa_wisata/app/app_assets.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:desa_wisata/screens/register_screen.dart';
 import 'package:desa_wisata/screens/home_screen.dart';
+import 'package:desa_wisata/widgets/auth_gate.dart';
 import 'package:desa_wisata/screens/admin/admin_dashboard_screen.dart';
-import 'package:desa_wisata/models/user_model.dart';
 import 'package:desa_wisata/services/auth_service.dart';
 import 'package:desa_wisata/utils/error_handler.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:desa_wisata/widgets/auth_header.dart';
 import 'package:desa_wisata/widgets/custom_text_field.dart';
 import 'package:desa_wisata/widgets/social_login_button.dart';
+import 'package:desa_wisata/theme/desakita_theme.dart';
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
@@ -33,21 +33,6 @@ class _LoginScreenState extends State<LoginScreen> {
     super.dispose();
   }
 
-  Future<void> _navigateAfterAuth(UserModel user) async {
-    if (!mounted) return;
-    if (user.isAdmin) {
-      Navigator.pushReplacement(
-        context,
-        MaterialPageRoute(builder: (_) => const AdminDashboardScreen()),
-      );
-    } else {
-      Navigator.pushReplacement(
-        context,
-        MaterialPageRoute(builder: (_) => const HomeScreen()),
-      );
-    }
-  }
-
   Future<void> _handleLogin() async {
     if (!_formKey.currentState!.validate() || _isLoading) return;
 
@@ -59,15 +44,25 @@ class _LoginScreenState extends State<LoginScreen> {
         password: _passwordController.text,
       );
 
-      await _navigateAfterAuth(user);
-    } on FirebaseAuthException catch (error) {
       if (!mounted) return;
+
+      if (user.isAdmin) {
+        Navigator.pushReplacement(
+          context,
+          MaterialPageRoute(builder: (_) => const AdminDashboardScreen()),
+        );
+      } else {
+        Navigator.pushReplacement(
+          context,
+          MaterialPageRoute(builder: (_) => const AuthGate()),
+        );
+      }
+    } on FirebaseAuthException catch (error) {
       ErrorHandler.showErrorSnackBar(
         context,
         ErrorHandler.getAuthErrorMessage(error),
       );
     } catch (_) {
-      if (!mounted) return;
       ErrorHandler.showErrorSnackBar(
         context,
         'Login gagal. Periksa koneksi internet Anda',
@@ -133,7 +128,7 @@ class _LoginScreenState extends State<LoginScreen> {
                     // Email / No. Telepon
                     Text(
                       'Email',
-                      style: GoogleFonts.poppins(
+                      style: GoogleFonts.plusJakartaSans(
                         fontSize: 13,
                         fontWeight: FontWeight.w500,
                         color: const Color(0xFF333333),
@@ -164,7 +159,7 @@ class _LoginScreenState extends State<LoginScreen> {
                     // Kata Sandi
                     Text(
                       'Kata Sandi',
-                      style: GoogleFonts.poppins(
+                      style: GoogleFonts.plusJakartaSans(
                         fontSize: 13,
                         fontWeight: FontWeight.w500,
                         color: const Color(0xFF333333),
@@ -208,10 +203,10 @@ class _LoginScreenState extends State<LoginScreen> {
                         ),
                         child: Text(
                           'Lupa kata sandi?',
-                          style: GoogleFonts.poppins(
+                          style: GoogleFonts.plusJakartaSans(
                             fontSize: 12,
                             fontWeight: FontWeight.w600,
-                            color: const Color(0xFF2D5016),
+                            color: DesaKitaColors.primary,
                           ),
                         ),
                       ),
@@ -226,7 +221,7 @@ class _LoginScreenState extends State<LoginScreen> {
                       child: ElevatedButton(
                         onPressed: _isLoading ? null : _handleLogin,
                         style: ElevatedButton.styleFrom(
-                          backgroundColor: const Color(0xFF2D5016),
+                          backgroundColor: DesaKitaColors.primary,
                           foregroundColor: Colors.white,
                           shape: RoundedRectangleBorder(
                             borderRadius: BorderRadius.circular(12),
@@ -244,7 +239,7 @@ class _LoginScreenState extends State<LoginScreen> {
                               )
                             : Text(
                                 'Masuk',
-                                style: GoogleFonts.poppins(
+                                style: GoogleFonts.plusJakartaSans(
                                   fontSize: 15,
                                   fontWeight: FontWeight.w600,
                                 ),
@@ -277,7 +272,7 @@ class _LoginScreenState extends State<LoginScreen> {
                         ),
                         child: Text(
                           'Lewati',
-                          style: GoogleFonts.poppins(
+                          style: GoogleFonts.plusJakartaSans(
                             fontSize: 15,
                             fontWeight: FontWeight.w600,
                           ),
@@ -297,7 +292,7 @@ class _LoginScreenState extends State<LoginScreen> {
                           padding: const EdgeInsets.symmetric(horizontal: 12),
                           child: Text(
                             'atau masuk dengan',
-                            style: GoogleFonts.poppins(
+                            style: GoogleFonts.plusJakartaSans(
                               fontSize: 12,
                               color: Colors.grey,
                             ),
@@ -317,12 +312,11 @@ class _LoginScreenState extends State<LoginScreen> {
                         Expanded(
                           child: SocialLoginButton(
                             label: 'Google',
-                            iconPath: AppAssets.googleIcon,
+                            iconPath: '../assets/img/google.png',
+                            useIconWidget: true,
+                            iconWidget: _googleIcon(),
                             onPressed: () {
-                              ErrorHandler.showInfoSnackBar(
-                                context,
-                                'Login Google belum tersedia. Gunakan email & kata sandi.',
-                              );
+                              // TODO: login dengan Google
                             },
                           ),
                         ),
@@ -330,12 +324,11 @@ class _LoginScreenState extends State<LoginScreen> {
                         Expanded(
                           child: SocialLoginButton(
                             label: 'Facebook',
-                            iconPath: AppAssets.facebookIcon,
+                            iconPath: '../assets/img/facebook.png',
+                            useIconWidget: true,
+                            iconWidget: _facebookIcon(),
                             onPressed: () {
-                              ErrorHandler.showInfoSnackBar(
-                                context,
-                                'Login Facebook belum tersedia. Gunakan email & kata sandi.',
-                              );
+                              // TODO: login dengan Facebook
                             },
                           ),
                         ),
@@ -351,7 +344,7 @@ class _LoginScreenState extends State<LoginScreen> {
                         children: [
                           Text(
                             'Belum punya akun? ',
-                            style: GoogleFonts.poppins(
+                            style: GoogleFonts.plusJakartaSans(
                               fontSize: 13,
                               color: Colors.grey[700],
                             ),
@@ -367,10 +360,10 @@ class _LoginScreenState extends State<LoginScreen> {
                             },
                             child: Text(
                               'Daftar',
-                              style: GoogleFonts.poppins(
+                              style: GoogleFonts.plusJakartaSans(
                                 fontSize: 13,
                                 fontWeight: FontWeight.w700,
-                                color: const Color(0xFF2D5016),
+                                color: DesaKitaColors.primary,
                               ),
                             ),
                           ),
@@ -384,6 +377,50 @@ class _LoginScreenState extends State<LoginScreen> {
               ),
             ),
           ],
+        ),
+      ),
+    );
+  }
+
+  Widget _googleIcon() {
+    return Container(
+      width: 24,
+      height: 24,
+      decoration: BoxDecoration(
+        shape: BoxShape.circle,
+        color: Colors.white,
+        border: Border.all(color: const Color(0xFFDDDDDD), width: 0.5),
+      ),
+      child: const Center(
+        child: Text(
+          'G',
+          style: TextStyle(
+            fontSize: 12,
+            fontWeight: FontWeight.w700,
+            color: Color(0xFF4285F4),
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _facebookIcon() {
+    return Container(
+      width: 24,
+      height: 24,
+      decoration: const BoxDecoration(
+        shape: BoxShape.circle,
+        color: Color(0xFF1877F2),
+      ),
+      child: const Center(
+        child: Text(
+          'f',
+          style: TextStyle(
+            fontSize: 14,
+            fontWeight: FontWeight.w700,
+            color: Colors.white,
+            height: 1.3,
+          ),
         ),
       ),
     );

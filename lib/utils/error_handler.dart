@@ -26,11 +26,6 @@ class ErrorHandler {
           return 'Koneksi bermasalah. Periksa internet Anda';
         case 'operation-not-allowed':
           return 'Metode login tidak diizinkan. Hubungi admin';
-        case 'account-exists-with-different-credential':
-          return 'Email sudah terdaftar dengan metode lain. Gunakan email/password';
-        case 'google-sign-in-failed':
-        case 'popup-closed-by-user':
-          return 'Login Google dibatalkan atau gagal. Coba lagi.';
         default:
           return error.message ?? 'Autentikasi gagal';
       }
@@ -75,8 +70,11 @@ class ErrorHandler {
       SnackBar(
         content: Row(
           children: [
-            const Icon(Icons.check_circle_outline,
-                color: Colors.white, size: 20),
+            const Icon(
+              Icons.check_circle_outline,
+              color: Colors.white,
+              size: 20,
+            ),
             const SizedBox(width: 12),
             Expanded(
               child: Text(

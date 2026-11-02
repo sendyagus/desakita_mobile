@@ -1,22 +1,20 @@
-import 'package:flutter/material.dart';
-import 'package:desa_wisata/app/app_assets.dart';
 import 'dart:async';
-import 'dart:ui';
-import 'package:google_fonts/google_fonts.dart';
+import 'dart:ui' show ImageFilter;
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:flutter/material.dart';
+import 'package:google_fonts/google_fonts.dart';
+import 'package:desa_wisata/models/user_model.dart';
+import 'package:desa_wisata/screens/agent_screen.dart';
 import 'package:desa_wisata/screens/explore_screen.dart';
 import 'package:desa_wisata/screens/profile_screen.dart';
-import 'package:desa_wisata/screens/agent_screen.dart';
-import 'package:desa_wisata/screens/login_screen.dart';
+import 'package:desa_wisata/screens/trip_screen.dart';
+import 'package:desa_wisata/screens/umkm_detail_screen.dart';
 import 'package:desa_wisata/screens/destination_detail_screen.dart';
 import 'package:desa_wisata/services/user_service.dart';
-import 'package:desa_wisata/services/destination_service.dart';
-import 'package:desa_wisata/services/event_service.dart';
-import 'package:desa_wisata/models/user_model.dart';
-import 'package:desa_wisata/config/app_categories.dart';
-import 'package:desa_wisata/widgets/app_network_image.dart';
-import 'package:desa_wisata/widgets/home_banner_slider.dart';
-import 'package:desa_wisata/screens/notification_screen.dart';
+import 'package:desa_wisata/theme/desakita_theme.dart';
+import 'package:desa_wisata/widgets/destination_photo.dart';
+import 'package:desa_wisata/widgets/kita_ai_mascot.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -25,772 +23,658 @@ class HomeScreen extends StatefulWidget {
   State<HomeScreen> createState() => _HomeScreenState();
 }
 
-class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
-  int _selectedCategoryIndex = 0;
+class _HomeScreenState extends State<HomeScreen> {
   int _selectedNavIndex = 0;
-
-  late final AnimationController _ctaAnimController;
-  late final Animation<double> _ctaScaleAnimation;
-  late final Animation<double> _ctaWidthAnimation;
-
+  int _exploreInitialType = 0;
   final UserService _userService = UserService();
-  final DestinationService _destinationService = DestinationService();
-  final EventService _eventService = EventService();
-
   UserModel? _currentUser;
   bool _isLoadingUser = true;
 
-  List<Map<String, dynamic>> _allDestinations = [];
-  bool _isLoadingDestinations = true;
-  List<Map<String, dynamic>> _events = [];
-  bool _isLoadingEvents = true;
+  late final Stream<QuerySnapshot<Map<String, dynamic>>> _destinationsStream;
+  late final Stream<QuerySnapshot<Map<String, dynamic>>> _umkmStream;
 
-  StreamSubscription? _authSub;
-  StreamSubscription? _favSub;
-  Set<String> _favoriteIds = {};
+  // Favorit hanya disimpan pada state halaman (belum terhubung ke database).
+  final Set<String> _favorites = {};
 
-  final List<Map<String, String>> _categories = [
-    {'icon': 'semua', 'label': 'Semua'},
-    {'icon': 'alam', 'label': 'Alam'},
-    {'icon': 'penginapan', 'label': 'Penginapan'},
-    {'icon': 'kuliner', 'label': 'Kuliner'},
-    {'icon': 'edukasi', 'label': 'Edukasi'},
-  ];
-
-  List<Map<String, dynamic>> get _filteredRecommendations {
-    if (_selectedCategoryIndex == 0) {
-      return _allDestinations.take(8).toList();
-    }
-    final label = _categories[_selectedCategoryIndex]['label']!;
-    return _allDestinations
-        .where(
-          (d) => AppCategories.normalize(d['category'] as String?) == label,
-        )
-        .take(8)
-        .toList();
-  }
-
-  final List<String> banners = AppAssets.homeBanners;
-  @override
-  void initState() {
-    super.initState();
-    _ctaAnimController = AnimationController(
-      vsync: this,
-      duration: const Duration(milliseconds: 800),
-    );
-    _ctaScaleAnimation = Tween<double>(begin: 0.0, end: 1.0).animate(
-      CurvedAnimation(
-        parent: _ctaAnimController,
-        curve: const Interval(0.0, 0.4, curve: Curves.easeOutBack),
-      ),
-    );
-    _ctaWidthAnimation = Tween<double>(begin: 0.0, end: 1.0).animate(
-      CurvedAnimation(
-        parent: _ctaAnimController,
-        curve: const Interval(0.5, 1.0, curve: Curves.easeOutCubic),
-      ),
-    );
-    _ctaAnimController.forward();
-
-    _loadUserData();
-    _loadDestinations();
-    _loadEvents();
-    _authSub = FirebaseAuth.instance.userChanges().listen((user) {
-      _subscribeToFavorites(user?.uid);
+  void _toggleFavorite(String id) {
+    if (id.isEmpty) return;
+    setState(() {
+      if (_favorites.contains(id)) {
+        _favorites.remove(id);
+      } else {
+        _favorites.add(id);
+      }
     });
   }
 
-  void _subscribeToFavorites(String? uid) {
-    _favSub?.cancel();
-    if (uid != null) {
-      _favSub = _userService.watchFavorites(uid).listen((favs) {
-        if (mounted) setState(() => _favoriteIds = favs.toSet());
-      });
-    } else {
-      if (mounted) setState(() => _favoriteIds = {});
-    }
-  }
-
-  Future<void> _handleFavoriteToggle(String destinationId) async {
-    final user = FirebaseAuth.instance.currentUser;
-    if (user == null) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(
-            'Silakan login terlebih dahulu untuk menyimpan favorit',
-            style: GoogleFonts.poppins(fontSize: 13, color: Colors.white),
-          ),
-          backgroundColor: const Color(0xFF2D5016),
-          behavior: SnackBarBehavior.floating,
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(10),
-          ),
-          action: SnackBarAction(
-            label: 'Login',
-            textColor: Colors.white,
-            onPressed: () {
-              Navigator.push(
-                context,
-                MaterialPageRoute(builder: (_) => const LoginScreen()),
-              ).then((_) {
-                _loadUserData();
-              });
-            },
-          ),
-        ),
-      );
-      return;
-    }
-
-    try {
-      await _userService.toggleFavorite(user.uid, destinationId);
-    } catch (e) {
-      debugPrint('Error toggling favorite: $e');
-    }
+  @override
+  void initState() {
+    super.initState();
+    _loadUserData();
+    _destinationsStream = FirebaseFirestore.instance
+        .collection('destinations')
+        .where('status', isEqualTo: true)
+        .snapshots();
+    _umkmStream = FirebaseFirestore.instance
+        .collection('umkm')
+        .where('status', isEqualTo: true)
+        .snapshots();
   }
 
   Future<void> _loadUserData() async {
     try {
       final userId = FirebaseAuth.instance.currentUser?.uid;
-      if (userId != null) {
-        final user = await _userService.getUserById(userId);
-        if (mounted) {
-          setState(() {
-            _currentUser = user;
-            _isLoadingUser = false;
-          });
-        }
-      } else {
-        if (mounted) {
-          setState(() => _isLoadingUser = false);
-        }
-      }
-    } catch (e) {
-      if (mounted) {
-        setState(() => _isLoadingUser = false);
-      }
+      final user = userId == null
+          ? null
+          : await _userService.getUserById(userId);
+      if (!mounted) return;
+      setState(() {
+        _currentUser = user;
+        _isLoadingUser = false;
+      });
+    } catch (_) {
+      if (mounted) setState(() => _isLoadingUser = false);
     }
-  }
-
-  Future<void> _loadDestinations() async {
-    try {
-      final destinations = await _destinationService.getAllDestinations();
-      if (mounted) {
-        setState(() {
-          _allDestinations = destinations;
-          _isLoadingDestinations = false;
-        });
-      }
-    } catch (e) {
-      debugPrint('Error loading destinations: $e');
-      if (mounted) {
-        setState(() => _isLoadingDestinations = false);
-      }
-    }
-  }
-
-  Future<void> _loadEvents() async {
-    try {
-      final events = await _eventService.getHomeEvents();
-      if (mounted) {
-        setState(() {
-          _events = events.take(5).toList();
-          _isLoadingEvents = false;
-        });
-      }
-    } catch (e) {
-      debugPrint('Error loading events: $e');
-      if (mounted) {
-        setState(() => _isLoadingEvents = false);
-      }
-    }
-  }
-
-  static String _eventMonthLabel(String? isoDate) {
-    final date = DateTime.tryParse(isoDate ?? '');
-    if (date == null) return '---';
-    const months = [
-      'JAN',
-      'FEB',
-      'MAR',
-      'APR',
-      'MEI',
-      'JUN',
-      'JUL',
-      'AGU',
-      'SEP',
-      'OKT',
-      'NOV',
-      'DES',
-    ];
-    return months[date.month - 1];
-  }
-
-  static String _eventDayLabel(String? isoDate) {
-    final date = DateTime.tryParse(isoDate ?? '');
-    if (date == null) return '--';
-    return date.day.toString().padLeft(2, '0');
-  }
-
-  static String _eventTimeLabel(Map<String, dynamic> event) {
-    final start = DateTime.tryParse(event['start_date'] as String? ?? '');
-    final end = DateTime.tryParse(event['end_date'] as String? ?? '');
-    if (start == null) return '';
-    final startTime =
-        '${start.hour.toString().padLeft(2, '0')}:${start.minute.toString().padLeft(2, '0')}';
-    if (end == null) return '$startTime - Selesai';
-    final endTime =
-        '${end.hour.toString().padLeft(2, '0')}:${end.minute.toString().padLeft(2, '0')}';
-    return '$startTime - $endTime';
-  }
-
-  @override
-  void dispose() {
-    _ctaAnimController.dispose();
-    _authSub?.cancel();
-    _favSub?.cancel();
-    super.dispose();
-  }
-
-  Widget _buildBerandaContent() {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        _buildHeader(),
-        const SizedBox(height: 16),
-        Expanded(
-          child: SingleChildScrollView(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                HomeBannerSlider(banners: banners),
-                const SizedBox(height: 20),
-                _buildCategories(),
-                const SizedBox(height: 20),
-                _buildSectionTitle('Rekomendasi Untukmu'),
-                const SizedBox(height: 12),
-                _buildRecommendations(),
-                const SizedBox(height: 20),
-                _buildSectionTitle('Acara Mendatang'),
-                const SizedBox(height: 12),
-                _buildEvents(),
-                const SizedBox(height: 24),
-              ],
-            ),
-          ),
-        ),
-      ],
-    );
   }
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: const Color(0xFFF5F5F0),
-      body: IndexedStack(
-        index: _selectedNavIndex,
-        children: [
-          SafeArea(bottom: false, child: _buildBerandaContent()),
-          const SafeArea(bottom: false, child: ExploreScreen()),
-          const AgentScreen(), // AgentScreen manages its own SafeArea internally for full-bleed header
-          const ProfileScreen(),
-        ],
+    final pages = <Widget>[
+      _buildHomeContent(),
+      ExploreScreen(
+        key: ValueKey(_exploreInitialType),
+        initialType: _exploreInitialType,
       ),
-      floatingActionButton: _selectedNavIndex == 0
-          ? ScaleTransition(
-              scale: _ctaScaleAnimation,
-              child: Container(
-                height:
-                    52, // Menambahkan constraint tinggi statis agar terhindar dari bug stretch vertikal
+      const AgentScreen(),
+      const TripScreen(),
+      const ProfileScreen(),
+    ];
+
+    return Scaffold(
+      backgroundColor: DesaKitaColors.background,
+      body: IndexedStack(index: _selectedNavIndex, children: pages),
+      bottomNavigationBar: _buildBottomNavigation(),
+    );
+  }
+
+  Widget _buildHomeContent() {
+    // Overlap amount panel Aksi Cepat terhadap hero
+    const overlapAmount = 54.0;
+    return CustomScrollView(
+      physics: const BouncingScrollPhysics(),
+      slivers: [
+        SliverToBoxAdapter(child: _buildHero()),
+        // Spasi setelah hero diperhitungkan dengan overlap panel Aksi Cepat (+22px visual gap)
+        const SliverToBoxAdapter(child: SizedBox(height: overlapAmount + 22)),
+        SliverToBoxAdapter(
+          child: _buildDestinationSection(
+            title: 'Destinasi Populer',
+            isUmkm: false,
+          ),
+        ),
+        const SliverToBoxAdapter(child: SizedBox(height: 24)),
+        SliverToBoxAdapter(
+          child: _buildDestinationSection(
+            title: 'Rekomendasi UMKM Lokal',
+            isUmkm: true,
+          ),
+        ),
+        // Extra padding agar konten tidak terpotong bottom nav
+        const SliverToBoxAdapter(child: SizedBox(height: 28)),
+      ],
+    );
+  }
+
+  Widget _buildHero() {
+    // Proportional hero height mengikuti frame Figma
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final screenWidth = constraints.maxWidth;
+        final heroHeight = (screenWidth * 1.05).clamp(390.0, 460.0);
+        const quickActionsHeight = 122.0;
+        const overlapAmount = 54.0;
+
+        return Stack(
+          clipBehavior: Clip.none,
+          children: [
+            // Hero image slideshow + gradient
+            SizedBox(
+              height: heroHeight,
+              width: double.infinity,
+              child: Stack(
+                fit: StackFit.expand,
+                children: [
+                  const _HeroBackgroundSlideshow(
+                    images: [
+                      'assets/img/cs1.jpg',
+                      'assets/img/cs2.jpg',
+                      'assets/img/cs3.jpg',
+                    ],
+                  ),
+                  // Dark overlay di atas untuk keterbacaan greeting bar
+                  const DecoratedBox(
+                    decoration: BoxDecoration(
+                      gradient: LinearGradient(
+                        begin: Alignment.topCenter,
+                        end: Alignment.bottomCenter,
+                        colors: [Color(0x70000000), Color(0x00000000)],
+                        stops: [0.0, 0.35],
+                      ),
+                    ),
+                  ),
+                  // Bottom gradient fading halus ke background warna (#F9FAF7)
+                  DecoratedBox(
+                    decoration: BoxDecoration(
+                      gradient: LinearGradient(
+                        begin: Alignment.bottomCenter,
+                        end: Alignment.topCenter,
+                        colors: [
+                          DesaKitaColors.background,
+                          DesaKitaColors.background.withValues(alpha: 0.85),
+                          const Color(0x00F9FAF7),
+                        ],
+                        stops: const [0.0, 0.16, 0.42],
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            // Header greeting bar — positioned at top
+            Positioned(
+              top: MediaQuery.of(context).padding.top + 8,
+              left: 16,
+              right: 16,
+              child: _buildGreetingBar(),
+            ),
+            // Headline text — tepat di atas panel Aksi Cepat dengan gap rapi
+            Positioned(
+              left: 20,
+              right: 20,
+              bottom: (quickActionsHeight - overlapAmount) + 16,
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Text(
+                    'Nikmati perjalanan liburan kamu\ntanpa batas',
+                    style: GoogleFonts.plusJakartaSans(
+                      color: Colors.white,
+                      fontSize: 21,
+                      height: 1.25,
+                      fontWeight: FontWeight.w800,
+                      shadows: const [
+                        Shadow(
+                          color: Color(0x80000000),
+                          blurRadius: 10,
+                          offset: Offset(0, 2),
+                        ),
+                      ],
+                    ),
+                  ),
+                  const SizedBox(height: 6),
+                  Text(
+                    'Temukan akomodasi dan berbagai pengalaman menyenangkan',
+                    textAlign: TextAlign.left,
+                    style: GoogleFonts.plusJakartaSans(
+                      color: Colors.white.withValues(alpha: 0.95),
+                      fontSize: 11.5,
+                      fontWeight: FontWeight.w500,
+                      shadows: const [
+                        Shadow(
+                          color: Color(0x60000000),
+                          blurRadius: 6,
+                          offset: Offset(0, 1),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            // Quick Actions panel — overlaps hero bottom
+            Positioned(
+              left: 16,
+              right: 16,
+              bottom: -overlapAmount,
+              child: _buildQuickActions(),
+            ),
+          ],
+        );
+      },
+    );
+  }
+
+  Widget _buildGreetingBar() {
+    final displayName = (_currentUser?.fullName.trim().isNotEmpty ?? false)
+        ? _currentUser!.fullName.trim()
+        : 'Rizky Pratama';
+
+    return ClipRRect(
+      borderRadius: BorderRadius.circular(40),
+      child: BackdropFilter(
+        filter: ImageFilter.blur(sigmaX: 12, sigmaY: 12),
+        child: Container(
+          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+          decoration: BoxDecoration(
+            color: const Color(0x401A2714), // Frosted dark translucent
+            borderRadius: BorderRadius.circular(40),
+            border: Border.all(
+              color: Colors.white.withValues(alpha: 0.22),
+              width: 1.0,
+            ),
+            boxShadow: const [
+              BoxShadow(
+                color: Color(0x20000000),
+                blurRadius: 16,
+                offset: Offset(0, 4),
+              ),
+            ],
+          ),
+          child: Row(
+            children: [
+              Container(
                 decoration: BoxDecoration(
-                  borderRadius: BorderRadius.circular(30),
-                  boxShadow: [
-                    BoxShadow(
-                      color: Colors.black.withValues(alpha: 0.15),
-                      blurRadius: 10,
-                      spreadRadius: 1,
-                      offset: const Offset(0, 4),
+                  shape: BoxShape.circle,
+                  border: Border.all(
+                    color: Colors.white.withValues(alpha: 0.7),
+                    width: 1.5,
+                  ),
+                ),
+                child: CircleAvatar(
+                  radius: 18,
+                  backgroundColor: const Color(0xFF2D4A27),
+                  backgroundImage:
+                      (_currentUser?.avatarUrl?.isNotEmpty ?? false)
+                      ? NetworkImage(_currentUser!.avatarUrl!)
+                      : null,
+                  child: (_currentUser?.avatarUrl?.isNotEmpty ?? false)
+                      ? null
+                      : const Icon(
+                          Icons.person_rounded,
+                          color: Colors.white,
+                          size: 20,
+                        ),
+                ),
+              ),
+              const SizedBox(width: 8),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Text(
+                      _isLoadingUser ? 'Halo, Petualang' : 'Halo, $displayName',
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: GoogleFonts.plusJakartaSans(
+                        color: Colors.white,
+                        fontSize: 12.5,
+                        fontWeight: FontWeight.w700,
+                      ),
+                    ),
+                    Text(
+                      'Mau pergi kemana hari ini?',
+                      style: GoogleFonts.plusJakartaSans(
+                        color: Colors.white.withValues(alpha: 0.85),
+                        fontSize: 9.5,
+                        fontWeight: FontWeight.w400,
+                      ),
                     ),
                   ],
                 ),
-                child: ClipRRect(
-                  borderRadius: BorderRadius.circular(30),
-                  child: BackdropFilter(
-                    filter: ImageFilter.blur(sigmaX: 8, sigmaY: 8),
-                    child: Container(
-                      decoration: BoxDecoration(
-                        color: Colors.white.withValues(alpha: 0.6),
-                        borderRadius: BorderRadius.circular(30),
-                        border: Border.all(
-                          color: Colors.white.withValues(alpha: 0.8),
-                          width: 1.5,
-                        ),
-                      ),
-                      child: Material(
-                        color: Colors.transparent,
-                        child: InkWell(
-                          onTap: () {
-                            setState(() => _selectedNavIndex = 2);
-                          },
-                          borderRadius: BorderRadius.circular(30),
-                          child: Padding(
-                            padding: const EdgeInsets.symmetric(horizontal: 16),
-                            child: SizedBox(
-                              height: 52,
-                              child: Row(
-                                mainAxisSize: MainAxisSize.min,
-                                crossAxisAlignment: CrossAxisAlignment.center,
-                                children: [
-                                  Image.asset(
-                                    AppAssets.kitaAiIcon,
-                                    width: 36,
-                                    height: 36,
-                                  ),
-                                  AnimatedBuilder(
-                                    animation: _ctaWidthAnimation,
-                                    builder: (context, child) {
-                                      return ClipRect(
-                                        child: Align(
-                                          alignment: Alignment.centerLeft,
-                                          widthFactor: _ctaWidthAnimation.value,
-                                          child: child,
-                                        ),
-                                      );
-                                    },
-                                    child: Padding(
-                                      padding: const EdgeInsets.only(left: 8),
-                                      child: Text(
-                                        'KITA ASISTEN',
-                                        style: GoogleFonts.poppins(
-                                          fontSize: 14,
-                                          fontWeight: FontWeight.w800,
-                                          color: const Color(0xFF2D5016),
-                                        ),
-                                        maxLines: 1,
-                                        softWrap: false,
-                                      ),
-                                    ),
-                                  ),
-                                ],
-                              ),
-                            ),
-                          ),
-                        ),
+              ),
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 5),
+                decoration: BoxDecoration(
+                  color: Colors.white.withValues(alpha: 0.18),
+                  borderRadius: BorderRadius.circular(20),
+                  border: Border.all(
+                    color: Colors.white.withValues(alpha: 0.25),
+                    width: 0.8,
+                  ),
+                ),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    const Icon(
+                      Icons.wb_sunny_outlined,
+                      size: 13,
+                      color: Color(0xFFA3E635),
+                    ),
+                    const SizedBox(width: 4),
+                    Text(
+                      '28\u00b0C',
+                      style: GoogleFonts.plusJakartaSans(
+                        fontSize: 10,
+                        fontWeight: FontWeight.w700,
+                        color: const Color(0xFFA3E635),
                       ),
                     ),
+                  ],
+                ),
+              ),
+              const SizedBox(width: 6),
+              Container(
+                width: 34,
+                height: 34,
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  color: const Color(0x38354A23),
+                  border: Border.all(
+                    color: Colors.white.withValues(alpha: 0.2),
+                    width: 0.8,
+                  ),
+                ),
+                child: IconButton(
+                  tooltip: 'Notifikasi',
+                  padding: EdgeInsets.zero,
+                  onPressed: () => _showNotice(
+                    'Notifikasi akan ditampilkan di pembaruan berikutnya.',
+                  ),
+                  icon: const Icon(
+                    Icons.notifications_none_rounded,
+                    color: Color(0xFF1E3A1A),
+                    size: 18,
                   ),
                 ),
               ),
-            )
-          : null,
-      bottomNavigationBar: _buildBottomNav(),
+            ],
+          ),
+        ),
+      ),
     );
   }
 
-  // ─── Header ───────────────────────────────────────────────────────────────
-
-  Widget _buildHeader() {
-    return Padding(
-      padding: const EdgeInsets.fromLTRB(16, 16, 16, 0),
-      child: Row(
+  Widget _buildQuickActions() {
+    return Container(
+      padding: const EdgeInsets.fromLTRB(16, 14, 16, 16),
+      decoration: BoxDecoration(
+        color: Colors.white, // Crisp White Container
+        borderRadius: BorderRadius.circular(22),
+        boxShadow: const [
+          BoxShadow(
+            color: Color(0x18000000),
+            blurRadius: 18,
+            offset: Offset(0, 6),
+          ),
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        mainAxisSize: MainAxisSize.min,
         children: [
-          // Avatar
-          GestureDetector(
-            onTap: () {
-              Navigator.push(
-                context,
-                PageRouteBuilder(
-                  pageBuilder: (context, animation, secondaryAnimation) =>
-                      const ProfileScreen(),
-                  transitionsBuilder:
-                      (context, animation, secondaryAnimation, child) {
-                        const begin = Offset(-1.0, 0.0);
-                        const end = Offset.zero;
-                        const curve = Curves.easeInOut;
-                        var tween = Tween(
-                          begin: begin,
-                          end: end,
-                        ).chain(CurveTween(curve: curve));
-                        return SlideTransition(
-                          position: animation.drive(tween),
-                          child: child,
-                        );
-                      },
-                ),
-              ).then((_) {
-                _loadUserData();
-              });
-            },
-            child: Container(
-              width: 44,
-              height: 44,
-              decoration: BoxDecoration(
-                shape: BoxShape.circle,
-                color: Colors.grey[300],
-                border: Border.all(color: const Color(0xFF2D5016), width: 2),
-              ),
-              child: ClipOval(
-                child: _isLoadingUser
-                    ? const Center(
-                        child: SizedBox(
-                          width: 20,
-                          height: 20,
-                          child: CircularProgressIndicator(
-                            color: Color(0xFF2D5016),
-                            strokeWidth: 2,
-                          ),
-                        ),
-                      )
-                    : _currentUser?.avatarUrl != null &&
-                          _currentUser!.avatarUrl!.isNotEmpty
-                    ? Image.network(
-                        _currentUser!.avatarUrl!,
-                        width: 44,
-                        height: 44,
-                        fit: BoxFit.cover,
-                        errorBuilder: (context, error, stackTrace) {
-                          return const Icon(
-                            Icons.person,
-                            color: Colors.grey,
-                            size: 24,
-                          );
-                        },
-                        loadingBuilder: (context, child, loadingProgress) {
-                          if (loadingProgress == null) return child;
-                          return const Center(
-                            child: SizedBox(
-                              width: 20,
-                              height: 20,
-                              child: CircularProgressIndicator(
-                                color: Color(0xFF2D5016),
-                                strokeWidth: 2,
-                              ),
-                            ),
-                          );
-                        },
-                      )
-                    : const Icon(Icons.person, color: Colors.grey, size: 24),
-              ),
+          Text(
+            'Aksi Cepat',
+            style: GoogleFonts.plusJakartaSans(
+              fontSize: 16,
+              fontWeight: FontWeight.w800,
+              color: DesaKitaColors.text,
             ),
           ),
-
-          const SizedBox(width: 12),
-
-          // Sapaan - tappable to open ProfileScreen
-          Expanded(
-            child: GestureDetector(
-              onTap: () {
-                Navigator.push(
-                  context,
-                  MaterialPageRoute(builder: (_) => const ProfileScreen()),
-                ).then((_) {
-                  _loadUserData();
-                });
-              },
-              behavior: HitTestBehavior.opaque,
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    _isLoadingUser
-                        ? 'Halo, Pengguna!'
-                        : 'Halo, ${_currentUser?.fullName ?? 'Pengguna'}!',
-                    style: GoogleFonts.poppins(
-                      fontSize: 15,
-                      fontWeight: FontWeight.w700,
-                      color: const Color(0xFF2D5016),
-                    ),
+          const SizedBox(height: 12),
+          Row(
+            children: [
+              Expanded(
+                child: _QuickActionButton(
+                  title: 'Minta AI\nRekomendasi',
+                  iconWidget: const Icon(
+                    Icons.auto_awesome,
+                    color: Colors.white,
+                    size: 22,
                   ),
-                  Text(
-                    'Mau pergi kemana hari ini ?',
-                    style: GoogleFonts.poppins(
-                      fontSize: 12,
-                      color: Colors.grey[600],
-                    ),
+                  gradient: const LinearGradient(
+                    colors: [DesaKitaColors.primary, DesaKitaColors.darkGreen],
+                    begin: Alignment.topLeft,
+                    end: Alignment.bottomRight,
                   ),
-                ],
-              ),
-            ),
-          ),
-
-          // Ikon notifikasi
-          _headerIconButton(
-            Icons.notifications_outlined,
-            onTap: () {
-              Navigator.push(
-                context,
-                MaterialPageRoute(
-                  builder: (context) => const NotificationScreen(),
+                  shadowColor: const Color(0x281C7A28),
+                  onTap: () => setState(() => _selectedNavIndex = 2),
                 ),
-              );
-            },
-          ),
-          const SizedBox(width: 8),
-          // Ikon headset / support
-          _headerIconButton(
-            Icons.headset_mic_outlined,
-            onTap: () {
-              ScaffoldMessenger.of(context).showSnackBar(
-                SnackBar(
-                  content: Text(
-                    'Fitur bantuan Hubungi Admin sedang dikembangkan',
-                    style: GoogleFonts.poppins(
-                      fontSize: 13,
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: _QuickActionButton(
+                  title: 'Perjalanan\nBaru',
+                  iconWidget: Container(
+                    width: 22,
+                    height: 22,
+                    decoration: BoxDecoration(
                       color: Colors.white,
+                      borderRadius: BorderRadius.circular(6),
+                    ),
+                    child: const Center(
+                      child: Icon(
+                        Icons.add,
+                        color: DesaKitaColors.primary,
+                        size: 16,
+                      ),
                     ),
                   ),
-                  backgroundColor: const Color(0xFF2D5016),
-                  behavior: SnackBarBehavior.floating,
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(10),
+                  gradient: const LinearGradient(
+                    colors: [DesaKitaColors.primary, DesaKitaColors.darkGreen],
+                    begin: Alignment.topLeft,
+                    end: Alignment.bottomRight,
                   ),
+                  shadowColor: const Color(0x281C7A28),
+                  onTap: () => setState(() => _selectedNavIndex = 1),
                 ),
-              );
-            },
+              ),
+            ],
           ),
         ],
       ),
     );
   }
 
-  Widget _headerIconButton(IconData icon, {VoidCallback? onTap}) {
-    return GestureDetector(
-      onTap: onTap,
-      behavior: HitTestBehavior.opaque,
-      child: Container(
-        width: 40,
-        height: 40,
-        decoration: const BoxDecoration(
-          shape: BoxShape.circle,
-          color: Color(0xFFE8EDE3),
-        ),
-        child: Icon(icon, size: 20, color: const Color(0xFF2D5016)),
-      ),
+  Widget _buildDestinationSection({
+    required String title,
+    required bool isUmkm,
+  }) {
+    return StreamBuilder<QuerySnapshot<Map<String, dynamic>>>(
+      stream: isUmkm ? _umkmStream : _destinationsStream,
+      builder: (context, snapshot) {
+        if (snapshot.hasError) {
+          return Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              _sectionHeader(title, () => _openExplore(isUmkm: isUmkm)),
+              const SizedBox(height: 12),
+              _sectionFallback(
+                isUmkm
+                    ? 'Rekomendasi UMKM belum dapat dimuat saat ini.'
+                    : 'Destinasi belum dapat dimuat saat ini.',
+                compact: true,
+              ),
+            ],
+          );
+        }
+        if (snapshot.connectionState == ConnectionState.waiting) {
+          return Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              _sectionHeader(title, () => _openExplore(isUmkm: isUmkm)),
+              const SizedBox(height: 12),
+              const SizedBox(
+                height: 174,
+                child: Center(child: CircularProgressIndicator(strokeWidth: 2)),
+              ),
+            ],
+          );
+        }
+
+        final rows =
+            snapshot.data?.docs.map((doc) {
+              final data = doc.data();
+              return <String, dynamic>{
+                'id': doc.id,
+                'name': (data['name'] ?? '').toString(),
+                'location': (data['location'] ?? '').toString(),
+                'category': (data['category'] ?? '').toString(),
+                'rating': (data['rating'] as num?)?.toDouble() ?? 0.0,
+                'price': (data['price'] ?? '').toString(),
+                'description': (data['description'] ?? '').toString(),
+                'imageUrl': (data['imageUrl'] ?? data['image_url'])?.toString(),
+                'reviewCount': data['reviewCount'] ?? data['review_count'] ?? 0,
+                'openingHours': (data['openingHours'] ?? data['opening_hours'])
+                    ?.toString(),
+                'facilities': data['facilities'],
+                'products': data['products'],
+                'status': data['status'] ?? true,
+              };
+            }).toList() ??
+            <Map<String, dynamic>>[];
+
+        final filtered =
+            rows.where((row) {
+              if (isUmkm) return true;
+              final category = (row['category'] as String).toLowerCase();
+              return !category.contains('kuliner');
+            }).toList()..sort(
+              (a, b) =>
+                  (b['rating'] as double).compareTo(a['rating'] as double),
+            );
+
+        return Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            _sectionHeader(title, () => _openExplore(isUmkm: isUmkm)),
+            const SizedBox(height: 12),
+            if (filtered.isEmpty)
+              _sectionFallback(
+                isUmkm
+                    ? "Data UMKM belum tersedia. Profil usaha akan tampil setelah koleksi 'umkm' di Firestore diisi."
+                    : 'Destinasi aktif akan tampil di sini setelah tersedia.',
+                compact: true,
+              )
+            else
+              SizedBox(
+                height: 205,
+                child: ListView.separated(
+                  padding: const EdgeInsets.symmetric(horizontal: 16),
+                  scrollDirection: Axis.horizontal,
+                  itemCount: filtered.length > 8 ? 8 : filtered.length,
+                  separatorBuilder: (_, _) => const SizedBox(width: 14),
+                  itemBuilder: (context, index) => _PopularDestinationCard(
+                    destination: filtered[index],
+                    isUmkm: isUmkm,
+                    isFavorite: _favorites.contains(
+                      filtered[index]['id'].toString(),
+                    ),
+                    onToggleFavorite: () =>
+                        _toggleFavorite(filtered[index]['id'].toString()),
+                    onTap: () => Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (_) => isUmkm
+                            ? UmkmDetailScreen(umkm: filtered[index])
+                            : DestinationDetailScreen(
+                                destination: filtered[index],
+                              ),
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+          ],
+        );
+      },
     );
   }
 
-  // ─── Banner Slider ─────────────────────────────────────────────────────────
-
-  // Banner Slider diekstrak ke widgets/home_banner_slider.dart
-
-  // ─── Kategori ──────────────────────────────────────────────────────────────
-
-  Widget _buildCategories() {
+  Widget _sectionHeader(String title, VoidCallback onSeeAll) {
     return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 16),
+      padding: const EdgeInsets.symmetric(horizontal: 18),
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
-        children: List.generate(_categories.length, (index) {
-          final cat = _categories[index];
-          final isSelected = index == _selectedCategoryIndex;
-          return Expanded(
-            child: GestureDetector(
-              onTap: () => setState(() => _selectedCategoryIndex = index),
-              behavior: HitTestBehavior.opaque,
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                crossAxisAlignment: CrossAxisAlignment.center,
-                children: [
-                  Container(
-                    width: 52,
-                    height: 52,
-                    decoration: BoxDecoration(
-                      shape: BoxShape.circle,
-                      color: isSelected
-                          ? const Color(0xFF2D5016)
-                          : const Color(0xFFE8EDE3),
-                    ),
-                    child: Icon(
-                      _categoryIcon(cat['icon']!),
-                      size: 22,
-                      color: isSelected
-                          ? Colors.white
-                          : const Color(0xFF2D5016),
-                    ),
-                  ),
-                  const SizedBox(height: 8),
-                  Text(
-                    cat['label']!,
-                    textAlign: TextAlign.center,
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: GoogleFonts.poppins(
-                      fontSize: 11,
-                      fontWeight: isSelected
-                          ? FontWeight.w600
-                          : FontWeight.w400,
-                      color: isSelected
-                          ? const Color(0xFF2D5016)
-                          : Colors.grey[600],
-                    ),
-                  ),
-                ],
+        crossAxisAlignment: CrossAxisAlignment.center,
+        children: [
+          Text(
+            title,
+            style: GoogleFonts.plusJakartaSans(
+              fontSize: 17,
+              fontWeight: FontWeight.w800,
+              color: DesaKitaColors.text,
+            ),
+          ),
+          GestureDetector(
+            onTap: onSeeAll,
+            child: Text(
+              'Lihat semua',
+              style: GoogleFonts.plusJakartaSans(
+                fontSize: 11.5,
+                fontWeight: FontWeight.w600,
+                color: const Color(0xFF42493E),
               ),
             ),
-          );
-        }),
+          ),
+        ],
       ),
     );
   }
 
-  IconData _categoryIcon(String key) {
-    switch (key) {
-      case 'semua':
-        return Icons.apps_rounded;
-      case 'alam':
-        return Icons.landscape_outlined;
-      case 'penginapan':
-        return Icons.hotel_outlined;
-      case 'kuliner':
-        return Icons.restaurant_outlined;
-      case 'edukasi':
-        return Icons.menu_book_outlined;
-      default:
-        return Icons.category_outlined;
-    }
-  }
-
-  // ─── Section Title ─────────────────────────────────────────────────────────
-
-  Widget _buildSectionTitle(String title) {
+  Widget _sectionFallback(String message, {bool compact = false}) {
     return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 16),
-      child: Text(
-        title,
-        style: GoogleFonts.poppins(
-          fontSize: 18,
-          fontWeight: FontWeight.w700,
-          color: const Color(0xFF1A1A1A),
-        ),
-      ),
-    );
-  }
-
-  // ─── Rekomendasi ───────────────────────────────────────────────────────────
-
-  Widget _buildRecommendations() {
-    if (_isLoadingDestinations) {
-      return SizedBox(
-        height: 220,
-        child: Center(
-          child: CircularProgressIndicator(color: const Color(0xFF2D5016)),
-        ),
-      );
-    }
-
-    final recommendations = _filteredRecommendations;
-
-    if (recommendations.isEmpty) {
-      return Container(
-        height: 220,
-        margin: const EdgeInsets.symmetric(horizontal: 16),
+      padding: EdgeInsets.fromLTRB(18, compact ? 0 : 10, 18, 0),
+      child: Container(
+        width: double.infinity,
+        padding: const EdgeInsets.all(16),
         decoration: BoxDecoration(
-          color: Colors.grey[100],
+          color: Colors.white,
           borderRadius: BorderRadius.circular(16),
+          border: Border.all(color: DesaKitaColors.divider),
         ),
-        child: Center(
-          child: Text(
-            'Belum ada destinasi wisata',
-            style: GoogleFonts.poppins(fontSize: 13, color: Colors.grey[600]),
-          ),
+        child: Row(
+          children: [
+            const Icon(Icons.eco_outlined, color: DesaKitaColors.primary),
+            const SizedBox(width: 10),
+            Expanded(
+              child: Text(
+                message,
+                style: GoogleFonts.plusJakartaSans(
+                  fontSize: 12,
+                  color: const Color(0xFF42493E),
+                ),
+              ),
+            ),
+          ],
         ),
-      );
-    }
-
-    return SizedBox(
-      height: 220,
-      child: ListView.builder(
-        physics: const BouncingScrollPhysics(
-          parent: AlwaysScrollableScrollPhysics(),
-        ),
-        scrollDirection: Axis.horizontal,
-        padding: const EdgeInsets.symmetric(horizontal: 16),
-        itemCount: recommendations.length,
-        itemBuilder: (context, index) {
-          final item = recommendations[index];
-          final destinationId = item['id'] as String? ?? '';
-          return _RecommendationCard(
-            destinationId: destinationId,
-            name: item['name'] as String? ?? 'Destinasi',
-            location: item['location'] as String? ?? 'Lokasi',
-            rating: (item['rating'] as num?)?.toDouble() ?? 0.0,
-            imageUrl: item['image_url'] as String?,
-            isFavorite: _favoriteIds.contains(destinationId),
-            onFavoriteTap: () => _handleFavoriteToggle(destinationId),
-          );
-        },
       ),
     );
   }
 
-  // ─── Acara Mendatang ───────────────────────────────────────────────────────
-
-  Widget _buildEvents() {
-    if (_isLoadingEvents) {
-      return const Padding(
-        padding: EdgeInsets.symmetric(vertical: 24),
-        child: Center(
-          child: CircularProgressIndicator(color: Color(0xFF2D5016)),
-        ),
-      );
-    }
-
-    if (_events.isEmpty) {
-      return Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 16),
-        child: Container(
-          padding: const EdgeInsets.all(20),
-          decoration: BoxDecoration(
-            color: Colors.grey[100],
-            borderRadius: BorderRadius.circular(14),
-          ),
-          child: Center(
-            child: Text(
-              'Belum ada acara mendatang',
-              style: GoogleFonts.poppins(fontSize: 13, color: Colors.grey[600]),
-            ),
-          ),
-        ),
-      );
-    }
-
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 16),
-      child: Column(
-        children: _events.map((event) {
-          final start = event['start_date'] as String?;
-          return Padding(
-            padding: const EdgeInsets.only(bottom: 10),
-            child: _EventCard(
-              month: _eventMonthLabel(start),
-              day: _eventDayLabel(start),
-              title: event['name'] as String? ?? 'Acara',
-              time: _eventTimeLabel(event),
-              location: event['location'] as String? ?? '',
-              phase: EventService.eventPhaseLabel(event),
-            ),
-          );
-        }).toList(),
-      ),
-    );
+  void _openExplore({required bool isUmkm}) {
+    setState(() {
+      _exploreInitialType = isUmkm ? 1 : 0;
+      _selectedNavIndex = 1;
+    });
   }
 
-  // ─── Bottom Navigation ─────────────────────────────────────────────────────
-
-  Widget _buildBottomNav() {
-    final items = [
-      {'icon': Icons.home_rounded, 'label': 'Beranda'},
-      {'icon': Icons.explore_outlined, 'label': 'Eksplorasi'},
-      {'icon': Icons.smart_toy_outlined, 'label': 'KITA'},
-      {'icon': Icons.person_outline, 'label': 'Profil'},
+  Widget _buildBottomNavigation() {
+    const labels = ['Beranda', 'Explorasi', 'KITA AI', 'Trip', 'Profil'];
+    const icons = [
+      Icons.home_outlined,
+      Icons.explore_outlined,
+      Icons.smart_toy_outlined,
+      Icons.route_outlined,
+      Icons.person_outline_rounded,
     ];
+    const activeIcons = [
+      Icons.home_rounded,
+      Icons.explore_rounded,
+      Icons.smart_toy_rounded,
+      Icons.route_rounded,
+      Icons.person_rounded,
+    ];
+    const activeGreen = DesaKitaColors.primary;
+    const inactiveGray = Color(0xFF42493E);
 
     return Container(
       decoration: const BoxDecoration(
         color: Colors.white,
         boxShadow: [
           BoxShadow(
-            color: Color(0x15000000),
+            color: Color(0x10000000),
             blurRadius: 12,
             offset: Offset(0, -2),
           ),
@@ -798,47 +682,92 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
       ),
       child: SafeArea(
         top: false,
-        child: Padding(
-          padding: const EdgeInsets.only(top: 10, bottom: 8),
+        child: SizedBox(
+          height: 64,
           child: Row(
             mainAxisAlignment: MainAxisAlignment.spaceAround,
-            children: List.generate(items.length, (index) {
-              final isSelected = index == _selectedNavIndex;
-              return GestureDetector(
-                onTap: () {
-                  setState(() => _selectedNavIndex = index);
-                  if (index == 0) {
-                    _ctaAnimController.forward(from: 0.0);
-                  }
-                },
-                behavior: HitTestBehavior.opaque,
-                child: SizedBox(
-                  width: MediaQuery.of(context).size.width / items.length - 8,
-                  child: Column(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      AnimatedScale(
-                        scale: isSelected ? 1.15 : 1.0,
-                        duration: const Duration(milliseconds: 200),
-                        child: Icon(
-                          items[index]['icon'] as IconData,
-                          size: 24,
-                          color: isSelected
-                              ? const Color(0xFF2D5016)
-                              : Colors.grey[500],
+            children: List.generate(labels.length, (index) {
+              final selected = _selectedNavIndex == index;
+              // Center tab — KITA AI with animated mascot
+              if (index == 2) {
+                return InkWell(
+                  onTap: () => setState(() => _selectedNavIndex = index),
+                  borderRadius: BorderRadius.circular(24),
+                  child: SizedBox(
+                    width: 60,
+                    child: Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Container(
+                          width: 40,
+                          height: 40,
+                          decoration: BoxDecoration(
+                            shape: BoxShape.circle,
+                            color: const Color(0xFFD6EAD4),
+                            border: Border.all(
+                              color: selected ? activeGreen : Colors.white,
+                              width: selected ? 2 : 1.5,
+                            ),
+                            boxShadow: [
+                              BoxShadow(
+                                color: selected
+                                    ? activeGreen.withValues(alpha: 0.3)
+                                    : const Color(0x14000000),
+                                blurRadius: 8,
+                                offset: const Offset(0, 2),
+                              ),
+                            ],
+                          ),
+                          child: ClipOval(
+                            child: Image.asset(
+                              'assets/img/navbar_kita_ai.png',
+                              fit: BoxFit.cover,
+                              errorBuilder: (context, error, stackTrace) =>
+                                  Center(
+                                    child: KitaAiMascot(
+                                      size: 22,
+                                      color: selected
+                                          ? activeGreen
+                                          : DesaKitaColors.primary,
+                                    ),
+                                  ),
+                            ),
+                          ),
                         ),
+                        const SizedBox(height: 2),
+                        Text(
+                          labels[index],
+                          style: GoogleFonts.plusJakartaSans(
+                            fontSize: 9.5,
+                            fontWeight: FontWeight.w700,
+                            color: selected ? activeGreen : inactiveGray,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                );
+              }
+              return Expanded(
+                child: InkWell(
+                  onTap: () => setState(() => _selectedNavIndex = index),
+                  child: Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Icon(
+                        selected ? activeIcons[index] : icons[index],
+                        size: 22,
+                        color: selected ? activeGreen : inactiveGray,
                       ),
-                      const SizedBox(height: 5),
+                      const SizedBox(height: 2),
                       Text(
-                        items[index]['label'] as String,
-                        style: GoogleFonts.poppins(
-                          fontSize: 10,
-                          fontWeight: isSelected
-                              ? FontWeight.w600
-                              : FontWeight.w400,
-                          color: isSelected
-                              ? const Color(0xFF2D5016)
-                              : Colors.grey[500],
+                        labels[index],
+                        style: GoogleFonts.plusJakartaSans(
+                          fontSize: 9.5,
+                          fontWeight: selected
+                              ? FontWeight.w700
+                              : FontWeight.w500,
+                          color: selected ? activeGreen : inactiveGray,
                         ),
                       ),
                     ],
@@ -851,392 +780,380 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
       ),
     );
   }
+
+  void _showNotice(String message) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text(message), behavior: SnackBarBehavior.floating),
+    );
+  }
 }
 
-// ─── Recommendation Card ──────────────────────────────────────────────────────
+class _QuickActionButton extends StatelessWidget {
+  final String title;
+  final Widget iconWidget;
+  final Gradient gradient;
+  final Color shadowColor;
+  final VoidCallback onTap;
 
-class _RecommendationCard extends StatelessWidget {
-  final String destinationId;
-  final String name;
-  final String location;
-  final double rating;
-  final String? imageUrl;
-  final bool isFavorite;
-  final VoidCallback onFavoriteTap;
-
-  const _RecommendationCard({
-    required this.destinationId,
-    required this.name,
-    required this.location,
-    required this.rating,
-    this.imageUrl,
-    required this.isFavorite,
-    required this.onFavoriteTap,
+  const _QuickActionButton({
+    required this.title,
+    required this.iconWidget,
+    required this.gradient,
+    required this.shadowColor,
+    required this.onTap,
   });
 
   @override
   Widget build(BuildContext context) {
-    return GestureDetector(
-      onTap: () {
-        if (destinationId.isNotEmpty) {
-          Navigator.push(
-            context,
-            MaterialPageRoute(
-              builder: (_) =>
-                  DestinationDetailScreen(destinationId: destinationId),
-            ),
-          );
-        }
-      },
-      child: Container(
-        width: 170,
-        margin: const EdgeInsets.only(right: 14),
-        decoration: BoxDecoration(
-          color: Colors.white,
-          borderRadius: BorderRadius.circular(16),
-          boxShadow: const [
-            BoxShadow(
-              color: Color(0x10000000),
-              blurRadius: 8,
-              offset: Offset(0, 2),
-            ),
-          ],
-        ),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            // Foto dari database atau wireframe
-            Stack(
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(14),
+        child: Ink(
+          height: 52,
+          decoration: BoxDecoration(
+            gradient: gradient,
+            borderRadius: BorderRadius.circular(14),
+            boxShadow: [
+              BoxShadow(
+                color: shadowColor,
+                blurRadius: 8,
+                offset: const Offset(0, 3),
+              ),
+            ],
+          ),
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 8),
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.center,
               children: [
-                ClipRRect(
-                  borderRadius: const BorderRadius.vertical(
-                    top: Radius.circular(16),
-                  ),
-                  child: AppNetworkImage(
-                    imageUrl: imageUrl,
-                    height: 120,
-                    width: 170,
-                    borderRadius: const BorderRadius.vertical(
-                      top: Radius.circular(16),
-                    ),
-                    placeholderLabel: name,
-                  ),
-                ),
-                // Favorite Button
-                Positioned(
-                  top: 8,
-                  left: 8,
-                  child: GestureDetector(
-                    onTap: onFavoriteTap,
-                    child: Container(
-                      padding: const EdgeInsets.all(5),
-                      decoration: BoxDecoration(
-                        color: Colors.white.withValues(alpha: 0.9),
-                        shape: BoxShape.circle,
-                        boxShadow: const [
-                          BoxShadow(color: Color(0x20000000), blurRadius: 4),
-                        ],
-                      ),
-                      child: Icon(
-                        isFavorite ? Icons.favorite : Icons.favorite_border,
-                        size: 16,
-                        color: isFavorite
-                            ? Colors.red
-                            : const Color(0xFF2D5016),
-                      ),
-                    ),
-                  ),
-                ),
-                // Rating badge
-                Positioned(
-                  top: 8,
-                  right: 8,
-                  child: Container(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 8,
-                      vertical: 4,
-                    ),
-                    decoration: BoxDecoration(
+                iconWidget,
+                const SizedBox(width: 8),
+                Flexible(
+                  child: Text(
+                    title,
+                    textAlign: TextAlign.left,
+                    style: GoogleFonts.plusJakartaSans(
                       color: Colors.white,
-                      borderRadius: BorderRadius.circular(20),
-                      boxShadow: const [
-                        BoxShadow(color: Color(0x20000000), blurRadius: 4),
-                      ],
-                    ),
-                    child: Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        const Icon(
-                          Icons.star_rounded,
-                          size: 13,
-                          color: Color(0xFFE8A020),
-                        ),
-                        const SizedBox(width: 3),
-                        Text(
-                          rating.toStringAsFixed(1),
-                          style: GoogleFonts.poppins(
-                            fontSize: 11,
-                            fontWeight: FontWeight.w600,
-                            color: const Color(0xFF333333),
-                          ),
-                        ),
-                      ],
+                      fontSize: 11.5,
+                      height: 1.2,
+                      fontWeight: FontWeight.w700,
                     ),
                   ),
                 ),
               ],
             ),
-
-            // Info
-            Padding(
-              padding: const EdgeInsets.fromLTRB(10, 8, 10, 8),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    name,
-                    style: GoogleFonts.poppins(
-                      fontSize: 13,
-                      fontWeight: FontWeight.w600,
-                      color: const Color(0xFF1A1A1A),
-                    ),
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                  ),
-                  const SizedBox(height: 2),
-                  Row(
-                    children: [
-                      const Icon(
-                        Icons.location_on_outlined,
-                        size: 12,
-                        color: Colors.grey,
-                      ),
-                      const SizedBox(width: 2),
-                      Expanded(
-                        child: Text(
-                          location,
-                          style: GoogleFonts.poppins(
-                            fontSize: 11,
-                            color: Colors.grey[600],
-                          ),
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                        ),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 8),
-                  Align(
-                    alignment: Alignment.centerRight,
-                    child: SizedBox(
-                      height: 28,
-                      child: ElevatedButton(
-                        onPressed: () {
-                          if (destinationId.isNotEmpty) {
-                            Navigator.push(
-                              context,
-                              MaterialPageRoute(
-                                builder: (_) => DestinationDetailScreen(
-                                  destinationId: destinationId,
-                                ),
-                              ),
-                            );
-                          }
-                        },
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: const Color(0xFF2D5016),
-                          foregroundColor: Colors.white,
-                          padding: const EdgeInsets.symmetric(horizontal: 14),
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(8),
-                          ),
-                          elevation: 0,
-                          minimumSize: Size.zero,
-                          tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                        ),
-                        child: Text(
-                          'Lihat Detail',
-                          style: GoogleFonts.poppins(
-                            fontSize: 10,
-                            fontWeight: FontWeight.w700,
-                            letterSpacing: 0.5,
-                          ),
-                        ),
-                      ),
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          ],
+          ),
         ),
       ),
     );
   }
 }
 
-// ─── Event Card ───────────────────────────────────────────────────────────────
+class _PopularDestinationCard extends StatelessWidget {
+  final Map<String, dynamic> destination;
+  final bool isUmkm;
+  final bool isFavorite;
+  final VoidCallback onToggleFavorite;
+  final VoidCallback onTap;
 
-class _EventCard extends StatelessWidget {
-  final String month;
-  final String day;
-  final String title;
-  final String time;
-  final String location;
-  final String phase;
-
-  const _EventCard({
-    required this.month,
-    required this.day,
-    required this.title,
-    required this.time,
-    required this.location,
-    required this.phase,
+  const _PopularDestinationCard({
+    required this.destination,
+    required this.isUmkm,
+    required this.isFavorite,
+    required this.onToggleFavorite,
+    required this.onTap,
   });
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.all(14),
-      decoration: BoxDecoration(
-        color: const Color(0xFFEEF2E8),
-        borderRadius: BorderRadius.circular(14),
-      ),
-      child: Row(
-        children: [
-          // Tanggal
-          Container(
-            width: 52,
-            height: 58,
-            decoration: BoxDecoration(
-              color: const Color(0xFF2D5016),
-              borderRadius: BorderRadius.circular(10),
-            ),
-            child: Column(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                Text(
-                  month,
-                  style: GoogleFonts.poppins(
-                    fontSize: 10,
-                    fontWeight: FontWeight.w500,
-                    color: Colors.white70,
-                    letterSpacing: 0.5,
-                  ),
-                ),
-                Text(
-                  day,
-                  style: GoogleFonts.poppins(
-                    fontSize: 22,
-                    fontWeight: FontWeight.w700,
-                    color: Colors.white,
-                    height: 1.1,
-                  ),
-                ),
-              ],
-            ),
-          ),
+    final category = (destination['category'] ?? '').toString().toLowerCase();
+    final name = destination['name']?.toString() ?? '';
+    final String fallback;
+    if (isUmkm) {
+      // Pemetaan foto lokal per kategori usaha agar tidak memakai
+      // gambar yang tidak relevan untuk produk kerajinan/makanan.
+      if (category.contains('kuliner') ||
+          category.contains('kopi') ||
+          category.contains('makanan') ||
+          category.contains('minuman')) {
+        fallback = 'assets/img/cs3.jpg';
+      } else if (category.contains('kerajinan') ||
+          category.contains('tapis') ||
+          category.contains('fashion') ||
+          category.contains('batik')) {
+        fallback = 'assets/img/desakita.jpg';
+      } else {
+        // Agrowisata & lainnya.
+        fallback = 'assets/img/cs2.jpg';
+      }
+    } else {
+      fallback = category.contains('budaya')
+          ? 'assets/img/cs2.jpg'
+          : 'assets/img/cs1.jpg';
+    }
 
-          const SizedBox(width: 14),
-
-          // Info acara
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Row(
-                  children: [
-                    Expanded(
-                      child: Text(
-                        title,
-                        style: GoogleFonts.poppins(
-                          fontSize: 13,
-                          fontWeight: FontWeight.w600,
-                          color: const Color(0xFF1A1A1A),
-                        ),
-                      ),
-                    ),
-                    Container(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 8,
-                        vertical: 3,
-                      ),
-                      decoration: BoxDecoration(
-                        color: phase == 'Sedang Berjalan'
-                            ? const Color(0xFF2D5016)
-                            : const Color(0xFFE8A020),
-                        borderRadius: BorderRadius.circular(8),
-                      ),
-                      child: Text(
-                        phase,
-                        style: GoogleFonts.poppins(
-                          fontSize: 9,
-                          fontWeight: FontWeight.w600,
+    return SizedBox(
+      width: 172,
+      child: Material(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(18),
+        clipBehavior: Clip.antiAlias,
+        elevation: 1.5,
+        shadowColor: const Color(0x18000000),
+        child: InkWell(
+          onTap: onTap,
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Stack(
+                children: [
+                  DestinationPhoto(
+                    imageUrl: destination['imageUrl']?.toString(),
+                    fallbackAsset: fallback,
+                    height: 122,
+                    width: double.infinity,
+                    borderRadius: BorderRadius.zero,
+                    fallbackBuilder: isUmkm
+                        ? (context) => _UmkmPhotoFallback(
+                            name: name,
+                            assetPath: fallback,
+                            height: 122,
+                          )
+                        : null,
+                  ),
+                  // Bookmark icon — top-right
+                  Positioned(
+                    top: 8,
+                    right: 8,
+                    child: GestureDetector(
+                      onTap: onToggleFavorite,
+                      child: Container(
+                        width: 32,
+                        height: 32,
+                        decoration: const BoxDecoration(
                           color: Colors.white,
+                          shape: BoxShape.circle,
+                          boxShadow: [
+                            BoxShadow(
+                              color: Color(0x1F000000),
+                              blurRadius: 6,
+                              offset: Offset(0, 2),
+                            ),
+                          ],
+                        ),
+                        child: Icon(
+                          isFavorite
+                              ? Icons.bookmark_rounded
+                              : Icons.bookmark_border_rounded,
+                          size: 16,
+                          color: isFavorite
+                              ? DesaKitaColors.primary
+                              : const Color(0xFF1B1C16),
                         ),
                       ),
                     ),
-                  ],
-                ),
-                const SizedBox(height: 4),
-                Row(
+                  ),
+                ],
+              ),
+              Padding(
+                padding: const EdgeInsets.fromLTRB(12, 10, 12, 12),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    const Icon(
-                      Icons.access_time_outlined,
-                      size: 12,
-                      color: Colors.grey,
-                    ),
-                    const SizedBox(width: 4),
                     Text(
-                      time,
-                      style: GoogleFonts.poppins(
-                        fontSize: 11,
-                        color: Colors.grey[600],
+                      destination['name']?.toString().isNotEmpty == true
+                          ? destination['name'].toString()
+                          : 'Destinasi lokal',
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: GoogleFonts.plusJakartaSans(
+                        fontSize: 13.5,
+                        fontWeight: FontWeight.w800,
+                        color: DesaKitaColors.text,
                       ),
                     ),
-                  ],
-                ),
-                const SizedBox(height: 2),
-                Row(
-                  children: [
-                    const Icon(
-                      Icons.location_on_outlined,
-                      size: 12,
-                      color: Colors.grey,
-                    ),
-                    const SizedBox(width: 4),
-                    Expanded(
-                      child: Text(
-                        location,
-                        style: GoogleFonts.poppins(
-                          fontSize: 11,
-                          color: Colors.grey[600],
+                    const SizedBox(height: 4),
+                    Row(
+                      children: [
+                        const Icon(
+                          Icons.location_on_outlined,
+                          color: DesaKitaColors.primary,
+                          size: 13,
                         ),
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                      ),
+                        const SizedBox(width: 3),
+                        Expanded(
+                          child: Text(
+                            destination['location']?.toString() ?? '',
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: GoogleFonts.plusJakartaSans(
+                              fontSize: 10,
+                              fontWeight: FontWeight.w500,
+                              color: const Color(0xFF6B7280),
+                            ),
+                          ),
+                        ),
+                      ],
                     ),
                   ],
                 ),
-              ],
-            ),
+              ),
+            ],
           ),
+        ),
+      ),
+    );
+  }
+}
 
-          // Tombol panah
-          Container(
-            width: 36,
-            height: 36,
+/// Placeholder foto UMKM yang disengaja secara visual: foto lokal dengan
+/// overlay brand + inisial usaha, dipakai saat URL gambar gagal/tidak ada.
+class _UmkmPhotoFallback extends StatelessWidget {
+  final String name;
+  final String assetPath;
+  final double height;
+
+  const _UmkmPhotoFallback({
+    required this.name,
+    required this.assetPath,
+    required this.height,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final initial = name.trim().isNotEmpty ? name.trim()[0].toUpperCase() : 'U';
+
+    return SizedBox(
+      height: height,
+      width: double.infinity,
+      child: Stack(
+        fit: StackFit.expand,
+        children: [
+          Image.asset(assetPath, fit: BoxFit.cover),
+          DecoratedBox(
             decoration: BoxDecoration(
-              shape: BoxShape.circle,
-              border: Border.all(color: const Color(0xFF2D5016), width: 1.5),
+              gradient: LinearGradient(
+                begin: Alignment.topLeft,
+                end: Alignment.bottomRight,
+                colors: [
+                  DesaKitaColors.primary.withValues(alpha: 0.78),
+                  DesaKitaColors.darkGreen.withValues(alpha: 0.88),
+                ],
+              ),
             ),
-            child: const Icon(
-              Icons.arrow_forward,
-              size: 16,
-              color: Color(0xFF2D5016),
+            child: Center(
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Container(
+                    width: 34,
+                    height: 34,
+                    decoration: BoxDecoration(
+                      color: Colors.white.withValues(alpha: 0.92),
+                      shape: BoxShape.circle,
+                    ),
+                    child: Center(
+                      child: Text(
+                        initial,
+                        style: GoogleFonts.plusJakartaSans(
+                          fontSize: 16,
+                          fontWeight: FontWeight.w800,
+                          color: DesaKitaColors.primary,
+                        ),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 5),
+                  const Icon(
+                    Icons.storefront_rounded,
+                    color: Colors.white,
+                    size: 14,
+                  ),
+                ],
+              ),
             ),
           ),
         ],
+      ),
+    );
+  }
+}
+
+/// Background slideshow yang terisolasi dalam state-nya sendiri sehingga
+/// timer pergantian foto (2 detik) TIDAK menyebabkan rebuild pada keseluruhan
+/// halaman beranda (mencegah flickering / refresh pada komponen lain).
+class _HeroBackgroundSlideshow extends StatefulWidget {
+  final List<String> images;
+
+  const _HeroBackgroundSlideshow({required this.images});
+
+  @override
+  State<_HeroBackgroundSlideshow> createState() =>
+      _HeroBackgroundSlideshowState();
+}
+
+class _HeroBackgroundSlideshowState extends State<_HeroBackgroundSlideshow> {
+  static const _interval = Duration(seconds: 2);
+  static const _transitionDuration = Duration(milliseconds: 650);
+
+  int _currentIndex = 0;
+  Timer? _timer;
+  bool _precached = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _startTimer();
+  }
+
+  void _startTimer() {
+    _timer?.cancel();
+    _timer = Timer.periodic(_interval, (_) {
+      if (!mounted) return;
+      setState(() {
+        _currentIndex = (_currentIndex + 1) % widget.images.length;
+      });
+    });
+  }
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    if (!_precached) {
+      _precached = true;
+      for (final img in widget.images) {
+        precacheImage(AssetImage(img), context);
+      }
+    }
+  }
+
+  @override
+  void dispose() {
+    _timer?.cancel();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return AnimatedSwitcher(
+      duration: _transitionDuration,
+      switchInCurve: Curves.easeInOut,
+      switchOutCurve: Curves.easeInOut,
+      layoutBuilder: (currentChild, previousChildren) {
+        return Stack(
+          fit: StackFit.expand,
+          children: <Widget>[...previousChildren, ?currentChild],
+        );
+      },
+      child: Image.asset(
+        widget.images[_currentIndex],
+        key: ValueKey<int>(_currentIndex),
+        fit: BoxFit.cover,
+        width: double.infinity,
+        height: double.infinity,
+        gaplessPlayback: true,
       ),
     );
   }

@@ -1,6 +1,7 @@
 import 'package:desa_wisata/screens/admin/admin_dashboard_screen.dart';
 import 'package:desa_wisata/screens/home_screen.dart';
 import 'package:desa_wisata/screens/login_screen.dart';
+import 'package:desa_wisata/screens/travel_preferences_screen.dart';
 import 'package:desa_wisata/services/auth_service.dart';
 import 'package:firebase_auth/firebase_auth.dart' as fa;
 import 'package:firebase_core/firebase_core.dart';
@@ -40,6 +41,9 @@ class AuthGate extends StatelessWidget {
             if (profile != null && profile.isAdmin) {
               return const AdminDashboardScreen();
             }
+            if (profile != null && !profile.preferencesCompleted) {
+              return const TravelPreferencesScreen();
+            }
             return const HomeScreen();
           },
         );
@@ -55,9 +59,7 @@ class _AuthLoadingScreen extends StatelessWidget {
   Widget build(BuildContext context) {
     return const Scaffold(
       backgroundColor: Colors.white,
-      body: Center(
-        child: CircularProgressIndicator(),
-      ),
+      body: Center(child: CircularProgressIndicator()),
     );
   }
 }
@@ -75,7 +77,11 @@ class _FirebaseNotConfiguredScreen extends StatelessWidget {
           child: Column(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              const Icon(Icons.cloud_off_outlined, size: 56, color: Colors.grey),
+              const Icon(
+                Icons.cloud_off_outlined,
+                size: 56,
+                color: Colors.grey,
+              ),
               const SizedBox(height: 16),
               Text(
                 'Firebase belum dikonfigurasi',

@@ -1,18 +1,12 @@
-import 'dart:async';
-
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:firebase_auth/firebase_auth.dart';
-import 'package:desa_wisata/app/theme/theme_notifier.dart';
 import 'package:desa_wisata/services/auth_service.dart';
 import 'package:desa_wisata/services/user_service.dart';
 import 'package:desa_wisata/services/storage_service.dart';
-import 'package:desa_wisata/services/booking_service.dart';
 import 'package:desa_wisata/models/user_model.dart';
-import 'package:desa_wisata/screens/login_screen.dart';
-import 'package:desa_wisata/screens/register_screen.dart';
-import 'package:desa_wisata/screens/user/user_booking_history_screen.dart';
-import 'package:desa_wisata/screens/user/favorite_destinations_screen.dart';
+import 'package:desa_wisata/screens/trip_screen.dart';
+import 'package:desa_wisata/theme/desakita_theme.dart';
 
 class ProfileScreen extends StatefulWidget {
   const ProfileScreen({super.key});
@@ -24,12 +18,8 @@ class ProfileScreen extends StatefulWidget {
 class _ProfileScreenState extends State<ProfileScreen> {
   final UserService _userService = UserService();
   final StorageService _storageService = StorageService();
-  final BookingService _bookingService = BookingService();
   UserModel? _currentUser;
   bool _isLoading = true;
-  int _bookingCount = 0;
-
-  bool get _isLoggedIn => FirebaseAuth.instance.currentUser != null;
 
   @override
   void initState() {
@@ -42,20 +32,12 @@ class _ProfileScreenState extends State<ProfileScreen> {
       final userId = FirebaseAuth.instance.currentUser?.uid;
       if (userId != null) {
         final user = await _userService.getUserById(userId);
-        final bookings = await _bookingService.getUserBookings(userId);
         if (mounted) {
           setState(() {
             _currentUser = user;
-            _bookingCount = bookings.length;
             _isLoading = false;
           });
         }
-      } else if (mounted) {
-        setState(() {
-          _currentUser = null;
-          _bookingCount = 0;
-          _isLoading = false;
-        });
       }
     } catch (e) {
       if (mounted) {
@@ -65,74 +47,44 @@ class _ProfileScreenState extends State<ProfileScreen> {
   }
 
   Future<void> _uploadProfilePhoto() async {
-    if (_currentUser == null) return;
-
-    var isDialogOpen = false;
-
     try {
-      // Pick image first, so the app does not show an endless loading dialog
-      // while the gallery permission/picker is still waiting for user input.
-      final image = await _storageService.pickImageFromGallery();
-      if (image == null) return;
-
-      if (!mounted) return;
+      // Show loading
       showDialog(
         context: context,
         barrierDismissible: false,
         builder: (context) => const Center(
-          child: CircularProgressIndicator(color: Color(0xFF2D5016)),
+          child: CircularProgressIndicator(color: DesaKitaColors.primary),
         ),
       );
-      isDialogOpen = true;
 
-      // Upload to Firebase Storage with a clear timeout instead of hanging.
-      final imageUrl = await _storageService
-          .uploadImage(
-            folder: 'users/${_currentUser!.id}',
-            file: image,
-          )
-          .timeout(const Duration(seconds: 45));
-
-      // Update user profile.
-      final updatedUser = await _userService
-          .updateUser(
-            id: _currentUser!.id,
-            avatarUrl: imageUrl,
-          )
-          .timeout(const Duration(seconds: 20));
-
-      if (!mounted) return;
-      setState(() {
-        _currentUser = updatedUser;
-      });
-
-      if (isDialogOpen) {
-        Navigator.pop(context); // Close loading
-        isDialogOpen = false;
+      // Pick image
+      final image = await _storageService.pickImageFromGallery();
+      if (image == null) {
+        if (mounted) Navigator.pop(context);
+        return;
       }
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(
-            'Foto profil berhasil diperbarui',
-            style: GoogleFonts.poppins(fontSize: 13),
-          ),
-          backgroundColor: const Color(0xFF2D5016),
-          behavior: SnackBarBehavior.floating,
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(10),
-          ),
-        ),
+
+      // Upload to Firebase Storage
+      final imageUrl = await _storageService.uploadImage(
+        folder: 'users/${_currentUser!.id}',
+        file: image,
       );
-    } on TimeoutException {
+
+      // Update user profile
+      await _userService.updateUser(id: _currentUser!.id, avatarUrl: imageUrl);
+
+      // Reload user data
+      await _loadUserData();
+
       if (mounted) {
-        if (isDialogOpen) Navigator.pop(context);
+        Navigator.pop(context); // Close loading
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text(
-              'Upload foto terlalu lama. Periksa koneksi internet lalu coba lagi.',
-              style: GoogleFonts.poppins(fontSize: 13),
+              'Foto profil berhasil diperbarui',
+              style: GoogleFonts.plusJakartaSans(fontSize: 13),
             ),
-            backgroundColor: Colors.red,
+            backgroundColor: DesaKitaColors.primary,
             behavior: SnackBarBehavior.floating,
             shape: RoundedRectangleBorder(
               borderRadius: BorderRadius.circular(10),
@@ -142,12 +94,12 @@ class _ProfileScreenState extends State<ProfileScreen> {
       }
     } catch (e) {
       if (mounted) {
-        if (isDialogOpen) Navigator.pop(context); // Close loading
+        Navigator.pop(context); // Close loading
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text(
               'Gagal upload foto: $e',
-              style: GoogleFonts.poppins(fontSize: 13),
+              style: GoogleFonts.plusJakartaSans(fontSize: 13),
             ),
             backgroundColor: Colors.red,
             behavior: SnackBarBehavior.floating,
@@ -160,227 +112,96 @@ class _ProfileScreenState extends State<ProfileScreen> {
     }
   }
 
-  List<Map<String, dynamic>> get _menuItems => [
-    {
-      'icon': Icons.history_outlined,
-      'label': 'Riwayat Booking',
-    },
-    {
-      'icon': Icons.favorite_outline,
-      'label': 'Destinasi Favorit',
-    },
-    {
-      'icon': Icons.location_on_outlined,
-      'label': 'Alamat Saya',
-    },
-    {
-      'icon': Icons.credit_card_outlined,
-      'label': 'Metode Pembayaran',
-    },
-    {
-      'icon': Icons.notifications_outlined,
-      'label': 'Notifikasi',
-    },
-    {
-      'icon': Icons.language_outlined,
-      'label': 'Bahasa',
-    },
-    {
-      'icon': Icons.info_outline,
-      'label': 'Tentang DesaKita',
-    },
-    {
-      'icon': Icons.help_outline_rounded,
-      'label': 'Bantuan & FAQ',
-    },
+  final List<Map<String, dynamic>> _menuItems = const [
+    {'icon': Icons.receipt_long_outlined, 'label': 'Riwayat Pesanan'},
+    {'icon': Icons.location_on_outlined, 'label': 'Alamat Saya'},
+    {'icon': Icons.credit_card_outlined, 'label': 'Metode Pembayaran'},
+    {'icon': Icons.notifications_outlined, 'label': 'Notifikasi'},
+    {'icon': Icons.language_outlined, 'label': 'Bahasa'},
+    {'icon': Icons.info_outline, 'label': 'Tentang DesaKita'},
+    {'icon': Icons.help_outline_rounded, 'label': 'Bantuan & FAQ'},
   ];
 
   @override
   Widget build(BuildContext context) {
-    Widget content;
-
     if (_isLoading) {
-      content = const Scaffold(
-        backgroundColor: Color(0xFFF5F5F0),
+      return const Scaffold(
+        backgroundColor: Color(0xFFF9FAF7),
         body: Center(
-          child: CircularProgressIndicator(color: Color(0xFF2D5016)),
-        ),
-      );
-    } else if (!_isLoggedIn) {
-      content = Scaffold(
-        backgroundColor: const Color(0xFFF5F5F0),
-        body: SafeArea(
-          child: Column(
-            children: [
-              _buildAppBar(context),
-              Expanded(child: _buildGuestLoginPrompt(context)),
-            ],
-          ),
-        ),
-      );
-    } else {
-      content = Scaffold(
-        backgroundColor: const Color(0xFFF5F5F0),
-        body: SafeArea(
-          child: Column(
-            children: [
-              _buildAppBar(context),
-              Expanded(
-                child: SingleChildScrollView(
-                  padding: const EdgeInsets.symmetric(horizontal: 20),
-                  child: Column(
-                    children: [
-                      const SizedBox(height: 24),
-                      _buildAvatar(),
-                      const SizedBox(height: 14),
-                      Text(
-                        _currentUser?.fullName ?? 'Nama Pengguna',
-                        style: GoogleFonts.poppins(
-                          fontSize: 20,
-                          fontWeight: FontWeight.w700,
-                          color: const Color(0xFF1A1A1A),
-                        ),
-                      ),
-                      const SizedBox(height: 4),
-                      Text(
-                        _currentUser?.email ?? FirebaseAuth.instance.currentUser?.email ?? '',
-                        style: GoogleFonts.poppins(fontSize: 13, color: Colors.grey[600]),
-                      ),
-                      const SizedBox(height: 12),
-                      _buildMemberBadge(),
-                      const SizedBox(height: 20),
-                      _buildStats(),
-                      const SizedBox(height: 24),
-                      _buildMenuList(context),
-                      const SizedBox(height: 16),
-                      _buildDarkModeToggle(context),
-                      const SizedBox(height: 20),
-                      _buildLogoutButton(context),
-                      const SizedBox(height: 32),
-                    ],
-                  ),
-                ),
-              ),
-            ],
-          ),
+          child: CircularProgressIndicator(color: DesaKitaColors.primary),
         ),
       );
     }
 
-    return GestureDetector(
-      onHorizontalDragEnd: (details) {
-        if (details.primaryVelocity != null) {
-          // Mendeteksi geseran (swipe) baik dari kanan ke kiri (velocity < -300) maupun kiri ke kanan (velocity > 300)
-          if (details.primaryVelocity!.abs() > 300) {
-            if (Navigator.canPop(context)) {
-              Navigator.pop(context);
-            }
-          }
-        }
-      },
-      child: content,
-    );
-  }
+    return Scaffold(
+      backgroundColor: const Color(0xFFF9FAF7),
+      body: SafeArea(
+        child: Column(
+          children: [
+            // App bar
+            _buildAppBar(context),
 
-  Widget _buildGuestLoginPrompt(BuildContext context) {
-    return SingleChildScrollView(
-      padding: const EdgeInsets.symmetric(horizontal: 24),
-      child: Column(
-        children: [
-          const SizedBox(height: 32),
-          Container(
-            width: 100,
-            height: 100,
-            decoration: BoxDecoration(
-              shape: BoxShape.circle,
-              color: const Color(0xFFE8EDE3),
-              border: Border.all(color: const Color(0xFF2D5016), width: 2),
-            ),
-            child: const Icon(Icons.person_outline, size: 52, color: Color(0xFF2D5016)),
-          ),
-          const SizedBox(height: 20),
-          Text(
-            'Masuk ke DesaKita',
-            style: GoogleFonts.poppins(
-              fontSize: 22,
-              fontWeight: FontWeight.w700,
-              color: const Color(0xFF1A1A1A),
-            ),
-          ),
-          const SizedBox(height: 10),
-          Text(
-            'Login untuk booking penginapan & wisata, melihat riwayat pesanan, dan menyimpan favorit destinasi.',
-            textAlign: TextAlign.center,
-            style: GoogleFonts.poppins(fontSize: 13, color: Colors.grey[600], height: 1.5),
-          ),
-          const SizedBox(height: 28),
-          _guestBenefit(Icons.confirmation_number_outlined, 'Booking penginapan & wisata'),
-          _guestBenefit(Icons.history_outlined, 'Riwayat booking (disetujui & menunggu)'),
-          _guestBenefit(Icons.favorite_border, 'Simpan destinasi favorit'),
-          const SizedBox(height: 32),
-          SizedBox(
-            width: double.infinity,
-            height: 52,
-            child: ElevatedButton(
-              onPressed: () async {
-                await Navigator.push(
-                  context,
-                  MaterialPageRoute(builder: (_) => const LoginScreen()),
-                );
-                _loadUserData();
-              },
-              style: ElevatedButton.styleFrom(
-                backgroundColor: const Color(0xFF2D5016),
-                foregroundColor: Colors.white,
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                elevation: 0,
-              ),
-              child: Text('Login', style: GoogleFonts.poppins(fontSize: 15, fontWeight: FontWeight.w600)),
-            ),
-          ),
-          const SizedBox(height: 12),
-          SizedBox(
-            width: double.infinity,
-            height: 52,
-            child: OutlinedButton(
-              onPressed: () async {
-                await Navigator.push(
-                  context,
-                  MaterialPageRoute(builder: (_) => const RegisterScreen()),
-                );
-                _loadUserData();
-              },
-              style: OutlinedButton.styleFrom(
-                side: const BorderSide(color: Color(0xFF2D5016), width: 1.5),
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-              ),
-              child: Text(
-                'Daftar Akun Baru',
-                style: GoogleFonts.poppins(
-                  fontSize: 15,
-                  fontWeight: FontWeight.w600,
-                  color: const Color(0xFF2D5016),
+            // Konten scrollable
+            Expanded(
+              child: SingleChildScrollView(
+                padding: const EdgeInsets.symmetric(horizontal: 20),
+                child: Column(
+                  children: [
+                    const SizedBox(height: 24),
+
+                    // Avatar
+                    _buildAvatar(),
+
+                    const SizedBox(height: 14),
+
+                    // Nama
+                    Text(
+                      _currentUser?.fullName ?? 'Nama Pengguna',
+                      style: GoogleFonts.plusJakartaSans(
+                        fontSize: 20,
+                        fontWeight: FontWeight.w700,
+                        color: const Color(0xFF1A1A1A),
+                      ),
+                    ),
+
+                    const SizedBox(height: 4),
+
+                    // Email
+                    Text(
+                      _currentUser?.email ?? '',
+                      style: GoogleFonts.plusJakartaSans(
+                        fontSize: 13,
+                        color: Colors.grey[600],
+                      ),
+                    ),
+
+                    const SizedBox(height: 12),
+
+                    // Badge member
+                    _buildMemberBadge(),
+
+                    const SizedBox(height: 20),
+
+                    // Statistik
+                    _buildStats(),
+
+                    const SizedBox(height: 24),
+
+                    // Menu list
+                    _buildMenuList(context),
+
+                    const SizedBox(height: 20),
+
+                    // Tombol Keluar
+                    _buildLogoutButton(context),
+
+                    const SizedBox(height: 32),
+                  ],
                 ),
               ),
             ),
-          ),
-          const SizedBox(height: 40),
-        ],
-      ),
-    );
-  }
-
-  Widget _guestBenefit(IconData icon, String text) {
-    return Padding(
-      padding: const EdgeInsets.only(bottom: 12),
-      child: Row(
-        children: [
-          Icon(icon, size: 22, color: const Color(0xFF2D5016)),
-          const SizedBox(width: 12),
-          Expanded(
-            child: Text(text, style: GoogleFonts.poppins(fontSize: 13, color: const Color(0xFF333333))),
-          ),
-        ],
+          ],
+        ),
       ),
     );
   }
@@ -400,30 +221,18 @@ class _ProfileScreenState extends State<ProfileScreen> {
               fontSize: 22,
               fontWeight: FontWeight.w700,
               fontStyle: FontStyle.italic,
-              color: const Color(0xFF2D5016),
+              color: DesaKitaColors.primary,
             ),
           ),
-          // Tombol kembali di kiri
+          // Ikon menu kiri
           Align(
             alignment: Alignment.centerLeft,
             child: GestureDetector(
-              onTap: () {
-                if (Navigator.canPop(context)) {
-                  Navigator.pop(context);
-                }
-              },
-              child: Container(
-                width: 40,
-                height: 40,
-                decoration: const BoxDecoration(
-                  shape: BoxShape.circle,
-                  color: Color(0xFFE8EDE3),
-                ),
-                child: const Icon(
-                  Icons.arrow_back_ios_new_rounded,
-                  size: 18,
-                  color: Color(0xFF2D5016),
-                ),
+              onTap: () => _showDrawerMenu(context),
+              child: const Icon(
+                Icons.menu_rounded,
+                size: 26,
+                color: DesaKitaColors.primary,
               ),
             ),
           ),
@@ -443,19 +252,35 @@ class _ProfileScreenState extends State<ProfileScreen> {
           decoration: BoxDecoration(
             shape: BoxShape.circle,
             color: const Color(0xFF1A1A2E),
-            border: Border.all(
-              color: const Color(0xFF2D5016),
-              width: 3,
-            ),
+            border: Border.all(color: DesaKitaColors.primary, width: 3),
           ),
           child: ClipOval(
-            child: _currentUser?.avatarUrl != null && _currentUser!.avatarUrl!.isNotEmpty
-                ? _TimedAvatarImage(imageUrl: _currentUser!.avatarUrl!)
-                : const Icon(
-                    Icons.person,
-                    size: 52,
-                    color: Colors.white70,
-                  ),
+            child:
+                _currentUser?.avatarUrl != null &&
+                    _currentUser!.avatarUrl!.isNotEmpty
+                ? Image.network(
+                    _currentUser!.avatarUrl!,
+                    width: 96,
+                    height: 96,
+                    fit: BoxFit.cover,
+                    errorBuilder: (context, error, stackTrace) {
+                      return const Icon(
+                        Icons.person,
+                        size: 52,
+                        color: Colors.white70,
+                      );
+                    },
+                    loadingBuilder: (context, child, loadingProgress) {
+                      if (loadingProgress == null) return child;
+                      return const Center(
+                        child: CircularProgressIndicator(
+                          color: DesaKitaColors.primary,
+                          strokeWidth: 2,
+                        ),
+                      );
+                    },
+                  )
+                : const Icon(Icons.person, size: 52, color: Colors.white70),
           ),
         ),
         // Tombol edit foto
@@ -468,7 +293,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
               width: 28,
               height: 28,
               decoration: BoxDecoration(
-                color: const Color(0xFF2D5016),
+                color: DesaKitaColors.primary,
                 shape: BoxShape.circle,
                 border: Border.all(color: Colors.white, width: 2),
               ),
@@ -490,7 +315,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
       decoration: BoxDecoration(
-        border: Border.all(color: const Color(0xFF2D5016), width: 1.2),
+        border: Border.all(color: DesaKitaColors.primary, width: 1.2),
         borderRadius: BorderRadius.circular(20),
       ),
       child: Row(
@@ -501,16 +326,16 @@ class _ProfileScreenState extends State<ProfileScreen> {
             height: 8,
             decoration: const BoxDecoration(
               shape: BoxShape.circle,
-              color: Color(0xFF2D5016),
+              color: DesaKitaColors.primary,
             ),
           ),
           const SizedBox(width: 6),
           Text(
             'Sahabat DesaKita',
-            style: GoogleFonts.poppins(
+            style: GoogleFonts.plusJakartaSans(
               fontSize: 12,
               fontWeight: FontWeight.w500,
-              color: const Color(0xFF2D5016),
+              color: DesaKitaColors.primary,
             ),
           ),
         ],
@@ -524,30 +349,11 @@ class _ProfileScreenState extends State<ProfileScreen> {
     return Row(
       children: [
         Expanded(
-          child: GestureDetector(
-            onTap: () {
-              Navigator.push(
-                context,
-                MaterialPageRoute(builder: (_) => const UserBookingHistoryScreen()),
-              ).then((_) => _loadUserData());
-            },
-            child: _StatCard(value: '$_bookingCount', label: 'Booking'),
-          ),
+          child: _StatCard(value: '12', label: 'Favorit'),
         ),
         const SizedBox(width: 12),
         Expanded(
-          child: GestureDetector(
-            onTap: () {
-              Navigator.push(
-                context,
-                MaterialPageRoute(builder: (_) => const FavoriteDestinationsScreen()),
-              ).then((_) => _loadUserData());
-            },
-            child: _StatCard(
-              value: '${_currentUser?.favorites.length ?? 0}',
-              label: 'Favorit',
-            ),
-          ),
+          child: _StatCard(value: '8', label: 'Ulasan'),
         ),
       ],
     );
@@ -583,64 +389,6 @@ class _ProfileScreenState extends State<ProfileScreen> {
     );
   }
 
-  // ─── Dark Mode Toggle ──────────────────────────────────────────────────────
-
-  Widget _buildDarkModeToggle(BuildContext context) {
-    return ListenableBuilder(
-      listenable: ThemeNotifier.instance,
-      builder: (context, _) {
-        final isDark = ThemeNotifier.instance.isDark;
-        return Container(
-          decoration: BoxDecoration(
-            color: Colors.white,
-            borderRadius: BorderRadius.circular(16),
-            boxShadow: const [
-              BoxShadow(
-                color: Color(0x08000000),
-                blurRadius: 8,
-                offset: Offset(0, 2),
-              ),
-            ],
-          ),
-          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-          child: Row(
-            children: [
-              Container(
-                width: 36,
-                height: 36,
-                decoration: BoxDecoration(
-                  color: const Color(0xFF2D5016).withValues(alpha: 0.1),
-                  borderRadius: BorderRadius.circular(10),
-                ),
-                child: Icon(
-                  isDark ? Icons.dark_mode_rounded : Icons.light_mode_rounded,
-                  color: const Color(0xFF2D5016),
-                  size: 20,
-                ),
-              ),
-              const SizedBox(width: 14),
-              Expanded(
-                child: Text(
-                  'Mode Gelap',
-                  style: GoogleFonts.poppins(
-                    fontSize: 14,
-                    fontWeight: FontWeight.w500,
-                    color: const Color(0xFF1A1A1A),
-                  ),
-                ),
-              ),
-              Switch.adaptive(
-                value: isDark,
-                onChanged: (_) => ThemeNotifier.instance.toggle(),
-                activeTrackColor: const Color(0xFF2D5016),
-              ),
-            ],
-          ),
-        );
-      },
-    );
-  }
-
   // ─── Logout Button ─────────────────────────────────────────────────────────
 
   Widget _buildLogoutButton(BuildContext context) {
@@ -663,7 +411,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
         ),
         label: Text(
           'Keluar',
-          style: GoogleFonts.poppins(
+          style: GoogleFonts.plusJakartaSans(
             fontSize: 15,
             fontWeight: FontWeight.w600,
             color: const Color(0xFFE53935),
@@ -676,27 +424,22 @@ class _ProfileScreenState extends State<ProfileScreen> {
   // ─── Handlers ──────────────────────────────────────────────────────────────
 
   void _handleMenuTap(BuildContext context, String label) {
-    if (label == 'Riwayat Booking') {
+    if (label == 'Riwayat Pesanan') {
       Navigator.push(
         context,
-        MaterialPageRoute(builder: (_) => const UserBookingHistoryScreen()),
-      ).then((_) => _loadUserData());
+        MaterialPageRoute(builder: (_) => const TripScreen()),
+      );
       return;
     }
-    if (label == 'Destinasi Favorit') {
-      Navigator.push(
-        context,
-        MaterialPageRoute(builder: (_) => const FavoriteDestinationsScreen()),
-      ).then((_) => _loadUserData());
-      return;
-    }
+
+    // Menu lain akan dihubungkan saat halaman pendukung tersedia.
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
         content: Text(
           '$label — segera hadir',
-          style: GoogleFonts.poppins(fontSize: 13),
+          style: GoogleFonts.plusJakartaSans(fontSize: 13),
         ),
-        backgroundColor: const Color(0xFF2D5016),
+        backgroundColor: DesaKitaColors.primary,
         behavior: SnackBarBehavior.floating,
         duration: const Duration(seconds: 1),
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
@@ -711,21 +454,24 @@ class _ProfileScreenState extends State<ProfileScreen> {
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
         title: Text(
           'Keluar',
-          style: GoogleFonts.poppins(
+          style: GoogleFonts.plusJakartaSans(
             fontWeight: FontWeight.w700,
             color: const Color(0xFF1A1A1A),
           ),
         ),
         content: Text(
           'Apakah kamu yakin ingin keluar dari akun ini?',
-          style: GoogleFonts.poppins(fontSize: 13, color: Colors.grey[700]),
+          style: GoogleFonts.plusJakartaSans(
+            fontSize: 13,
+            color: Colors.grey[700],
+          ),
         ),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(ctx),
             child: Text(
               'Batal',
-              style: GoogleFonts.poppins(
+              style: GoogleFonts.plusJakartaSans(
                 color: Colors.grey[600],
                 fontWeight: FontWeight.w500,
               ),
@@ -737,10 +483,9 @@ class _ProfileScreenState extends State<ProfileScreen> {
               await AuthService.instance.signOut();
               // Navigate ke AuthGate dan hapus semua route sebelumnya
               if (context.mounted) {
-                Navigator.of(context).pushNamedAndRemoveUntil(
-                  '/',
-                  (route) => false,
-                );
+                Navigator.of(
+                  context,
+                ).pushNamedAndRemoveUntil('/', (route) => false);
               }
             },
             style: ElevatedButton.styleFrom(
@@ -753,7 +498,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
             ),
             child: Text(
               'Keluar',
-              style: GoogleFonts.poppins(fontWeight: FontWeight.w600),
+              style: GoogleFonts.plusJakartaSans(fontWeight: FontWeight.w600),
             ),
           ),
         ],
@@ -761,86 +506,50 @@ class _ProfileScreenState extends State<ProfileScreen> {
     );
   }
 
-}
-
-class _TimedAvatarImage extends StatefulWidget {
-  final String imageUrl;
-
-  const _TimedAvatarImage({required this.imageUrl});
-
-  @override
-  State<_TimedAvatarImage> createState() => _TimedAvatarImageState();
-}
-
-class _TimedAvatarImageState extends State<_TimedAvatarImage> {
-  Timer? _timer;
-  bool _isTakingTooLong = false;
-
-  @override
-  void initState() {
-    super.initState();
-    _startTimeout();
-  }
-
-  @override
-  void didUpdateWidget(covariant _TimedAvatarImage oldWidget) {
-    super.didUpdateWidget(oldWidget);
-    if (oldWidget.imageUrl != widget.imageUrl) {
-      _isTakingTooLong = false;
-      _startTimeout();
-    }
-  }
-
-  @override
-  void dispose() {
-    _timer?.cancel();
-    super.dispose();
-  }
-
-  void _startTimeout() {
-    _timer?.cancel();
-    _timer = Timer(const Duration(seconds: 12), () {
-      if (mounted) {
-        setState(() => _isTakingTooLong = true);
-      }
-    });
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    if (_isTakingTooLong) {
-      return const Icon(
-        Icons.person,
-        size: 52,
-        color: Colors.white70,
-      );
-    }
-
-    return Image.network(
-      widget.imageUrl,
-      width: 96,
-      height: 96,
-      fit: BoxFit.cover,
-      errorBuilder: (context, error, stackTrace) {
-        _timer?.cancel();
-        return const Icon(
-          Icons.person,
-          size: 52,
-          color: Colors.white70,
-        );
-      },
-      loadingBuilder: (context, child, loadingProgress) {
-        if (loadingProgress == null) {
-          _timer?.cancel();
-          return child;
-        }
-        return const Center(
-          child: CircularProgressIndicator(
-            color: Color(0xFF2D5016),
-            strokeWidth: 2,
-          ),
-        );
-      },
+  void _showDrawerMenu(BuildContext context) {
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: Colors.white,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      builder: (_) => Padding(
+        padding: const EdgeInsets.all(24),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Center(
+              child: Container(
+                width: 40,
+                height: 4,
+                decoration: BoxDecoration(
+                  color: Colors.grey[300],
+                  borderRadius: BorderRadius.circular(2),
+                ),
+              ),
+            ),
+            const SizedBox(height: 20),
+            Text(
+              'Menu',
+              style: GoogleFonts.plusJakartaSans(
+                fontSize: 16,
+                fontWeight: FontWeight.w700,
+                color: const Color(0xFF1A1A1A),
+              ),
+            ),
+            const SizedBox(height: 12),
+            _DrawerItem(icon: Icons.edit_outlined, label: 'Edit Profil'),
+            _DrawerItem(
+              icon: Icons.history_outlined,
+              label: 'Riwayat Perjalanan',
+            ),
+            _DrawerItem(icon: Icons.bookmark_outline, label: 'Tersimpan'),
+            _DrawerItem(icon: Icons.star_outline, label: 'Ulasan Saya'),
+            const SizedBox(height: 8),
+          ],
+        ),
+      ),
     );
   }
 }
@@ -866,16 +575,16 @@ class _StatCard extends StatelessWidget {
         children: [
           Text(
             value,
-            style: GoogleFonts.poppins(
+            style: GoogleFonts.plusJakartaSans(
               fontSize: 24,
               fontWeight: FontWeight.w700,
-              color: const Color(0xFF2D5016),
+              color: DesaKitaColors.primary,
             ),
           ),
           const SizedBox(height: 2),
           Text(
             label,
-            style: GoogleFonts.poppins(
+            style: GoogleFonts.plusJakartaSans(
               fontSize: 12,
               color: Colors.grey[600],
             ),
@@ -909,16 +618,15 @@ class _MenuItem extends StatelessWidget {
           onTap: onTap,
           borderRadius: BorderRadius.circular(16),
           child: Padding(
-            padding:
-                const EdgeInsets.symmetric(horizontal: 18, vertical: 16),
+            padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 16),
             child: Row(
               children: [
-                Icon(icon, size: 22, color: const Color(0xFF2D5016)),
+                Icon(icon, size: 22, color: DesaKitaColors.primary),
                 const SizedBox(width: 14),
                 Expanded(
                   child: Text(
                     label,
-                    style: GoogleFonts.poppins(
+                    style: GoogleFonts.plusJakartaSans(
                       fontSize: 14,
                       fontWeight: FontWeight.w500,
                       color: const Color(0xFF1A1A1A),
@@ -946,4 +654,33 @@ class _MenuItem extends StatelessWidget {
   }
 }
 
+// ─── Drawer Item ──────────────────────────────────────────────────────────────
 
+class _DrawerItem extends StatelessWidget {
+  final IconData icon;
+  final String label;
+
+  const _DrawerItem({required this.icon, required this.label});
+
+  @override
+  Widget build(BuildContext context) {
+    return ListTile(
+      contentPadding: EdgeInsets.zero,
+      leading: Icon(icon, color: DesaKitaColors.primary, size: 22),
+      title: Text(
+        label,
+        style: GoogleFonts.plusJakartaSans(
+          fontSize: 14,
+          fontWeight: FontWeight.w500,
+          color: const Color(0xFF1A1A1A),
+        ),
+      ),
+      trailing: const Icon(
+        Icons.chevron_right_rounded,
+        size: 18,
+        color: Colors.grey,
+      ),
+      onTap: () => Navigator.pop(context),
+    );
+  }
+}

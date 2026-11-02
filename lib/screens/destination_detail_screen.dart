@@ -1,427 +1,129 @@
 import 'package:flutter/material.dart';
-import 'dart:async';
 import 'package:google_fonts/google_fonts.dart';
-import 'package:firebase_auth/firebase_auth.dart';
-import 'package:desa_wisata/services/destination_service.dart';
-import 'package:desa_wisata/services/user_service.dart';
-import 'package:desa_wisata/screens/login_screen.dart';
-import 'package:desa_wisata/widgets/app_network_image.dart';
-import 'package:desa_wisata/screens/user/create_booking_screen.dart';
-import 'package:url_launcher/url_launcher.dart';
+import 'package:desa_wisata/screens/ticket_booking_screen.dart';
+import 'package:desa_wisata/theme/desakita_theme.dart';
+import 'package:desa_wisata/widgets/destination_photo.dart';
 
-class DestinationDetailScreen extends StatefulWidget {
-  final String destinationId;
+class DestinationDetailScreen extends StatelessWidget {
+  final Map<String, dynamic> destination;
 
-  const DestinationDetailScreen({super.key, required this.destinationId});
-
-  @override
-  State<DestinationDetailScreen> createState() =>
-      _DestinationDetailScreenState();
-}
-
-class _DestinationDetailScreenState extends State<DestinationDetailScreen> {
-  final DestinationService _destinationService = DestinationService();
-  final UserService _userService = UserService();
-  Map<String, dynamic>? _destination;
-  bool _isLoading = true;
-  StreamSubscription? _authSub;
-  StreamSubscription? _favSub;
-  bool _isFavorite = false;
-
-  @override
-  void initState() {
-    super.initState();
-    _loadDestination();
-    _authSub = FirebaseAuth.instance.userChanges().listen((user) {
-      _subscribeToFavorites(user?.uid);
-    });
-  }
-
-  void _subscribeToFavorites(String? uid) {
-    _favSub?.cancel();
-    if (uid != null) {
-      _favSub = _userService.isFavorite(uid, widget.destinationId).listen((fav) {
-        if (mounted) setState(() => _isFavorite = fav);
-      });
-    } else {
-      if (mounted) setState(() => _isFavorite = false);
-    }
-  }
-
-  Future<void> _toggleFavorite() async {
-    final user = FirebaseAuth.instance.currentUser;
-    if (user == null) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(
-            'Silakan login terlebih dahulu untuk menyimpan favorit',
-            style: GoogleFonts.poppins(fontSize: 13, color: Colors.white),
-          ),
-          backgroundColor: const Color(0xFF2D5016),
-          behavior: SnackBarBehavior.floating,
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(10),
-          ),
-          action: SnackBarAction(
-            label: 'Login',
-            textColor: Colors.white,
-            onPressed: () {
-              Navigator.push(
-                context,
-                MaterialPageRoute(builder: (_) => const LoginScreen()),
-              );
-            },
-          ),
-        ),
-      );
-      return;
-    }
-
-    try {
-      await _userService.toggleFavorite(user.uid, widget.destinationId);
-    } catch (e) {
-      debugPrint('Error toggling favorite: $e');
-    }
-  }
-
-  @override
-  void dispose() {
-    _authSub?.cancel();
-    _favSub?.cancel();
-    super.dispose();
-  }
-
-  Future<void> _loadDestination() async {
-    try {
-      final dest = await _destinationService.getDestinationById(
-        widget.destinationId,
-      );
-      if (mounted) {
-        setState(() {
-          _destination = dest;
-          _isLoading = false;
-        });
-      }
-    } catch (e) {
-      debugPrint('Error loading destination detail: $e');
-      if (mounted) {
-        setState(() => _isLoading = false);
-      }
-    }
-  }
-
-  void _openBooking() {
-    final user = FirebaseAuth.instance.currentUser;
-    if (user == null) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(
-            'Login dulu untuk melakukan booking',
-            style: GoogleFonts.poppins(fontSize: 13),
-          ),
-          backgroundColor: Colors.orange[800],
-        ),
-      );
-      return;
-    }
-
-    if (_destination == null) return;
-
-    Navigator.push(
-      context,
-      MaterialPageRoute(
-        builder: (_) => CreateBookingScreen(destination: _destination!),
-      ),
-    );
-  }
-
-  Future<void> _openMaps() async {
-    final rawUrl = (_destination?['mapsUrl'] as String?)?.trim();
-    if (rawUrl == null || rawUrl.isEmpty) {
-      if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(
-            'Link lokasi belum tersedia',
-            style: GoogleFonts.poppins(fontSize: 13),
-          ),
-          backgroundColor: Colors.orange[800],
-        ),
-      );
-      return;
-    }
-
-    var url = rawUrl;
-    if (!url.startsWith('http://') && !url.startsWith('https://')) {
-      url = 'https://$url';
-    }
-
-    final uri = Uri.tryParse(url);
-    if (uri == null) {
-      if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(
-            'Format link lokasi tidak valid',
-            style: GoogleFonts.poppins(fontSize: 13),
-          ),
-          backgroundColor: Colors.red,
-        ),
-      );
-      return;
-    }
-
-    try {
-      final launched = await launchUrl(
-        uri,
-        mode: LaunchMode.externalApplication,
-        webOnlyWindowName: '_blank',
-      );
-      if (!launched && mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(
-              'Tidak dapat membuka link lokasi',
-              style: GoogleFonts.poppins(fontSize: 13),
-            ),
-            backgroundColor: Colors.red,
-          ),
-        );
-      }
-    } catch (e) {
-      debugPrint('Error opening maps URL: $e');
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(
-              'Gagal membuka link lokasi',
-              style: GoogleFonts.poppins(fontSize: 13),
-            ),
-            backgroundColor: Colors.red,
-          ),
-        );
-      }
-    }
-  }
+  const DestinationDetailScreen({super.key, required this.destination});
 
   @override
   Widget build(BuildContext context) {
-    if (_isLoading) {
-      return const Scaffold(
-        backgroundColor: Color(0xFFF5F5F0),
-        body: Center(
-          child: CircularProgressIndicator(color: Color(0xFF2D5016)),
-        ),
-      );
-    }
-
-    if (_destination == null) {
-      return Scaffold(
-        backgroundColor: const Color(0xFFF5F5F0),
-        appBar: AppBar(
-          backgroundColor: Colors.white,
-          elevation: 0,
-          leading: IconButton(
-            icon: const Icon(Icons.arrow_back, color: Color(0xFF2D5016)),
-            onPressed: () => Navigator.pop(context),
-          ),
-        ),
-        body: Center(
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              Icon(Icons.error_outline, size: 56, color: Colors.grey[300]),
-              const SizedBox(height: 12),
-              Text(
-                'Destinasi tidak ditemukan',
-                style: GoogleFonts.poppins(
-                  fontSize: 14,
-                  color: Colors.grey[600],
-                ),
-              ),
-            ],
-          ),
-        ),
-      );
-    }
-
-    final dest = _destination!;
-    final name = dest['name'] as String? ?? 'Destinasi';
-    final location = dest['location'] as String? ?? '';
-    final category = dest['category'] as String? ?? '';
-    final rating = (dest['rating'] as num?)?.toDouble() ?? 0.0;
-    final price = dest['price'] as String? ?? '';
-    final description = dest['description'] as String? ?? '';
-    final facilities = dest['facilities'] as String? ?? '';
-    final contact = dest['contact'] as String? ?? '';
-    final openingHours = dest['openingHours'] as String? ?? '';
-    final imageUrl = dest['image_url'] as String?;
-    final bookable = dest['bookable'] as bool? ?? false;
-    final stock = (dest['stock'] as num?)?.toInt() ?? 0;
+    final category = (destination['category'] ?? '').toString();
+    final categoryLower = category.toLowerCase();
+    final fallback =
+        categoryLower.contains('kuliner') || categoryLower.contains('budaya')
+        ? 'assets/img/cs2.jpg'
+        : 'assets/img/cs1.jpg';
+    final name = (destination['name'] ?? 'Destinasi DesaKita').toString();
+    final location = (destination['location'] ?? 'Lokasi belum tersedia')
+        .toString();
+    final description = (destination['description'] ?? '').toString().trim();
+    final rating = (destination['rating'] as num?)?.toDouble() ?? 0.0;
+    final price = (destination['price'] ?? '').toString().trim();
+    final openingHours = (destination['openingHours'] ?? '').toString().trim();
+    final facilities = destination['facilities'];
+    final facilityList = facilities is List
+        ? facilities
+              .map((e) => e.toString())
+              .where((e) => e.trim().isNotEmpty)
+              .toList()
+        : <String>[];
 
     return Scaffold(
-      backgroundColor: const Color(0xFFF5F5F0),
+      backgroundColor: DesaKitaColors.background,
       body: CustomScrollView(
         slivers: [
-          // ─── Hero Image with App Bar ───
-          SliverAppBar(
-            expandedHeight: 300,
-            pinned: true,
-            backgroundColor: const Color(0xFF2D5016),
-            leading: Padding(
-              padding: const EdgeInsets.all(8),
-              child: Container(
-                decoration: BoxDecoration(
-                  color: Colors.black.withValues(alpha: 0.35),
-                  shape: BoxShape.circle,
-                ),
-                child: IconButton(
-                  icon: const Icon(
-                    Icons.arrow_back,
-                    color: Colors.white,
-                    size: 20,
-                  ),
-                  onPressed: () => Navigator.pop(context),
-                ),
-              ),
-            ),
-            actions: [
-              // Favorite button
-              Padding(
-                padding: const EdgeInsets.all(8),
-                child: Container(
-                  decoration: BoxDecoration(
-                    color: Colors.black.withValues(alpha: 0.35),
-                    shape: BoxShape.circle,
-                  ),
-                  child: IconButton(
-                    icon: Icon(
-                      _isFavorite ? Icons.favorite : Icons.favorite_border,
-                      color: _isFavorite ? Colors.red[400] : Colors.white,
-                      size: 20,
-                    ),
-                    onPressed: _toggleFavorite,
-                  ),
-                ),
-              ),
-              Padding(
-                padding: const EdgeInsets.all(8),
-                child: Container(
-                  decoration: BoxDecoration(
-                    color: Colors.black.withValues(alpha: 0.35),
-                    shape: BoxShape.circle,
-                  ),
-                  child: IconButton(
-                    icon: const Icon(
-                      Icons.share_outlined,
-                      color: Colors.white,
-                      size: 20,
-                    ),
-                    onPressed: () {
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        SnackBar(
-                          content: Text(
-                            'Fitur share segera hadir',
-                            style: GoogleFonts.poppins(fontSize: 13),
-                          ),
-                          backgroundColor: const Color(0xFF2D5016),
-                          behavior: SnackBarBehavior.floating,
-                        ),
-                      );
-                    },
-                  ),
-                ),
-              ),
-            ],
-            flexibleSpace: FlexibleSpaceBar(
-              background: Stack(
+          SliverToBoxAdapter(
+            child: SizedBox(
+              height: 278,
+              child: Stack(
                 fit: StackFit.expand,
                 children: [
-                  AppNetworkImage(
-                    imageUrl: imageUrl,
-                    height: 300,
+                  DestinationPhoto(
+                    imageUrl: destination['imageUrl']?.toString(),
+                    fallbackAsset: fallback,
                     width: double.infinity,
+                    height: 278,
                     borderRadius: BorderRadius.zero,
-                    placeholderLabel: name,
                   ),
-                  // Gradient overlay
-                  Container(
+                  const DecoratedBox(
                     decoration: BoxDecoration(
                       gradient: LinearGradient(
                         begin: Alignment.topCenter,
                         end: Alignment.bottomCenter,
                         colors: [
+                          Color(0x55000000),
                           Colors.transparent,
-                          Colors.black.withValues(alpha: 0.5),
+                          Color(0x66000000),
                         ],
-                        stops: const [0.5, 1.0],
                       ),
                     ),
                   ),
-                  // Name and location overlay
                   Positioned(
-                    bottom: 16,
-                    left: 16,
-                    right: 16,
+                    left: 14,
+                    top: MediaQuery.of(context).padding.top + 8,
+                    child: _RoundIconButton(
+                      icon: Icons.arrow_back_rounded,
+                      onTap: () => Navigator.pop(context),
+                    ),
+                  ),
+                  Positioned(
+                    right: 14,
+                    top: MediaQuery.of(context).padding.top + 8,
+                    child: _RoundIconButton(
+                      icon: Icons.bookmark_border_rounded,
+                      onTap: () => ScaffoldMessenger.of(context).showSnackBar(
+                        const SnackBar(
+                          content: Text(
+                            'Fitur destinasi tersimpan belum terhubung ke penyimpanan akun.',
+                          ),
+                        ),
+                      ),
+                    ),
+                  ),
+                  Positioned(
+                    left: 20,
+                    right: 20,
+                    bottom: 23,
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        // Category chip
                         Container(
                           padding: const EdgeInsets.symmetric(
-                            horizontal: 12,
+                            horizontal: 9,
                             vertical: 5,
                           ),
                           decoration: BoxDecoration(
-                            color: const Color(0xFF2D5016),
+                            color: Colors.white.withValues(alpha: 0.92),
                             borderRadius: BorderRadius.circular(20),
                           ),
                           child: Text(
-                            category,
-                            style: GoogleFonts.poppins(
-                              fontSize: 11,
-                              fontWeight: FontWeight.w600,
-                              color: Colors.white,
+                            category.isEmpty ? 'Wisata lokal' : category,
+                            style: GoogleFonts.plusJakartaSans(
+                              fontSize: 10,
+                              fontWeight: FontWeight.w800,
+                              color: DesaKitaColors.darkGreen,
                             ),
                           ),
                         ),
                         const SizedBox(height: 8),
                         Text(
                           name,
-                          style: GoogleFonts.poppins(
-                            fontSize: 24,
-                            fontWeight: FontWeight.w700,
+                          maxLines: 2,
+                          overflow: TextOverflow.ellipsis,
+                          style: GoogleFonts.plusJakartaSans(
+                            fontSize: 26,
+                            fontWeight: FontWeight.w800,
                             color: Colors.white,
-                            shadows: [
-                              Shadow(
-                                color: Colors.black.withValues(alpha: 0.5),
-                                blurRadius: 6,
-                              ),
+                            height: 1.15,
+                            shadows: const [
+                              Shadow(color: Color(0x66000000), blurRadius: 10),
                             ],
                           ),
                         ),
-                        const SizedBox(height: 4),
-                        Row(
-                          children: [
-                            const Icon(
-                              Icons.location_on,
-                              size: 14,
-                              color: Colors.white70,
-                            ),
-                            const SizedBox(width: 4),
-                            Expanded(
-                              child: Text(
-                                location,
-                                style: GoogleFonts.poppins(
-                                  fontSize: 13,
-                                  color: Colors.white70,
-                                ),
-                                maxLines: 1,
-                                overflow: TextOverflow.ellipsis,
-                              ),
-                            ),
-                          ],
-                        ),
                       ],
                     ),
                   ),
@@ -429,432 +131,340 @@ class _DestinationDetailScreenState extends State<DestinationDetailScreen> {
               ),
             ),
           ),
-
-          // ─── Content ───
           SliverToBoxAdapter(
-            child: Padding(
-              padding: const EdgeInsets.all(16),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  // ─── Rating & Price Row ───
-                  Container(
-                    padding: const EdgeInsets.all(16),
-                    decoration: BoxDecoration(
-                      color: Colors.white,
-                      borderRadius: BorderRadius.circular(16),
-                      boxShadow: const [
-                        BoxShadow(
-                          color: Color(0x0D000000),
-                          blurRadius: 8,
-                          offset: Offset(0, 2),
-                        ),
-                      ],
-                    ),
-                    child: Row(
+            child: Transform.translate(
+              offset: const Offset(0, -16),
+              child: Container(
+                padding: const EdgeInsets.fromLTRB(18, 20, 18, 32),
+                decoration: const BoxDecoration(
+                  color: DesaKitaColors.background,
+                  borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+                ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        // Rating
-                        _InfoChip(
-                          icon: Icons.star_rounded,
-                          iconColor: const Color(0xFFE8A020),
-                          label: rating.toStringAsFixed(1),
-                          subtitle: 'Rating',
+                        const Icon(
+                          Icons.location_on_outlined,
+                          size: 17,
+                          color: DesaKitaColors.primary,
                         ),
-                        _verticalDivider(),
-                        // Price
-                        _InfoChip(
-                          icon: Icons.payments_outlined,
-                          iconColor: const Color(0xFF2D5016),
-                          label: price.isNotEmpty ? price : 'Gratis',
-                          subtitle: 'Harga',
-                        ),
-                        if (bookable) ...[
-                          _verticalDivider(),
-                          // Stock
-                          _InfoChip(
-                            icon: Icons.inventory_2_outlined,
-                            iconColor: stock > 0
-                                ? const Color(0xFF2D5016)
-                                : Colors.red,
-                            label: '$stock',
-                            subtitle: 'Stok',
+                        const SizedBox(width: 5),
+                        Expanded(
+                          child: Text(
+                            location,
+                            style: GoogleFonts.plusJakartaSans(
+                              fontSize: 11,
+                              color: DesaKitaColors.textSecondary,
+                            ),
                           ),
-                        ],
+                        ),
                       ],
                     ),
-                  ),
-
-                  const SizedBox(height: 20),
-
-                  // ─── Deskripsi ───
-                  _sectionTitle('Deskripsi'),
-                  const SizedBox(height: 8),
-                  _infoCard(
-                    child: Text(
+                    const SizedBox(height: 10),
+                    Wrap(
+                      spacing: 8,
+                      runSpacing: 8,
+                      children: [
+                        _InfoPill(
+                          icon: Icons.star_rounded,
+                          label: rating > 0
+                              ? rating.toStringAsFixed(1)
+                              : 'Belum ada rating',
+                          iconColor: DesaKitaColors.amber,
+                        ),
+                        if (openingHours.isNotEmpty)
+                          _InfoPill(
+                            icon: Icons.schedule_rounded,
+                            label: openingHours,
+                          ),
+                        if (price.isNotEmpty)
+                          _InfoPill(
+                            icon: Icons.confirmation_number_outlined,
+                            label: price,
+                          ),
+                      ],
+                    ),
+                    const SizedBox(height: 24),
+                    Text(
+                      'Tentang Destinasi',
+                      style: GoogleFonts.plusJakartaSans(
+                        fontSize: 16,
+                        fontWeight: FontWeight.w800,
+                        color: DesaKitaColors.text,
+                      ),
+                    ),
+                    const SizedBox(height: 8),
+                    Text(
                       description.isNotEmpty
                           ? description
-                          : 'Belum ada deskripsi',
-                      style: GoogleFonts.poppins(
-                        fontSize: 13,
-                        color: description.isNotEmpty
-                            ? Colors.grey[700]
-                            : Colors.grey[400],
-                        height: 1.6,
+                          : 'Informasi lengkap mengenai destinasi ini belum ditambahkan. Kamu tetap dapat melihat nama dan lokasi yang tersedia, atau menghubungi pengelola setempat untuk informasi lebih lanjut.',
+                      style: GoogleFonts.plusJakartaSans(
+                        fontSize: 12,
+                        height: 1.65,
+                        color: DesaKitaColors.textSecondary,
                       ),
                     ),
-                  ),
-                  const SizedBox(height: 20),
-
-                  // ─── Fasilitas ───
-                  _sectionTitle('Fasilitas'),
-                  const SizedBox(height: 8),
-                  _infoCard(
-                    child: _buildFacilitiesContent(facilities),
-                  ),
-                  const SizedBox(height: 20),
-
-                  // ─── Nomor & Jam Buka ───
-                  _sectionTitle('Informasi'),
-                  const SizedBox(height: 8),
-                  _infoCard(
-                    child: Column(
-                      children: [
-                        _infoRow(
-                          Icons.phone_outlined,
-                          'Nomor',
-                          contact.isNotEmpty ? contact : 'Belum tersedia',
-                          muted: contact.isEmpty,
-                        ),
-                        const Divider(height: 20),
-                        _infoRow(
-                          Icons.access_time_outlined,
-                          'Jam Buka',
-                          openingHours.isNotEmpty
-                              ? openingHours
-                              : 'Belum tersedia',
-                          muted: openingHours.isEmpty,
-                        ),
-                      ],
-                    ),
-                  ),
-                  const SizedBox(height: 20),
-
-                  // ─── Lokasi (buka URL peta) ───
-                  _sectionTitle('Lokasi'),
-                  const SizedBox(height: 8),
-                  Material(
-                    color: Colors.transparent,
-                    child: InkWell(
-                      onTap: _openMaps,
-                      borderRadius: BorderRadius.circular(16),
-                      child: _infoCard(
-                        child: Row(
-                          children: [
-                            Container(
-                              width: 48,
-                              height: 48,
-                              decoration: BoxDecoration(
-                                color: const Color(0xFFEEF2E8),
-                                borderRadius: BorderRadius.circular(12),
-                              ),
-                              child: const Icon(
-                                Icons.map_outlined,
-                                color: Color(0xFF2D5016),
-                                size: 24,
-                              ),
-                            ),
-                            const SizedBox(width: 14),
-                            Expanded(
-                              child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  Text(
-                                    location.isNotEmpty
-                                        ? location
-                                        : 'Lokasi belum tersedia',
-                                    style: GoogleFonts.poppins(
-                                      fontSize: 13,
-                                      fontWeight: FontWeight.w600,
-                                      color: const Color(0xFF1A1A1A),
-                                    ),
-                                  ),
-                                  const SizedBox(height: 2),
-                                  Text(
-                                    (dest['mapsUrl'] as String?)?.trim().isNotEmpty ==
-                                            true
-                                        ? 'Ketuk untuk buka di peta'
-                                        : 'Link peta belum ditambahkan',
-                                    style: GoogleFonts.poppins(
-                                      fontSize: 12,
-                                      color:
-                                          (dest['mapsUrl'] as String?)
-                                                      ?.trim()
-                                                      .isNotEmpty ==
-                                                  true
-                                              ? const Color(0xFF2D5016)
-                                              : Colors.grey[500],
-                                      fontWeight: FontWeight.w500,
-                                    ),
-                                  ),
-                                ],
-                              ),
-                            ),
-                            const Icon(
-                              Icons.open_in_new,
-                              size: 18,
-                              color: Color(0xFF2D5016),
-                            ),
-                          ],
-                        ),
+                    const SizedBox(height: 24),
+                    Text(
+                      'Fasilitas & Layanan',
+                      style: GoogleFonts.plusJakartaSans(
+                        fontSize: 16,
+                        fontWeight: FontWeight.w800,
+                        color: DesaKitaColors.text,
                       ),
                     ),
-                  ),
-
-                  // Space for bottom bar
-                  SizedBox(height: bookable ? 100 : 24),
-                ],
-              ),
-            ),
-          ),
-        ],
-      ),
-
-      // ─── Bottom Booking Bar ───
-      bottomNavigationBar: bookable
-          ? Container(
-              padding: const EdgeInsets.all(16),
-              decoration: const BoxDecoration(
-                color: Colors.white,
-                boxShadow: [
-                  BoxShadow(
-                    color: Color(0x15000000),
-                    blurRadius: 12,
-                    offset: Offset(0, -2),
-                  ),
-                ],
-              ),
-              child: SafeArea(
-                top: false,
-                child: Row(
-                  children: [
-                    // Price info
-                    Expanded(
-                      child: Column(
-                        mainAxisSize: MainAxisSize.min,
-                        crossAxisAlignment: CrossAxisAlignment.start,
+                    const SizedBox(height: 12),
+                    if (facilityList.isEmpty)
+                      Container(
+                        width: double.infinity,
+                        padding: const EdgeInsets.all(14),
+                        decoration: BoxDecoration(
+                          color: Colors.white,
+                          borderRadius: BorderRadius.circular(14),
+                          border: Border.all(color: DesaKitaColors.divider),
+                        ),
+                        child: Text(
+                          'Informasi fasilitas belum ditambahkan oleh pengelola.',
+                          style: GoogleFonts.plusJakartaSans(
+                            fontSize: 11,
+                            color: DesaKitaColors.textSecondary,
+                          ),
+                        ),
+                      )
+                    else
+                      Wrap(
+                        spacing: 8,
+                        runSpacing: 8,
+                        children: facilityList
+                            .map(
+                              (facility) => Container(
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 12,
+                                  vertical: 9,
+                                ),
+                                decoration: BoxDecoration(
+                                  color: DesaKitaColors.mutedGreen,
+                                  borderRadius: BorderRadius.circular(12),
+                                ),
+                                child: Row(
+                                  mainAxisSize: MainAxisSize.min,
+                                  children: [
+                                    const Icon(
+                                      Icons.check_circle_outline,
+                                      size: 14,
+                                      color: DesaKitaColors.primary,
+                                    ),
+                                    const SizedBox(width: 6),
+                                    Text(
+                                      facility,
+                                      style: GoogleFonts.plusJakartaSans(
+                                        fontSize: 10,
+                                        fontWeight: FontWeight.w700,
+                                        color: DesaKitaColors.darkGreen,
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            )
+                            .toList(),
+                      ),
+                    const SizedBox(height: 24),
+                    Text(
+                      'Lokasi',
+                      style: GoogleFonts.plusJakartaSans(
+                        fontSize: 16,
+                        fontWeight: FontWeight.w800,
+                        color: DesaKitaColors.text,
+                      ),
+                    ),
+                    const SizedBox(height: 10),
+                    Container(
+                      padding: const EdgeInsets.all(14),
+                      decoration: BoxDecoration(
+                        color: Colors.white,
+                        borderRadius: BorderRadius.circular(16),
+                        border: Border.all(color: DesaKitaColors.divider),
+                      ),
+                      child: Row(
                         children: [
-                          Text(
-                            'Mulai dari',
-                            style: GoogleFonts.poppins(
-                              fontSize: 11,
-                              color: Colors.grey[500],
+                          Container(
+                            width: 42,
+                            height: 42,
+                            decoration: const BoxDecoration(
+                              color: DesaKitaColors.mutedGreen,
+                              shape: BoxShape.circle,
+                            ),
+                            child: const Icon(
+                              Icons.place_outlined,
+                              color: DesaKitaColors.primary,
                             ),
                           ),
-                          Text(
-                            price,
-                            style: GoogleFonts.poppins(
-                              fontSize: 18,
-                              fontWeight: FontWeight.w700,
-                              color: const Color(0xFF2D5016),
+                          const SizedBox(width: 12),
+                          Expanded(
+                            child: Text(
+                              location,
+                              style: GoogleFonts.plusJakartaSans(
+                                fontSize: 11,
+                                height: 1.4,
+                                color: DesaKitaColors.text,
+                              ),
                             ),
+                          ),
+                          const Icon(
+                            Icons.map_outlined,
+                            size: 20,
+                            color: DesaKitaColors.primary,
                           ),
                         ],
                       ),
                     ),
-                    // Booking button
-                    SizedBox(
-                      height: 48,
-                      child: ElevatedButton(
-                        onPressed: stock > 0 ? _openBooking : null,
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: const Color(0xFF2D5016),
-                          foregroundColor: Colors.white,
-                          disabledBackgroundColor: Colors.grey[300],
-                          disabledForegroundColor: Colors.grey[600],
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(12),
-                          ),
-                          elevation: 0,
-                          padding: const EdgeInsets.symmetric(horizontal: 32),
-                        ),
-                        child: Text(
-                          stock > 0 ? 'Booking Sekarang' : 'Stok Habis',
-                          style: GoogleFonts.poppins(
-                            fontSize: 14,
-                            fontWeight: FontWeight.w600,
-                          ),
-                        ),
+                    const SizedBox(height: 14),
+                    Text(
+                      'Catatan: rute peta langsung belum terhubung pada versi ini.',
+                      style: GoogleFonts.plusJakartaSans(
+                        fontSize: 10,
+                        color: DesaKitaColors.textSecondary,
                       ),
                     ),
                   ],
                 ),
               ),
-            )
-          : null,
-    );
-  }
-
-  Widget _sectionTitle(String title) {
-    return Text(
-      title,
-      style: GoogleFonts.poppins(
-        fontSize: 16,
-        fontWeight: FontWeight.w700,
-        color: const Color(0xFF1A1A1A),
-      ),
-    );
-  }
-
-  Widget _infoCard({required Widget child}) {
-    return Container(
-      width: double.infinity,
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(16),
-        boxShadow: const [
-          BoxShadow(
-            color: Color(0x0D000000),
-            blurRadius: 8,
-            offset: Offset(0, 2),
+            ),
           ),
         ],
       ),
-      child: child,
-    );
-  }
-
-  Widget _buildFacilitiesContent(String facilities) {
-    final items = facilities
-        .split(',')
-        .map((f) => f.trim())
-        .where((f) => f.isNotEmpty)
-        .toList();
-
-    if (items.isEmpty) {
-      return Text(
-        'Belum ada fasilitas',
-        style: GoogleFonts.poppins(fontSize: 13, color: Colors.grey[400]),
-      );
-    }
-
-    return Wrap(
-      spacing: 8,
-      runSpacing: 8,
-      children: items
-          .map(
-            (f) => Container(
-              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-              decoration: BoxDecoration(
-                color: const Color(0xFFEEF2E8),
-                borderRadius: BorderRadius.circular(10),
-              ),
-              child: Row(
+      bottomNavigationBar: Container(
+        padding: EdgeInsets.fromLTRB(
+          18,
+          12,
+          18,
+          MediaQuery.of(context).padding.bottom + 12,
+        ),
+        decoration: const BoxDecoration(
+          color: Colors.white,
+          boxShadow: [
+            BoxShadow(
+              color: Color(0x0D000000),
+              blurRadius: 12,
+              offset: Offset(0, -3),
+            ),
+          ],
+        ),
+        child: Row(
+          children: [
+            Expanded(
+              child: Column(
                 mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  const Icon(
-                    Icons.check_circle,
-                    size: 14,
-                    color: Color(0xFF2D5016),
-                  ),
-                  const SizedBox(width: 6),
                   Text(
-                    f,
-                    style: GoogleFonts.poppins(
-                      fontSize: 12,
-                      fontWeight: FontWeight.w500,
-                      color: const Color(0xFF333333),
+                    'Harga mulai dari',
+                    style: GoogleFonts.plusJakartaSans(
+                      fontSize: 10,
+                      color: DesaKitaColors.textSecondary,
+                    ),
+                  ),
+                  const SizedBox(height: 2),
+                  Text(
+                    price.isEmpty ? 'Cek harga di lokasi' : price,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: GoogleFonts.plusJakartaSans(
+                      fontSize: 13,
+                      fontWeight: FontWeight.w800,
+                      color: DesaKitaColors.darkGreen,
                     ),
                   ),
                 ],
               ),
             ),
-          )
-          .toList(),
-    );
-  }
-
-  Widget _verticalDivider() {
-    return Container(
-      width: 1,
-      height: 40,
-      margin: const EdgeInsets.symmetric(horizontal: 12),
-      color: Colors.grey[200],
-    );
-  }
-
-  Widget _infoRow(
-    IconData icon,
-    String label,
-    String value, {
-    bool muted = false,
-  }) {
-    return Row(
-      children: [
-        Icon(icon, size: 20, color: const Color(0xFF2D5016)),
-        const SizedBox(width: 12),
-        Expanded(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                label,
-                style: GoogleFonts.poppins(
-                  fontSize: 11,
-                  color: Colors.grey[500],
+            const SizedBox(width: 12),
+            SizedBox(
+              height: 48,
+              child: ElevatedButton.icon(
+                onPressed: () {
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (_) =>
+                          TicketBookingScreen(destination: destination),
+                    ),
+                  );
+                },
+                icon: const Icon(Icons.confirmation_number_outlined, size: 17),
+                label: Text(
+                  'Pesan Tiket',
+                  style: GoogleFonts.plusJakartaSans(
+                    fontSize: 12,
+                    fontWeight: FontWeight.w800,
+                  ),
                 ),
               ),
-              Text(
-                value,
-                style: GoogleFonts.poppins(
-                  fontSize: 13,
-                  fontWeight: FontWeight.w500,
-                  color: muted ? Colors.grey[400] : const Color(0xFF333333),
-                ),
-              ),
-            ],
-          ),
+            ),
+          ],
         ),
-      ],
+      ),
     );
   }
 }
 
-// ─── Info Chip Widget ────────────────────────────────────────────────────────
-
-class _InfoChip extends StatelessWidget {
+class _RoundIconButton extends StatelessWidget {
   final IconData icon;
-  final Color iconColor;
-  final String label;
-  final String subtitle;
+  final VoidCallback onTap;
+  const _RoundIconButton({required this.icon, required this.onTap});
 
-  const _InfoChip({
+  @override
+  Widget build(BuildContext context) {
+    return Material(
+      color: Colors.white.withValues(alpha: 0.92),
+      shape: const CircleBorder(),
+      child: InkWell(
+        onTap: onTap,
+        customBorder: const CircleBorder(),
+        child: SizedBox(
+          width: 42,
+          height: 42,
+          child: Icon(icon, color: DesaKitaColors.darkGreen, size: 21),
+        ),
+      ),
+    );
+  }
+}
+
+class _InfoPill extends StatelessWidget {
+  final IconData icon;
+  final String label;
+  final Color iconColor;
+  const _InfoPill({
     required this.icon,
-    required this.iconColor,
     required this.label,
-    required this.subtitle,
+    this.iconColor = DesaKitaColors.primary,
   });
 
   @override
   Widget build(BuildContext context) {
-    return Expanded(
-      child: Column(
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 7),
+      decoration: BoxDecoration(
+        color: DesaKitaColors.mutedGreen,
+        borderRadius: BorderRadius.circular(20),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
         children: [
-          Icon(icon, size: 22, color: iconColor),
-          const SizedBox(height: 6),
+          Icon(icon, size: 14, color: iconColor),
+          const SizedBox(width: 4),
           Text(
             label,
-            style: GoogleFonts.poppins(
-              fontSize: 13,
+            style: GoogleFonts.plusJakartaSans(
+              fontSize: 10,
               fontWeight: FontWeight.w700,
-              color: const Color(0xFF1A1A1A),
+              color: DesaKitaColors.darkGreen,
             ),
-            maxLines: 1,
-            overflow: TextOverflow.ellipsis,
-          ),
-          Text(
-            subtitle,
-            style: GoogleFonts.poppins(fontSize: 11, color: Colors.grey[500]),
           ),
         ],
       ),

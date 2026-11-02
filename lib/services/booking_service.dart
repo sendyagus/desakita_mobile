@@ -1,5 +1,4 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
-import 'package:desa_wisata/utils/firestore_pager.dart';
 
 /// Booking di Firestore (`bookings`) dengan snapshot destinasi untuk ganti join SQL.
 class BookingService {
@@ -57,6 +56,11 @@ class BookingService {
       'guest_count': b['guestCount'] ?? 1,
       'total_price': b['totalPrice'] ?? '',
       'status': b['status'] ?? 'pending',
+      'payment_method': b['paymentMethod'] ?? '',
+      'payment_status': b['paymentStatus'] ?? 'awaiting_payment',
+      'visitor_name': b['visitorName'] ?? b['userFullName'] ?? '',
+      'visitor_phone': b['visitorPhone'] ?? b['userPhone'] ?? '',
+      'visitor_email': b['visitorEmail'] ?? b['userEmail'] ?? '',
       'created_at': iso(cr),
       'updated_at': iso(up),
       'destinations': _nestedDestination(b),
@@ -71,57 +75,49 @@ class BookingService {
     required DateTime checkOut,
     required int guestCount,
     required String totalPrice,
+    String? visitorName,
+    String? visitorPhone,
+    String? visitorEmail,
+    String? paymentMethod,
+    String paymentStatus = 'awaiting_payment',
   }) async {
-    final destRef = _db.collection(_destinations).doc(destinationId);
-    final userRef = _db.collection(_users).doc(userId);
-    final bookingRef = _db.collection(_bookings).doc();
+    final destSnap = await _db
+        .collection(_destinations)
+        .doc(destinationId)
+        .get();
+    final dest = destSnap.data() ?? {};
+    final userSnap = await _db.collection(_users).doc(userId).get();
+    final user = userSnap.data() ?? {};
 
-    await _db.runTransaction((tx) async {
-      // Baca destinasi & user di dalam transaction (atomic)
-      final destSnap = await tx.get(destRef);
-      final userSnap = await tx.get(userRef);
-
-      if (!destSnap.exists) {
-        throw Exception('Destinasi tidak ditemukan.');
-      }
-
-      final dest = destSnap.data()!;
-
-      if (dest['bookable'] != true) {
-        throw Exception('Destinasi ini tidak tersedia untuk booking.');
-      }
-
-      final stock = (dest['stock'] as num?)?.toInt() ?? 0;
-      if (stock <= 0) {
-        throw Exception('Stok habis. Pilih tempat lain atau hubungi admin.');
-      }
-
-      final user = userSnap.data() ?? {};
-
-      // Buat dokumen booking di dalam transaction
-      tx.set(bookingRef, {
-        'destinationId': destinationId,
-        'userId': userId,
-        'checkIn': Timestamp.fromDate(checkIn),
-        'checkOut': Timestamp.fromDate(checkOut),
-        'guestCount': guestCount,
-        'totalPrice': totalPrice,
-        'status': 'pending',
-        'destinationName': dest['name'] ?? '',
-        'destinationCategory': dest['category'],
-        'destinationLocation': dest['location'],
-        'destinationRating': dest['rating'],
-        'destinationPrice': dest['price'],
-        'destinationImageUrl': dest['imageUrl'],
-        'userFullName': user['fullName'] ?? '',
-        'userEmail': user['email'] ?? '',
-        'userPhone': user['phone'] ?? '',
-        'createdAt': FieldValue.serverTimestamp(),
-        'updatedAt': FieldValue.serverTimestamp(),
-      });
+    final now = FieldValue.serverTimestamp();
+    final ref = _db.collection(_bookings).doc();
+    await ref.set({
+      'destinationId': destinationId,
+      'userId': userId,
+      'checkIn': Timestamp.fromDate(checkIn),
+      'checkOut': Timestamp.fromDate(checkOut),
+      'guestCount': guestCount,
+      'totalPrice': totalPrice,
+      'status': 'pending',
+      'paymentMethod': paymentMethod ?? '',
+      'paymentStatus': paymentStatus,
+      'visitorName': visitorName ?? user['fullName'] ?? '',
+      'visitorPhone': visitorPhone ?? user['phone'] ?? '',
+      'visitorEmail': visitorEmail ?? user['email'] ?? '',
+      'destinationName': dest['name'] ?? '',
+      'destinationCategory': dest['category'],
+      'destinationLocation': dest['location'],
+      'destinationRating': dest['rating'],
+      'destinationPrice': dest['price'],
+      'destinationImageUrl': dest['imageUrl'],
+      'userFullName': user['fullName'] ?? '',
+      'userEmail': user['email'] ?? '',
+      'userPhone': user['phone'] ?? '',
+      'createdAt': now,
+      'updatedAt': now,
     });
 
-    final doc = await bookingRef.get();
+    final doc = await ref.get();
     return _docToBookingMap(doc.id, doc.data()!);
   }
 
@@ -132,110 +128,37 @@ class BookingService {
         .get();
     final list = snap.docs.map((d) => _docToBookingMap(d.id, d.data())).toList()
       ..sort((a, b) {
-        final ca = DateTime.tryParse(a['created_at'] as String? ?? '') ??
+        final ca =
+            DateTime.tryParse(a['created_at'] as String? ?? '') ??
             DateTime.fromMillisecondsSinceEpoch(0);
-        final cb = DateTime.tryParse(b['created_at'] as String? ?? '') ??
+        final cb =
+            DateTime.tryParse(b['created_at'] as String? ?? '') ??
             DateTime.fromMillisecondsSinceEpoch(0);
         return cb.compareTo(ca);
       });
     return list;
-  }
-
-  Stream<List<Map<String, dynamic>>> watchAllBookings() {
-    return _db.collection(_bookings).snapshots().map((snap) {
-      final list =
-          snap.docs.map((d) => _docToBookingMap(d.id, d.data())).toList()
-            ..sort((a, b) {
-              final ca = DateTime.tryParse(a['created_at'] as String? ?? '') ??
-                  DateTime.fromMillisecondsSinceEpoch(0);
-              final cb = DateTime.tryParse(b['created_at'] as String? ?? '') ??
-                  DateTime.fromMillisecondsSinceEpoch(0);
-              return cb.compareTo(ca);
-            });
-      return list;
-    });
   }
 
   Future<List<Map<String, dynamic>>> getAllBookings() async {
     final snap = await _db.collection(_bookings).get();
     final list = snap.docs.map((d) => _docToBookingMap(d.id, d.data())).toList()
       ..sort((a, b) {
-        final ca = DateTime.tryParse(a['created_at'] as String? ?? '') ??
+        final ca =
+            DateTime.tryParse(a['created_at'] as String? ?? '') ??
             DateTime.fromMillisecondsSinceEpoch(0);
-        final cb = DateTime.tryParse(b['created_at'] as String? ?? '') ??
+        final cb =
+            DateTime.tryParse(b['created_at'] as String? ?? '') ??
             DateTime.fromMillisecondsSinceEpoch(0);
         return cb.compareTo(ca);
       });
     return list;
   }
 
-  /// Ambil semua booking dengan paginasi cursor-based (terbaru dulu).
-  Future<PagedResult<Map<String, dynamic>>> getBookingsPaged({
-    int pageSize = 20,
-    DocumentSnapshot? startAfter,
-  }) async {
-    return FirestorePager.queryMap(
-      collection: _db
-          .collection(_bookings)
-          .orderBy('createdAt', descending: true),
-      pageSize: pageSize,
-      startAfter: startAfter,
-      mapper: (id, data) => _docToBookingMap(id, data),
-    );
-  }
-
-  /// Ambil booking milik satu user dengan paginasi.
-  Future<PagedResult<Map<String, dynamic>>> getUserBookingsPaged({
-    required String userId,
-    int pageSize = 10,
-    DocumentSnapshot? startAfter,
-  }) async {
-    return FirestorePager.queryMap(
-      collection: _db
-          .collection(_bookings)
-          .where('userId', isEqualTo: userId)
-          .orderBy('createdAt', descending: true),
-      pageSize: pageSize,
-      startAfter: startAfter,
-      mapper: (id, data) => _docToBookingMap(id, data),
-    );
-  }
-
   Future<void> updateBookingStatus(String bookingId, String status) async {
-    final bookingRef = _db.collection(_bookings).doc(bookingId);
-    final bookingDoc = await bookingRef.get();
-    if (!bookingDoc.exists) return;
-
-    final data = bookingDoc.data()!;
-    final oldStatus = data['status'] as String? ?? 'pending';
-    final destId = data['destinationId'] as String?;
-
-    await bookingRef.update({
+    await _db.collection(_bookings).doc(bookingId).update({
       'status': status,
       'updatedAt': FieldValue.serverTimestamp(),
     });
-
-    if (destId == null) return;
-
-    final destRef = _db.collection(_destinations).doc(destId);
-
-    if (status == 'confirmed' && oldStatus == 'pending') {
-      await _db.runTransaction((tx) async {
-        final destSnap = await tx.get(destRef);
-        final stock = (destSnap.data()?['stock'] as num?)?.toInt() ?? 0;
-        if (stock <= 0) {
-          throw Exception('Stok destinasi habis, tidak bisa dikonfirmasi.');
-        }
-        tx.update(destRef, {'stock': stock - 1});
-      });
-    } else if ((status == 'cancelled') &&
-        (oldStatus == 'confirmed' || oldStatus == 'completed')) {
-      await _db.runTransaction((tx) async {
-        final destSnap = await tx.get(destRef);
-        final stock = (destSnap.data()?['stock'] as num?)?.toInt() ?? 0;
-        tx.update(destRef, {'stock': stock + 1});
-      });
-    }
   }
 
   Future<void> cancelBooking(String bookingId) async {

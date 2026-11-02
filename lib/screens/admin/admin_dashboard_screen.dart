@@ -3,9 +3,6 @@ import 'package:google_fonts/google_fonts.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:desa_wisata/screens/admin/user_management_screen.dart';
 import 'package:desa_wisata/screens/admin/destination_management_screen.dart';
-import 'package:desa_wisata/screens/admin/booking_management_screen.dart';
-import 'package:desa_wisata/screens/admin/event_management_screen.dart';
-import 'package:desa_wisata/screens/admin/booking_analytics_screen.dart';
 import 'package:desa_wisata/services/stats_service.dart';
 import 'package:desa_wisata/services/auth_service.dart';
 import 'package:desa_wisata/services/user_service.dart';
@@ -36,14 +33,14 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
     try {
       final stats = await _statsService.getAllStats();
       final activities = await _statsService.getRecentActivities();
-      
+
       // Load admin user data
       final userId = FirebaseAuth.instance.currentUser?.uid;
       UserModel? admin;
       if (userId != null) {
         admin = await _userService.getUserById(userId);
       }
-      
+
       if (mounted) {
         setState(() {
           _stats = stats;
@@ -62,7 +59,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: const Color(0xFFF5F5F0),
+      backgroundColor: const Color(0xFFF9FAF7),
       body: SafeArea(
         child: Column(
           children: [
@@ -74,12 +71,12 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
               child: _isLoading
                   ? const Center(
                       child: CircularProgressIndicator(
-                        color: Color(0xFF2D5016),
+                        color: Color(0xFF1C7A28),
                       ),
                     )
                   : RefreshIndicator(
                       onRefresh: _loadData,
-                      color: const Color(0xFF2D5016),
+                      color: const Color(0xFF1C7A28),
                       child: SingleChildScrollView(
                         physics: const AlwaysScrollableScrollPhysics(),
                         padding: const EdgeInsets.all(20),
@@ -135,12 +132,14 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
             decoration: BoxDecoration(
               shape: BoxShape.circle,
               gradient: const LinearGradient(
-                colors: [Color(0xFF2D5016), Color(0xFF6B9E45)],
+                colors: [Color(0xFF1C7A28), Color(0xFF10B981)],
               ),
-              border: Border.all(color: const Color(0xFF2D5016), width: 2),
+              border: Border.all(color: const Color(0xFF1C7A28), width: 2),
             ),
             child: ClipOval(
-              child: _currentAdmin?.avatarUrl != null && _currentAdmin!.avatarUrl!.isNotEmpty
+              child:
+                  _currentAdmin?.avatarUrl != null &&
+                      _currentAdmin!.avatarUrl!.isNotEmpty
                   ? Image.network(
                       _currentAdmin!.avatarUrl!,
                       width: 44,
@@ -180,7 +179,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
               children: [
                 Text(
                   _currentAdmin?.fullName ?? 'Dashboard Admin',
-                  style: GoogleFonts.poppins(
+                  style: GoogleFonts.plusJakartaSans(
                     fontSize: 16,
                     fontWeight: FontWeight.w700,
                     color: const Color(0xFF1A1A1A),
@@ -188,7 +187,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
                 ),
                 Text(
                   _currentAdmin?.email ?? 'Kelola sistem DesaKita',
-                  style: GoogleFonts.poppins(
+                  style: GoogleFonts.plusJakartaSans(
                     fontSize: 12,
                     color: Colors.grey[600],
                   ),
@@ -196,6 +195,29 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
                 ),
               ],
             ),
+          ),
+
+          // Notifikasi
+          Stack(
+            children: [
+              IconButton(
+                onPressed: () {},
+                icon: const Icon(Icons.notifications_outlined),
+                color: const Color(0xFF1C7A28),
+              ),
+              Positioned(
+                top: 8,
+                right: 8,
+                child: Container(
+                  width: 8,
+                  height: 8,
+                  decoration: const BoxDecoration(
+                    shape: BoxShape.circle,
+                    color: Color(0xFFE53935),
+                  ),
+                ),
+              ),
+            ],
           ),
 
           // Logout button
@@ -217,21 +239,24 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
         title: Text(
           'Logout',
-          style: GoogleFonts.poppins(
+          style: GoogleFonts.plusJakartaSans(
             fontWeight: FontWeight.w700,
             color: const Color(0xFF1A1A1A),
           ),
         ),
         content: Text(
           'Yakin ingin keluar dari dashboard admin?',
-          style: GoogleFonts.poppins(fontSize: 13, color: Colors.grey[700]),
+          style: GoogleFonts.plusJakartaSans(
+            fontSize: 13,
+            color: Colors.grey[700],
+          ),
         ),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(ctx),
             child: Text(
               'Batal',
-              style: GoogleFonts.poppins(color: Colors.grey[600]),
+              style: GoogleFonts.plusJakartaSans(color: Colors.grey[600]),
             ),
           ),
           ElevatedButton(
@@ -240,10 +265,9 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
               try {
                 await AuthService().signOut();
                 if (mounted) {
-                  Navigator.of(context).pushNamedAndRemoveUntil(
-                    '/login',
-                    (route) => false,
-                  );
+                  Navigator.of(
+                    context,
+                  ).pushNamedAndRemoveUntil('/login', (route) => false);
                 }
               } catch (e) {
                 if (mounted) {
@@ -251,7 +275,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
                     SnackBar(
                       content: Text(
                         'Gagal logout: $e',
-                        style: GoogleFonts.poppins(fontSize: 13),
+                        style: GoogleFonts.plusJakartaSans(fontSize: 13),
                       ),
                       backgroundColor: Colors.red,
                       behavior: SnackBarBehavior.floating,
@@ -273,7 +297,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
             ),
             child: Text(
               'Logout',
-              style: GoogleFonts.poppins(fontWeight: FontWeight.w600),
+              style: GoogleFonts.plusJakartaSans(fontWeight: FontWeight.w600),
             ),
           ),
         ],
@@ -293,7 +317,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
       children: [
         Text(
           'Statistik Hari Ini',
-          style: GoogleFonts.poppins(
+          style: GoogleFonts.plusJakartaSans(
             fontSize: 16,
             fontWeight: FontWeight.w700,
             color: const Color(0xFF1A1A1A),
@@ -349,7 +373,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
       children: [
         Text(
           'Menu Utama',
-          style: GoogleFonts.poppins(
+          style: GoogleFonts.plusJakartaSans(
             fontSize: 16,
             fontWeight: FontWeight.w700,
             color: const Color(0xFF1A1A1A),
@@ -364,9 +388,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
           onTap: () {
             Navigator.push(
               context,
-              MaterialPageRoute(
-                builder: (_) => const UserManagementScreen(),
-              ),
+              MaterialPageRoute(builder: (_) => const UserManagementScreen()),
             );
           },
         ),
@@ -392,12 +414,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
           subtitle: 'Lihat dan kelola pemesanan',
           color: const Color(0xFFFF9800),
           onTap: () {
-            Navigator.push(
-              context,
-              MaterialPageRoute(
-                builder: (_) => const BookingManagementScreen(),
-              ),
-            );
+            _showComingSoon('Kelola Booking');
           },
         ),
         const SizedBox(height: 10),
@@ -407,23 +424,17 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
           subtitle: 'Tambah dan kelola event desa',
           color: const Color(0xFF9C27B0),
           onTap: () {
-            Navigator.push(
-              context,
-              MaterialPageRoute(builder: (_) => const EventManagementScreen()),
-            );
+            _showComingSoon('Kelola Acara');
           },
         ),
         const SizedBox(height: 10),
         _MenuCard(
           icon: Icons.bar_chart_outlined,
           title: 'Laporan & Analitik',
-          subtitle: 'Laporan booking & pendapatan',
+          subtitle: 'Lihat statistik lengkap',
           color: const Color(0xFFE91E63),
           onTap: () {
-            Navigator.push(
-              context,
-              MaterialPageRoute(builder: (_) => const BookingAnalyticsScreen()),
-            );
+            _showComingSoon('Laporan & Analitik');
           },
         ),
       ],
@@ -441,7 +452,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
           children: [
             Text(
               'Aktivitas Terbaru',
-              style: GoogleFonts.poppins(
+              style: GoogleFonts.plusJakartaSans(
                 fontSize: 16,
                 fontWeight: FontWeight.w700,
                 color: const Color(0xFF1A1A1A),
@@ -451,14 +462,14 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
               onPressed: _loadData,
               child: Row(
                 children: [
-                  const Icon(Icons.refresh, size: 16, color: Color(0xFF2D5016)),
+                  const Icon(Icons.refresh, size: 16, color: Color(0xFF1C7A28)),
                   const SizedBox(width: 4),
                   Text(
                     'Refresh',
-                    style: GoogleFonts.poppins(
+                    style: GoogleFonts.plusJakartaSans(
                       fontSize: 12,
                       fontWeight: FontWeight.w600,
-                      color: const Color(0xFF2D5016),
+                      color: const Color(0xFF1C7A28),
                     ),
                   ),
                 ],
@@ -477,7 +488,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
             child: Center(
               child: Text(
                 'Belum ada aktivitas',
-                style: GoogleFonts.poppins(
+                style: GoogleFonts.plusJakartaSans(
                   fontSize: 13,
                   color: Colors.grey[400],
                 ),
@@ -546,6 +557,19 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
     }
   }
 
+  void _showComingSoon(String feature) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(
+          '$feature — segera hadir',
+          style: GoogleFonts.plusJakartaSans(fontSize: 13),
+        ),
+        backgroundColor: const Color(0xFF1C7A28),
+        behavior: SnackBarBehavior.floating,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+      ),
+    );
+  }
 }
 
 // ─── Stat Card ────────────────────────────────────────────────────────────────
@@ -597,15 +621,17 @@ class _StatCard extends StatelessWidget {
               ),
               if (trend != null)
                 Container(
-                  padding:
-                      const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 6,
+                    vertical: 2,
+                  ),
                   decoration: BoxDecoration(
                     color: const Color(0xFF4CAF50).withValues(alpha: 0.1),
                     borderRadius: BorderRadius.circular(8),
                   ),
                   child: Text(
                     trend!,
-                    style: GoogleFonts.poppins(
+                    style: GoogleFonts.plusJakartaSans(
                       fontSize: 9,
                       fontWeight: FontWeight.w600,
                       color: const Color(0xFF4CAF50),
@@ -619,7 +645,7 @@ class _StatCard extends StatelessWidget {
             children: [
               Text(
                 value,
-                style: GoogleFonts.poppins(
+                style: GoogleFonts.plusJakartaSans(
                   fontSize: 20,
                   fontWeight: FontWeight.w700,
                   color: const Color(0xFF1A1A1A),
@@ -627,7 +653,7 @@ class _StatCard extends StatelessWidget {
               ),
               Text(
                 label,
-                style: GoogleFonts.poppins(
+                style: GoogleFonts.plusJakartaSans(
                   fontSize: 11,
                   color: Colors.grey[600],
                 ),
@@ -693,7 +719,7 @@ class _MenuCard extends StatelessWidget {
                 children: [
                   Text(
                     title,
-                    style: GoogleFonts.poppins(
+                    style: GoogleFonts.plusJakartaSans(
                       fontSize: 14,
                       fontWeight: FontWeight.w600,
                       color: const Color(0xFF1A1A1A),
@@ -701,7 +727,7 @@ class _MenuCard extends StatelessWidget {
                   ),
                   Text(
                     subtitle,
-                    style: GoogleFonts.poppins(
+                    style: GoogleFonts.plusJakartaSans(
                       fontSize: 12,
                       color: Colors.grey[600],
                     ),
@@ -764,7 +790,7 @@ class _ActivityItem extends StatelessWidget {
                   children: [
                     Text(
                       title,
-                      style: GoogleFonts.poppins(
+                      style: GoogleFonts.plusJakartaSans(
                         fontSize: 13,
                         fontWeight: FontWeight.w600,
                         color: const Color(0xFF1A1A1A),
@@ -772,7 +798,7 @@ class _ActivityItem extends StatelessWidget {
                     ),
                     Text(
                       subtitle,
-                      style: GoogleFonts.poppins(
+                      style: GoogleFonts.plusJakartaSans(
                         fontSize: 11,
                         color: Colors.grey[600],
                       ),
@@ -782,7 +808,7 @@ class _ActivityItem extends StatelessWidget {
               ),
               Text(
                 time,
-                style: GoogleFonts.poppins(
+                style: GoogleFonts.plusJakartaSans(
                   fontSize: 10,
                   color: Colors.grey[400],
                 ),

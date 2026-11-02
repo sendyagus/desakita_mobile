@@ -1,9 +1,9 @@
 import 'package:flutter/material.dart';
-import 'package:desa_wisata/app/app_assets.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:desa_wisata/services/auth_service.dart';
 import 'package:desa_wisata/utils/error_handler.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:desa_wisata/theme/desakita_theme.dart';
 import 'package:desa_wisata/widgets/auth_header.dart';
 import 'package:desa_wisata/widgets/custom_text_field.dart';
 import 'package:desa_wisata/widgets/social_login_button.dart';
@@ -240,7 +240,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
                       child: ElevatedButton(
                         onPressed: _isLoading ? null : _handleRegister,
                         style: ElevatedButton.styleFrom(
-                          backgroundColor: const Color(0xFF2D5016),
+                          backgroundColor: DesaKitaColors.primary,
                           foregroundColor: Colors.white,
                           shape: RoundedRectangleBorder(
                             borderRadius: BorderRadius.circular(12),
@@ -258,7 +258,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
                               )
                             : Text(
                                 'Daftar',
-                                style: GoogleFonts.poppins(
+                                style: GoogleFonts.plusJakartaSans(
                                   fontSize: 15,
                                   fontWeight: FontWeight.w600,
                                 ),
@@ -278,7 +278,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
                           padding: const EdgeInsets.symmetric(horizontal: 12),
                           child: Text(
                             'atau masuk dengan',
-                            style: GoogleFonts.poppins(
+                            style: GoogleFonts.plusJakartaSans(
                               fontSize: 12,
                               color: Colors.grey,
                             ),
@@ -298,12 +298,10 @@ class _RegisterScreenState extends State<RegisterScreen> {
                         Expanded(
                           child: SocialLoginButton(
                             label: 'Google',
-                            iconPath: AppAssets.googleIcon,
+                            useIconWidget: true,
+                            iconWidget: _googleIcon(),
                             onPressed: () {
-                              ErrorHandler.showInfoSnackBar(
-                                context,
-                                'Daftar dengan Google belum tersedia.',
-                              );
+                              // TODO: daftar dengan Google
                             },
                           ),
                         ),
@@ -311,12 +309,10 @@ class _RegisterScreenState extends State<RegisterScreen> {
                         Expanded(
                           child: SocialLoginButton(
                             label: 'Facebook',
-                            iconPath: AppAssets.facebookIcon,
+                            useIconWidget: true,
+                            iconWidget: _facebookIcon(),
                             onPressed: () {
-                              ErrorHandler.showInfoSnackBar(
-                                context,
-                                'Daftar dengan Facebook belum tersedia.',
-                              );
+                              // TODO: daftar dengan Facebook
                             },
                           ),
                         ),
@@ -332,7 +328,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
                         children: [
                           Text(
                             'Sudah punya akun? ',
-                            style: GoogleFonts.poppins(
+                            style: GoogleFonts.plusJakartaSans(
                               fontSize: 13,
                               color: Colors.grey[700],
                             ),
@@ -341,10 +337,10 @@ class _RegisterScreenState extends State<RegisterScreen> {
                             onTap: () => Navigator.pop(context),
                             child: Text(
                               'Masuk',
-                              style: GoogleFonts.poppins(
+                              style: GoogleFonts.plusJakartaSans(
                                 fontSize: 13,
                                 fontWeight: FontWeight.w700,
-                                color: const Color(0xFF2D5016),
+                                color: DesaKitaColors.primary,
                               ),
                             ),
                           ),
@@ -366,7 +362,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
   Widget _fieldLabel(String label) {
     return Text(
       label,
-      style: GoogleFonts.poppins(
+      style: GoogleFonts.plusJakartaSans(
         fontSize: 13,
         fontWeight: FontWeight.w500,
         color: const Color(0xFF333333),
@@ -377,7 +373,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
   Widget _phoneField() {
     return Container(
       decoration: BoxDecoration(
-        color: const Color(0xFFF5F5F0),
+        color: const Color(0xFFF9FAF7),
         borderRadius: BorderRadius.circular(12),
       ),
       child: Row(
@@ -392,7 +388,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
             ),
             child: Text(
               '+62',
-              style: GoogleFonts.poppins(
+              style: GoogleFonts.plusJakartaSans(
                 fontSize: 14,
                 fontWeight: FontWeight.w500,
                 color: const Color(0xFF333333),
@@ -404,10 +400,10 @@ class _RegisterScreenState extends State<RegisterScreen> {
             child: TextFormField(
               controller: _phoneController,
               keyboardType: TextInputType.phone,
-              style: GoogleFonts.poppins(fontSize: 14),
+              style: GoogleFonts.plusJakartaSans(fontSize: 14),
               decoration: InputDecoration(
                 hintText: '812 3456 7890',
-                hintStyle: GoogleFonts.poppins(
+                hintStyle: GoogleFonts.plusJakartaSans(
                   fontSize: 14,
                   color: Colors.grey[400],
                 ),
@@ -430,6 +426,51 @@ class _RegisterScreenState extends State<RegisterScreen> {
             ),
           ),
         ],
+      ),
+    );
+  }
+
+  Widget _googleIcon() {
+    return Container(
+      width: 20,
+      height: 20,
+      decoration: BoxDecoration(
+        shape: BoxShape.circle,
+        color: Colors.white,
+        border: Border.all(color: const Color(0xFFDDDDDD), width: 0.5),
+      ),
+      child: const Center(
+        child: Text(
+          'G',
+          textAlign: TextAlign.center,
+          style: TextStyle(
+            fontSize: 12,
+            fontWeight: FontWeight.bold,
+            color: Color(0xFF4285F4),
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _facebookIcon() {
+    return Container(
+      width: 20,
+      height: 20,
+      decoration: const BoxDecoration(
+        shape: BoxShape.circle,
+        color: Color(0xFF1877F2),
+      ),
+      child: const Center(
+        child: Text(
+          'f',
+          style: TextStyle(
+            fontSize: 13,
+            fontWeight: FontWeight.bold,
+            color: Colors.white,
+            height: 1.3,
+          ),
+        ),
       ),
     );
   }

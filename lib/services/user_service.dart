@@ -8,10 +8,9 @@ class UserService {
 
   Future<List<UserModel>> getAllUsers() async {
     final snap = await _db.collection(_col).get();
-    final list = snap.docs
-        .map((d) => UserModel.fromFirestore(d.id, d.data()))
-        .toList()
-      ..sort((a, b) => b.createdAt.compareTo(a.createdAt));
+    final list =
+        snap.docs.map((d) => UserModel.fromFirestore(d.id, d.data())).toList()
+          ..sort((a, b) => b.createdAt.compareTo(a.createdAt));
     return list;
   }
 
@@ -20,10 +19,9 @@ class UserService {
         .collection(_col)
         .where('role', isEqualTo: role)
         .get();
-    final list = snap.docs
-        .map((d) => UserModel.fromFirestore(d.id, d.data()))
-        .toList()
-      ..sort((a, b) => b.createdAt.compareTo(a.createdAt));
+    final list =
+        snap.docs.map((d) => UserModel.fromFirestore(d.id, d.data())).toList()
+          ..sort((a, b) => b.createdAt.compareTo(a.createdAt));
     return list;
   }
 
@@ -32,10 +30,9 @@ class UserService {
         .collection(_col)
         .where('isActive', isEqualTo: true)
         .get();
-    final list = snap.docs
-        .map((d) => UserModel.fromFirestore(d.id, d.data()))
-        .toList()
-      ..sort((a, b) => b.createdAt.compareTo(a.createdAt));
+    final list =
+        snap.docs.map((d) => UserModel.fromFirestore(d.id, d.data())).toList()
+          ..sort((a, b) => b.createdAt.compareTo(a.createdAt));
     return list;
   }
 
@@ -88,53 +85,12 @@ class UserService {
     final startOfDay = DateTime(now.year, now.month, now.day);
     final snap = await _db
         .collection(_col)
-        .where('createdAt', isGreaterThanOrEqualTo: Timestamp.fromDate(startOfDay))
+        .where(
+          'createdAt',
+          isGreaterThanOrEqualTo: Timestamp.fromDate(startOfDay),
+        )
         .count()
         .get();
     return snap.count ?? 0;
-  }
-
-  Future<void> toggleFavorite(String userId, String destinationId) async {
-    final docRef = _db.collection(_col).doc(userId);
-    final doc = await docRef.get();
-    if (!doc.exists) return;
-
-    final data = doc.data()!;
-    final List<dynamic> favorites = data['favorites'] ?? [];
-    if (favorites.contains(destinationId)) {
-      await docRef.update({
-        'favorites': FieldValue.arrayRemove([destinationId]),
-        'updatedAt': FieldValue.serverTimestamp(),
-      });
-    } else {
-      await docRef.update({
-        'favorites': FieldValue.arrayUnion([destinationId]),
-        'updatedAt': FieldValue.serverTimestamp(),
-      });
-    }
-  }
-
-  Future<List<String>> getFavorites(String userId) async {
-    final doc = await _db.collection(_col).doc(userId).get();
-    if (!doc.exists || doc.data() == null) return [];
-    return List<String>.from(doc.data()!['favorites'] ?? []);
-  }
-
-  /// Stream favorit secara real-time. Pakai ini di screen agar tidak perlu
-  /// subscribe manual ke Firestore collection('users').doc(uid).snapshots().
-  Stream<List<String>> watchFavorites(String userId) {
-    return _db
-        .collection(_col)
-        .doc(userId)
-        .snapshots()
-        .map((doc) {
-          if (!doc.exists || doc.data() == null) return <String>[];
-          return List<String>.from(doc.data()!['favorites'] ?? []);
-        });
-  }
-
-  /// Cek apakah satu destinasi ada di favorit user (real-time).
-  Stream<bool> isFavorite(String userId, String destinationId) {
-    return watchFavorites(userId).map((favs) => favs.contains(destinationId));
   }
 }

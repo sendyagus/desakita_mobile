@@ -1,11 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
-import 'package:firebase_auth/firebase_auth.dart';
 import '../../services/user_service.dart';
-import '../../services/auth_service.dart';
 import '../../models/user_model.dart';
-import '../../utils/error_handler.dart';
 
 class UserManagementScreen extends StatefulWidget {
   const UserManagementScreen({super.key});
@@ -23,10 +20,12 @@ class _UserManagementScreenState extends State<UserManagementScreen> {
   List<UserModel> _filterUsers(List<UserModel> allUsers) {
     final query = _searchController.text.toLowerCase();
     return allUsers.where((u) {
-      final matchSearch = query.isEmpty ||
+      final matchSearch =
+          query.isEmpty ||
           u.fullName.toLowerCase().contains(query) ||
           u.email.toLowerCase().contains(query);
-      final matchFilter = _selectedFilter == 'Semua' ||
+      final matchFilter =
+          _selectedFilter == 'Semua' ||
           (_selectedFilter == 'Aktif' && u.isActive) ||
           (_selectedFilter == 'Nonaktif' && !u.isActive) ||
           (_selectedFilter == 'Admin' && u.role == 'admin');
@@ -43,7 +42,7 @@ class _UserManagementScreenState extends State<UserManagementScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: const Color(0xFFF5F5F0),
+      backgroundColor: const Color(0xFFF9FAF7),
       appBar: _buildAppBar(),
       body: StreamBuilder<QuerySnapshot>(
         stream: FirebaseFirestore.instance.collection('users').snapshots(),
@@ -55,18 +54,31 @@ class _UserManagementScreenState extends State<UserManagementScreen> {
                 children: [
                   Icon(Icons.error_outline, size: 56, color: Colors.red[300]),
                   const SizedBox(height: 12),
-                  Text('Terjadi kesalahan', style: GoogleFonts.poppins(fontSize: 14, color: Colors.grey[600])),
+                  Text(
+                    'Terjadi kesalahan',
+                    style: GoogleFonts.plusJakartaSans(
+                      fontSize: 14,
+                      color: Colors.grey[600],
+                    ),
+                  ),
                 ],
               ),
             );
           }
 
           if (snapshot.connectionState == ConnectionState.waiting) {
-            return const Center(child: CircularProgressIndicator(color: Color(0xFF2D5016)));
+            return const Center(
+              child: CircularProgressIndicator(color: Color(0xFF1C7A28)),
+            );
           }
 
           final allUsers = snapshot.data!.docs
-              .map((doc) => UserModel.fromFirestore(doc.id, doc.data() as Map<String, dynamic>))
+              .map(
+                (doc) => UserModel.fromFirestore(
+                  doc.id,
+                  doc.data() as Map<String, dynamic>,
+                ),
+              )
               .toList();
 
           final filteredUsers = _filterUsers(allUsers);
@@ -78,12 +90,18 @@ class _UserManagementScreenState extends State<UserManagementScreen> {
               _buildFilterChips(),
               const SizedBox(height: 8),
               Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 16,
+                  vertical: 4,
+                ),
                 child: Row(
                   children: [
                     Text(
                       '${filteredUsers.length} pengguna ditemukan',
-                      style: GoogleFonts.poppins(fontSize: 12, color: Colors.grey[600]),
+                      style: GoogleFonts.plusJakartaSans(
+                        fontSize: 12,
+                        color: Colors.grey[600],
+                      ),
                     ),
                   ],
                 ),
@@ -94,11 +112,14 @@ class _UserManagementScreenState extends State<UserManagementScreen> {
         },
       ),
       floatingActionButton: FloatingActionButton.extended(
-        onPressed: () => _showUserForm(context, null),
-        backgroundColor: const Color(0xFF2D5016),
+        onPressed: () => _showComingSoon('Tambah User'),
+        backgroundColor: const Color(0xFF1C7A28),
         foregroundColor: Colors.white,
         icon: const Icon(Icons.person_add_outlined),
-        label: Text('Tambah User', style: GoogleFonts.poppins(fontWeight: FontWeight.w600)),
+        label: Text(
+          'Tambah User',
+          style: GoogleFonts.plusJakartaSans(fontWeight: FontWeight.w600),
+        ),
       ),
     );
   }
@@ -108,10 +129,17 @@ class _UserManagementScreenState extends State<UserManagementScreen> {
       backgroundColor: Colors.white,
       elevation: 1,
       leading: IconButton(
-        icon: const Icon(Icons.arrow_back, color: Color(0xFF2D5016)),
+        icon: const Icon(Icons.arrow_back, color: Color(0xFF1C7A28)),
         onPressed: () => Navigator.pop(context),
       ),
-      title: Text('Kelola User', style: GoogleFonts.poppins(fontSize: 16, fontWeight: FontWeight.w700, color: Color(0xFF1A1A1A))),
+      title: Text(
+        'Kelola User',
+        style: GoogleFonts.plusJakartaSans(
+          fontSize: 16,
+          fontWeight: FontWeight.w700,
+          color: Color(0xFF1A1A1A),
+        ),
+      ),
     );
   }
 
@@ -123,15 +151,24 @@ class _UserManagementScreenState extends State<UserManagementScreen> {
         decoration: BoxDecoration(
           color: Colors.white,
           borderRadius: BorderRadius.circular(12),
-          boxShadow: const [BoxShadow(color: Color(0x0A000000), blurRadius: 6, offset: Offset(0, 2))],
+          boxShadow: const [
+            BoxShadow(
+              color: Color(0x0A000000),
+              blurRadius: 6,
+              offset: Offset(0, 2),
+            ),
+          ],
         ),
         child: TextField(
           controller: _searchController,
           onChanged: (_) => setState(() {}),
-          style: GoogleFonts.poppins(fontSize: 14),
+          style: GoogleFonts.plusJakartaSans(fontSize: 14),
           decoration: InputDecoration(
             hintText: 'Cari nama atau email...',
-            hintStyle: GoogleFonts.poppins(fontSize: 14, color: Colors.grey[400]),
+            hintStyle: GoogleFonts.plusJakartaSans(
+              fontSize: 14,
+              color: Colors.grey[400],
+            ),
             prefixIcon: Icon(Icons.search, color: Colors.grey[400], size: 20),
             border: InputBorder.none,
             contentPadding: const EdgeInsets.symmetric(vertical: 14),
@@ -157,10 +194,19 @@ class _UserManagementScreenState extends State<UserManagementScreen> {
               margin: const EdgeInsets.only(right: 8),
               padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 8),
               decoration: BoxDecoration(
-                color: isSelected ? const Color(0xFF2D5016) : const Color(0xFFE8EDE3),
+                color: isSelected
+                    ? const Color(0xFF1C7A28)
+                    : const Color(0xFFE6F3E7),
                 borderRadius: BorderRadius.circular(20),
               ),
-              child: Text(_filters[index], style: GoogleFonts.poppins(fontSize: 13, fontWeight: isSelected ? FontWeight.w600 : FontWeight.w400, color: isSelected ? Colors.white : Colors.grey[700])),
+              child: Text(
+                _filters[index],
+                style: GoogleFonts.plusJakartaSans(
+                  fontSize: 13,
+                  fontWeight: isSelected ? FontWeight.w600 : FontWeight.w400,
+                  color: isSelected ? Colors.white : Colors.grey[700],
+                ),
+              ),
             ),
           );
         },
@@ -176,7 +222,13 @@ class _UserManagementScreenState extends State<UserManagementScreen> {
           children: [
             Icon(Icons.person_off_outlined, size: 56, color: Colors.grey[300]),
             const SizedBox(height: 12),
-            Text('Tidak ada pengguna', style: GoogleFonts.poppins(fontSize: 14, color: Colors.grey[400])),
+            Text(
+              'Tidak ada pengguna',
+              style: GoogleFonts.plusJakartaSans(
+                fontSize: 14,
+                color: Colors.grey[400],
+              ),
+            ),
           ],
         ),
       );
@@ -202,7 +254,9 @@ class _UserManagementScreenState extends State<UserManagementScreen> {
       context: context,
       isScrollControlled: true,
       backgroundColor: Colors.white,
-      shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(20))),
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
       builder: (_) => _UserFormSheet(
         user: user,
         onSave: (data) async {
@@ -215,50 +269,32 @@ class _UserManagementScreenState extends State<UserManagementScreen> {
                 phone: data['phone'],
                 role: data['role']?.toLowerCase(),
               );
-              if (!context.mounted) return;
-              scaffoldMessenger.showSnackBar(
-                SnackBar(
-                  content: Text('${data['name']} berhasil diperbarui', style: GoogleFonts.poppins(fontSize: 13)),
-                  backgroundColor: const Color(0xFF2D5016),
-                  behavior: SnackBarBehavior.floating,
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-                ),
-              );
-            } else {
-              await AuthService.instance.createUserAsAdmin(
-                fullName: data['name']!,
-                email: data['email']!,
-                phone: data['phone']!,
-                password: data['password']!,
-                role: data['role']?.toLowerCase() ?? 'user',
-              );
-              if (!context.mounted) return;
               scaffoldMessenger.showSnackBar(
                 SnackBar(
                   content: Text(
-                    'User ${data['name']} berhasil ditambahkan',
-                    style: GoogleFonts.poppins(fontSize: 13),
+                    '${data['name']} berhasil diperbarui',
+                    style: GoogleFonts.plusJakartaSans(fontSize: 13),
                   ),
-                  backgroundColor: const Color(0xFF2D5016),
+                  backgroundColor: const Color(0xFF1C7A28),
                   behavior: SnackBarBehavior.floating,
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(10),
+                  ),
                 ),
               );
             }
-          } on FirebaseAuthException catch (e) {
-            if (!context.mounted) return;
-            ErrorHandler.showErrorSnackBar(
-              context,
-              ErrorHandler.getAuthErrorMessage(e),
-            );
           } catch (e) {
-            if (!context.mounted) return;
             scaffoldMessenger.showSnackBar(
               SnackBar(
-                content: Text('Gagal menyimpan: $e', style: GoogleFonts.poppins(fontSize: 13)),
+                content: Text(
+                  'Gagal menyimpan: $e',
+                  style: GoogleFonts.plusJakartaSans(fontSize: 13),
+                ),
                 backgroundColor: Colors.red,
                 behavior: SnackBarBehavior.floating,
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(10),
+                ),
               ),
             );
           }
@@ -273,19 +309,29 @@ class _UserManagementScreenState extends State<UserManagementScreen> {
       await _userService.toggleUserStatus(user.id, !user.isActive);
       scaffoldMessenger.showSnackBar(
         SnackBar(
-          content: Text('Status ${user.fullName} diubah', style: GoogleFonts.poppins(fontSize: 13)),
-          backgroundColor: const Color(0xFF2D5016),
+          content: Text(
+            'Status ${user.fullName} diubah',
+            style: GoogleFonts.plusJakartaSans(fontSize: 13),
+          ),
+          backgroundColor: const Color(0xFF1C7A28),
           behavior: SnackBarBehavior.floating,
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(10),
+          ),
         ),
       );
     } catch (e) {
       scaffoldMessenger.showSnackBar(
         SnackBar(
-          content: Text('Gagal mengubah status: $e', style: GoogleFonts.poppins(fontSize: 13)),
+          content: Text(
+            'Gagal mengubah status: $e',
+            style: GoogleFonts.plusJakartaSans(fontSize: 13),
+          ),
           backgroundColor: Colors.red,
           behavior: SnackBarBehavior.floating,
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(10),
+          ),
         ),
       );
     }
@@ -296,10 +342,28 @@ class _UserManagementScreenState extends State<UserManagementScreen> {
       context: context,
       builder: (ctx) => AlertDialog(
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-        title: Text('Hapus User', style: GoogleFonts.poppins(fontWeight: FontWeight.w700, color: const Color(0xFF1A1A1A))),
-        content: Text('Yakin ingin menghapus ${user.fullName}?', style: GoogleFonts.poppins(fontSize: 13, color: Colors.grey[700])),
+        title: Text(
+          'Hapus User',
+          style: GoogleFonts.plusJakartaSans(
+            fontWeight: FontWeight.w700,
+            color: const Color(0xFF1A1A1A),
+          ),
+        ),
+        content: Text(
+          'Yakin ingin menghapus ${user.fullName}?',
+          style: GoogleFonts.plusJakartaSans(
+            fontSize: 13,
+            color: Colors.grey[700],
+          ),
+        ),
         actions: [
-          TextButton(onPressed: () => Navigator.pop(ctx), child: Text('Batal', style: GoogleFonts.poppins(color: Colors.grey[600]))),
+          TextButton(
+            onPressed: () => Navigator.pop(ctx),
+            child: Text(
+              'Batal',
+              style: GoogleFonts.plusJakartaSans(color: Colors.grey[600]),
+            ),
+          ),
           ElevatedButton(
             onPressed: () async {
               Navigator.pop(ctx);
@@ -308,31 +372,64 @@ class _UserManagementScreenState extends State<UserManagementScreen> {
                 await _userService.deleteUser(user.id);
                 scaffoldMessenger.showSnackBar(
                   SnackBar(
-                    content: Text('${user.fullName} dihapus', style: GoogleFonts.poppins(fontSize: 13)),
+                    content: Text(
+                      '${user.fullName} dihapus',
+                      style: GoogleFonts.plusJakartaSans(fontSize: 13),
+                    ),
                     backgroundColor: const Color(0xFFE53935),
                     behavior: SnackBarBehavior.floating,
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(10),
+                    ),
                   ),
                 );
               } catch (e) {
                 scaffoldMessenger.showSnackBar(
                   SnackBar(
-                    content: Text('Gagal menghapus: $e', style: GoogleFonts.poppins(fontSize: 13)),
+                    content: Text(
+                      'Gagal menghapus: $e',
+                      style: GoogleFonts.plusJakartaSans(fontSize: 13),
+                    ),
                     backgroundColor: Colors.red,
                     behavior: SnackBarBehavior.floating,
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(10),
+                    ),
                   ),
                 );
               }
             },
-            style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFFE53935), foregroundColor: Colors.white, shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)), elevation: 0),
-            child: Text('Hapus', style: GoogleFonts.poppins(fontWeight: FontWeight.w600)),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: const Color(0xFFE53935),
+              foregroundColor: Colors.white,
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(10),
+              ),
+              elevation: 0,
+            ),
+            child: Text(
+              'Hapus',
+              style: GoogleFonts.plusJakartaSans(fontWeight: FontWeight.w600),
+            ),
           ),
         ],
       ),
     );
   }
 
+  void _showComingSoon(String feature) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(
+          '$feature hanya bisa dilakukan melalui registrasi',
+          style: GoogleFonts.plusJakartaSans(fontSize: 13),
+        ),
+        backgroundColor: const Color(0xFF1C7A28),
+        behavior: SnackBarBehavior.floating,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+      ),
+    );
+  }
 }
 
 class _UserCard extends StatelessWidget {
@@ -341,10 +438,28 @@ class _UserCard extends StatelessWidget {
   final VoidCallback onDelete;
   final VoidCallback onToggleStatus;
 
-  const _UserCard({required this.user, required this.onEdit, required this.onDelete, required this.onToggleStatus});
+  const _UserCard({
+    required this.user,
+    required this.onEdit,
+    required this.onDelete,
+    required this.onToggleStatus,
+  });
 
   String _formatDate(DateTime date) {
-    const months = ['Jan', 'Feb', 'Mar', 'Apr', 'Mei', 'Jun', 'Jul', 'Agu', 'Sep', 'Okt', 'Nov', 'Des'];
+    const months = [
+      'Jan',
+      'Feb',
+      'Mar',
+      'Apr',
+      'Mei',
+      'Jun',
+      'Jul',
+      'Agu',
+      'Sep',
+      'Okt',
+      'Nov',
+      'Des',
+    ];
     return '${date.day} ${months[date.month - 1]} ${date.year}';
   }
 
@@ -353,7 +468,17 @@ class _UserCard extends StatelessWidget {
     return Container(
       margin: const EdgeInsets.only(bottom: 12),
       padding: const EdgeInsets.all(14),
-      decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(14), boxShadow: const [BoxShadow(color: Color(0x08000000), blurRadius: 8, offset: Offset(0, 2))]),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(14),
+        boxShadow: const [
+          BoxShadow(
+            color: Color(0x08000000),
+            blurRadius: 8,
+            offset: Offset(0, 2),
+          ),
+        ],
+      ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -362,8 +487,15 @@ class _UserCard extends StatelessWidget {
               Container(
                 width: 48,
                 height: 48,
-                decoration: BoxDecoration(shape: BoxShape.circle, color: const Color(0xFF2D5016).withValues(alpha: 0.1)),
-                child: const Icon(Icons.person, color: Color(0xFF2D5016), size: 24),
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  color: const Color(0xFF1C7A28).withValues(alpha: 0.1),
+                ),
+                child: const Icon(
+                  Icons.person,
+                  color: Color(0xFF1C7A28),
+                  size: 24,
+                ),
               ),
               const SizedBox(width: 12),
               Expanded(
@@ -372,28 +504,50 @@ class _UserCard extends StatelessWidget {
                   children: [
                     Row(
                       children: [
-                        Expanded(child: Text(user.fullName, style: GoogleFonts.poppins(fontSize: 14, fontWeight: FontWeight.w700, color: const Color(0xFF1A1A1A)))),
+                        Expanded(
+                          child: Text(
+                            user.fullName,
+                            style: GoogleFonts.plusJakartaSans(
+                              fontSize: 14,
+                              fontWeight: FontWeight.w700,
+                              color: const Color(0xFF1A1A1A),
+                            ),
+                          ),
+                        ),
                         Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 8,
+                            vertical: 3,
+                          ),
                           decoration: BoxDecoration(
-                            color: user.role == 'admin' 
-                                ? const Color(0xFFFF9800).withValues(alpha: 0.1) 
-                                : const Color(0xFF2196F3).withValues(alpha: 0.1), 
-                            borderRadius: BorderRadius.circular(8)
+                            color: user.role == 'admin'
+                                ? const Color(0xFFFF9800).withValues(alpha: 0.1)
+                                : const Color(
+                                    0xFF2196F3,
+                                  ).withValues(alpha: 0.1),
+                            borderRadius: BorderRadius.circular(8),
                           ),
                           child: Text(
-                            user.role == 'admin' ? 'Admin' : 'User', 
-                            style: GoogleFonts.poppins(
-                              fontSize: 10, 
-                              fontWeight: FontWeight.w600, 
-                              color: user.role == 'admin' ? const Color(0xFFFF9800) : const Color(0xFF2196F3)
-                            )
+                            user.role == 'admin' ? 'Admin' : 'User',
+                            style: GoogleFonts.plusJakartaSans(
+                              fontSize: 10,
+                              fontWeight: FontWeight.w600,
+                              color: user.role == 'admin'
+                                  ? const Color(0xFFFF9800)
+                                  : const Color(0xFF2196F3),
+                            ),
                           ),
                         ),
                       ],
                     ),
                     const SizedBox(height: 2),
-                    Text(user.email, style: GoogleFonts.poppins(fontSize: 12, color: Colors.grey[600])),
+                    Text(
+                      user.email,
+                      style: GoogleFonts.plusJakartaSans(
+                        fontSize: 12,
+                        color: Colors.grey[600],
+                      ),
+                    ),
                   ],
                 ),
               ),
@@ -404,11 +558,27 @@ class _UserCard extends StatelessWidget {
             children: [
               Icon(Icons.phone_outlined, size: 14, color: Colors.grey[500]),
               const SizedBox(width: 4),
-              Text(user.phone, style: GoogleFonts.poppins(fontSize: 11, color: Colors.grey[600])),
+              Text(
+                user.phone,
+                style: GoogleFonts.plusJakartaSans(
+                  fontSize: 11,
+                  color: Colors.grey[600],
+                ),
+              ),
               const SizedBox(width: 14),
-              Icon(Icons.calendar_today_outlined, size: 14, color: Colors.grey[500]),
+              Icon(
+                Icons.calendar_today_outlined,
+                size: 14,
+                color: Colors.grey[500],
+              ),
               const SizedBox(width: 4),
-              Text('Bergabung ${_formatDate(user.createdAt)}', style: GoogleFonts.poppins(fontSize: 11, color: Colors.grey[600])),
+              Text(
+                'Bergabung ${_formatDate(user.createdAt)}',
+                style: GoogleFonts.plusJakartaSans(
+                  fontSize: 11,
+                  color: Colors.grey[600],
+                ),
+              ),
             ],
           ),
           const SizedBox(height: 10),
@@ -417,16 +587,61 @@ class _UserCard extends StatelessWidget {
               Expanded(
                 child: Row(
                   children: [
-                    Container(width: 8, height: 8, decoration: BoxDecoration(shape: BoxShape.circle, color: user.isActive ? const Color(0xFF4CAF50) : Colors.grey)),
+                    Container(
+                      width: 8,
+                      height: 8,
+                      decoration: BoxDecoration(
+                        shape: BoxShape.circle,
+                        color: user.isActive
+                            ? const Color(0xFF4CAF50)
+                            : Colors.grey,
+                      ),
+                    ),
                     const SizedBox(width: 6),
-                    Text(user.isActive ? 'Aktif' : 'Nonaktif', style: GoogleFonts.poppins(fontSize: 12, fontWeight: FontWeight.w600, color: user.isActive ? const Color(0xFF4CAF50) : Colors.grey)),
+                    Text(
+                      user.isActive ? 'Aktif' : 'Nonaktif',
+                      style: GoogleFonts.plusJakartaSans(
+                        fontSize: 12,
+                        fontWeight: FontWeight.w600,
+                        color: user.isActive
+                            ? const Color(0xFF4CAF50)
+                            : Colors.grey,
+                      ),
+                    ),
                   ],
                 ),
               ),
-              IconButton(onPressed: onToggleStatus, icon: Icon(user.isActive ? Icons.toggle_on : Icons.toggle_off, color: user.isActive ? const Color(0xFF4CAF50) : Colors.grey, size: 32), padding: EdgeInsets.zero, constraints: const BoxConstraints()),
-              IconButton(onPressed: onEdit, icon: const Icon(Icons.edit_outlined, color: Color(0xFF2196F3), size: 20), padding: EdgeInsets.zero, constraints: const BoxConstraints()),
+              IconButton(
+                onPressed: onToggleStatus,
+                icon: Icon(
+                  user.isActive ? Icons.toggle_on : Icons.toggle_off,
+                  color: user.isActive ? const Color(0xFF4CAF50) : Colors.grey,
+                  size: 32,
+                ),
+                padding: EdgeInsets.zero,
+                constraints: const BoxConstraints(),
+              ),
+              IconButton(
+                onPressed: onEdit,
+                icon: const Icon(
+                  Icons.edit_outlined,
+                  color: Color(0xFF2196F3),
+                  size: 20,
+                ),
+                padding: EdgeInsets.zero,
+                constraints: const BoxConstraints(),
+              ),
               const SizedBox(width: 8),
-              IconButton(onPressed: onDelete, icon: const Icon(Icons.delete_outline, color: Color(0xFFE53935), size: 20), padding: EdgeInsets.zero, constraints: const BoxConstraints()),
+              IconButton(
+                onPressed: onDelete,
+                icon: const Icon(
+                  Icons.delete_outline,
+                  color: Color(0xFFE53935),
+                  size: 20,
+                ),
+                padding: EdgeInsets.zero,
+                constraints: const BoxConstraints(),
+              ),
             ],
           ),
         ],
@@ -448,49 +663,30 @@ class _UserFormSheet extends StatefulWidget {
 class _UserFormSheetState extends State<_UserFormSheet> {
   final _formKey = GlobalKey<FormState>();
   late final TextEditingController _nameController;
-  late final TextEditingController _emailController;
   late final TextEditingController _phoneController;
-  late final TextEditingController _passwordController;
-  late final TextEditingController _confirmPasswordController;
   String _selectedRole = 'user';
-  bool _isSaving = false;
-  bool _obscurePassword = true;
-  bool _obscureConfirmPassword = true;
-
-  bool get _isCreate => widget.user == null;
 
   @override
   void initState() {
     super.initState();
     _nameController = TextEditingController(text: widget.user?.fullName ?? '');
-    _emailController = TextEditingController(text: widget.user?.email ?? '');
     _phoneController = TextEditingController(text: widget.user?.phone ?? '');
-    _passwordController = TextEditingController();
-    _confirmPasswordController = TextEditingController();
     _selectedRole = widget.user?.role ?? 'user';
-  }
-
-  String _normalizePhone(String input) {
-    final digitsOnly = input.replaceAll(RegExp(r'[^0-9]'), '');
-    if (digitsOnly.isEmpty) return '';
-    final withoutLeadingZero = digitsOnly.replaceFirst(RegExp(r'^0+'), '');
-    return '+62$withoutLeadingZero';
   }
 
   @override
   void dispose() {
     _nameController.dispose();
-    _emailController.dispose();
     _phoneController.dispose();
-    _passwordController.dispose();
-    _confirmPasswordController.dispose();
     super.dispose();
   }
 
   @override
   Widget build(BuildContext context) {
     return Padding(
-      padding: EdgeInsets.only(bottom: MediaQuery.of(context).viewInsets.bottom),
+      padding: EdgeInsets.only(
+        bottom: MediaQuery.of(context).viewInsets.bottom,
+      ),
       child: SingleChildScrollView(
         child: Padding(
           padding: const EdgeInsets.all(24),
@@ -500,90 +696,55 @@ class _UserFormSheetState extends State<_UserFormSheet> {
               crossAxisAlignment: CrossAxisAlignment.start,
               mainAxisSize: MainAxisSize.min,
               children: [
-                Center(child: Container(width: 40, height: 4, decoration: BoxDecoration(color: Colors.grey[300], borderRadius: BorderRadius.circular(2)))),
+                Center(
+                  child: Container(
+                    width: 40,
+                    height: 4,
+                    decoration: BoxDecoration(
+                      color: Colors.grey[300],
+                      borderRadius: BorderRadius.circular(2),
+                    ),
+                  ),
+                ),
                 const SizedBox(height: 20),
                 Text(
-                  _isCreate ? 'Tambah User' : 'Edit User',
-                  style: GoogleFonts.poppins(fontSize: 18, fontWeight: FontWeight.w700, color: const Color(0xFF1A1A1A)),
+                  'Edit User',
+                  style: GoogleFonts.plusJakartaSans(
+                    fontSize: 18,
+                    fontWeight: FontWeight.w700,
+                    color: const Color(0xFF1A1A1A),
+                  ),
                 ),
                 const SizedBox(height: 8),
                 Text(
-                  _isCreate
-                      ? 'Buat akun baru untuk pengguna aplikasi'
-                      : 'Email: ${widget.user?.email ?? ''}',
-                  style: GoogleFonts.poppins(fontSize: 13, color: Colors.grey[600]),
+                  'Email: ${widget.user?.email ?? ''}',
+                  style: GoogleFonts.plusJakartaSans(
+                    fontSize: 13,
+                    color: Colors.grey[600],
+                  ),
                 ),
                 const SizedBox(height: 20),
-                _buildTextField('Nama Lengkap', _nameController, Icons.person_outline),
+                _buildTextField(
+                  'Nama Lengkap',
+                  _nameController,
+                  Icons.person_outline,
+                ),
                 const SizedBox(height: 14),
-                if (_isCreate) ...[
-                  _buildTextField(
-                    'Email',
-                    _emailController,
-                    Icons.email_outlined,
-                    keyboardType: TextInputType.emailAddress,
-                    validator: (v) {
-                      if (v == null || v.trim().isEmpty) {
-                        return 'Email tidak boleh kosong';
-                      }
-                      if (!RegExp(r'^[^@]+@[^@]+\.[^@]+').hasMatch(v.trim())) {
-                        return 'Format email tidak valid';
-                      }
-                      return null;
-                    },
-                  ),
-                  const SizedBox(height: 14),
-                ],
-                _buildTextField('Nomor Telepon', _phoneController, Icons.phone_outlined, keyboardType: TextInputType.phone),
-                if (_isCreate) ...[
-                  const SizedBox(height: 14),
-                  _buildTextField(
-                    'Password',
-                    _passwordController,
-                    Icons.lock_outline,
-                    obscureText: _obscurePassword,
-                    suffixIcon: IconButton(
-                      icon: Icon(
-                        _obscurePassword ? Icons.visibility_off : Icons.visibility,
-                        color: Colors.grey[500],
-                        size: 20,
-                      ),
-                      onPressed: () => setState(() => _obscurePassword = !_obscurePassword),
-                    ),
-                    validator: (v) {
-                      if (v == null || v.isEmpty) return 'Password tidak boleh kosong';
-                      if (v.length < 6) return 'Password minimal 6 karakter';
-                      return null;
-                    },
-                  ),
-                  const SizedBox(height: 14),
-                  _buildTextField(
-                    'Konfirmasi Password',
-                    _confirmPasswordController,
-                    Icons.lock_outline,
-                    obscureText: _obscureConfirmPassword,
-                    suffixIcon: IconButton(
-                      icon: Icon(
-                        _obscureConfirmPassword ? Icons.visibility_off : Icons.visibility,
-                        color: Colors.grey[500],
-                        size: 20,
-                      ),
-                      onPressed: () =>
-                          setState(() => _obscureConfirmPassword = !_obscureConfirmPassword),
-                    ),
-                    validator: (v) {
-                      if (v == null || v.isEmpty) {
-                        return 'Konfirmasi password tidak boleh kosong';
-                      }
-                      if (v != _passwordController.text) {
-                        return 'Password tidak cocok';
-                      }
-                      return null;
-                    },
-                  ),
-                ],
+                _buildTextField(
+                  'Nomor Telepon',
+                  _phoneController,
+                  Icons.phone_outlined,
+                  keyboardType: TextInputType.phone,
+                ),
                 const SizedBox(height: 14),
-                Text('Role', style: GoogleFonts.poppins(fontSize: 13, fontWeight: FontWeight.w500, color: const Color(0xFF333333))),
+                Text(
+                  'Role',
+                  style: GoogleFonts.plusJakartaSans(
+                    fontSize: 13,
+                    fontWeight: FontWeight.w500,
+                    color: const Color(0xFF333333),
+                  ),
+                ),
                 const SizedBox(height: 8),
                 Row(
                   children: ['user', 'admin'].map((role) {
@@ -592,10 +753,27 @@ class _UserFormSheetState extends State<_UserFormSheet> {
                       child: GestureDetector(
                         onTap: () => setState(() => _selectedRole = role),
                         child: Container(
-                          margin: EdgeInsets.only(right: role == 'user' ? 8 : 0),
+                          margin: EdgeInsets.only(
+                            right: role == 'user' ? 8 : 0,
+                          ),
                           padding: const EdgeInsets.symmetric(vertical: 12),
-                          decoration: BoxDecoration(color: isSelected ? const Color(0xFF2D5016) : const Color(0xFFF5F5F0), borderRadius: BorderRadius.circular(12)),
-                          child: Text(role == 'admin' ? 'Admin' : 'User', textAlign: TextAlign.center, style: GoogleFonts.poppins(fontSize: 13, fontWeight: FontWeight.w600, color: isSelected ? Colors.white : Colors.grey[600])),
+                          decoration: BoxDecoration(
+                            color: isSelected
+                                ? const Color(0xFF1C7A28)
+                                : const Color(0xFFF9FAF7),
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                          child: Text(
+                            role == 'admin' ? 'Admin' : 'User',
+                            textAlign: TextAlign.center,
+                            style: GoogleFonts.plusJakartaSans(
+                              fontSize: 13,
+                              fontWeight: FontWeight.w600,
+                              color: isSelected
+                                  ? Colors.white
+                                  : Colors.grey[600],
+                            ),
+                          ),
                         ),
                       ),
                     );
@@ -606,41 +784,31 @@ class _UserFormSheetState extends State<_UserFormSheet> {
                   width: double.infinity,
                   height: 52,
                   child: ElevatedButton(
-                    onPressed: _isSaving
-                        ? null
-                        : () async {
-                            if (!_formKey.currentState!.validate()) return;
-                            setState(() => _isSaving = true);
-                            try {
-                              final data = <String, String>{
-                                'name': _nameController.text.trim(),
-                                'phone': _normalizePhone(_phoneController.text.trim()),
-                                'role': _selectedRole,
-                              };
-                              if (_isCreate) {
-                                data['email'] = _emailController.text.trim();
-                                data['password'] = _passwordController.text;
-                              }
-                              await widget.onSave(data);
-                              if (context.mounted) Navigator.pop(context);
-                            } finally {
-                              if (mounted) setState(() => _isSaving = false);
-                            }
-                          },
-                    style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFF2D5016), foregroundColor: Colors.white, shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)), elevation: 0),
-                    child: _isSaving
-                        ? const SizedBox(
-                            width: 22,
-                            height: 22,
-                            child: CircularProgressIndicator(
-                              strokeWidth: 2,
-                              color: Colors.white,
-                            ),
-                          )
-                        : Text(
-                            _isCreate ? 'Tambah User' : 'Simpan',
-                            style: GoogleFonts.poppins(fontSize: 15, fontWeight: FontWeight.w600),
-                          ),
+                    onPressed: () {
+                      if (_formKey.currentState!.validate()) {
+                        widget.onSave({
+                          'name': _nameController.text,
+                          'phone': _phoneController.text,
+                          'role': _selectedRole,
+                        });
+                        Navigator.pop(context);
+                      }
+                    },
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: const Color(0xFF1C7A28),
+                      foregroundColor: Colors.white,
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      elevation: 0,
+                    ),
+                    child: Text(
+                      'Simpan',
+                      style: GoogleFonts.plusJakartaSans(
+                        fontSize: 15,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
                   ),
                 ),
                 const SizedBox(height: 8),
@@ -657,30 +825,38 @@ class _UserFormSheetState extends State<_UserFormSheet> {
     TextEditingController controller,
     IconData icon, {
     TextInputType? keyboardType,
-    bool obscureText = false,
-    Widget? suffixIcon,
-    String? Function(String?)? validator,
   }) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text(label, style: GoogleFonts.poppins(fontSize: 13, fontWeight: FontWeight.w500, color: const Color(0xFF333333))),
+        Text(
+          label,
+          style: GoogleFonts.plusJakartaSans(
+            fontSize: 13,
+            fontWeight: FontWeight.w500,
+            color: const Color(0xFF333333),
+          ),
+        ),
         const SizedBox(height: 6),
         TextFormField(
           controller: controller,
           keyboardType: keyboardType,
-          obscureText: obscureText,
-          style: GoogleFonts.poppins(fontSize: 14),
+          style: GoogleFonts.plusJakartaSans(fontSize: 14),
           decoration: InputDecoration(
             prefixIcon: Icon(icon, color: Colors.grey[500], size: 20),
-            suffixIcon: suffixIcon,
             filled: true,
-            fillColor: const Color(0xFFF5F5F0),
-            border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide.none),
-            contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+            fillColor: const Color(0xFFF9FAF7),
+            border: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(12),
+              borderSide: BorderSide.none,
+            ),
+            contentPadding: const EdgeInsets.symmetric(
+              horizontal: 16,
+              vertical: 14,
+            ),
           ),
-          validator: validator ??
-              ((v) => v == null || v.isEmpty ? '$label tidak boleh kosong' : null),
+          validator: (v) =>
+              v == null || v.isEmpty ? '$label tidak boleh kosong' : null,
         ),
       ],
     );

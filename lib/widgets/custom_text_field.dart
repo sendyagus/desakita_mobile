@@ -27,22 +27,18 @@ class CustomTextField extends StatelessWidget {
       controller: controller,
       obscureText: obscureText,
       keyboardType: keyboardType,
-      style: GoogleFonts.poppins(fontSize: 14),
+      style: GoogleFonts.plusJakartaSans(fontSize: 14),
       validator: validator,
       decoration: InputDecoration(
         hintText: hintText,
-        hintStyle: GoogleFonts.poppins(
+        hintStyle: GoogleFonts.plusJakartaSans(
           fontSize: 14,
           color: Colors.grey[400],
         ),
-        prefixIcon: Icon(
-          prefixIcon,
-          color: Colors.grey[500],
-          size: 20,
-        ),
+        prefixIcon: Icon(prefixIcon, color: Colors.grey[500], size: 20),
         suffixIcon: suffixIcon,
         filled: true,
-        fillColor: const Color(0xFFF5F5F0),
+        fillColor: const Color(0xFFF9FAF7),
         border: OutlineInputBorder(
           borderRadius: BorderRadius.circular(12),
           borderSide: BorderSide.none,
@@ -53,24 +49,15 @@ class CustomTextField extends StatelessWidget {
         ),
         focusedBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(12),
-          borderSide: const BorderSide(
-            color: Color(0xFF2D5016),
-            width: 1.5,
-          ),
+          borderSide: const BorderSide(color: Color(0xFF1C7A28), width: 1.5),
         ),
         errorBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(12),
-          borderSide: const BorderSide(
-            color: Colors.red,
-            width: 1.5,
-          ),
+          borderSide: const BorderSide(color: Colors.red, width: 1.5),
         ),
         focusedErrorBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(12),
-          borderSide: const BorderSide(
-            color: Colors.red,
-            width: 1.5,
-          ),
+          borderSide: const BorderSide(color: Colors.red, width: 1.5),
         ),
         contentPadding: const EdgeInsets.symmetric(
           horizontal: 16,

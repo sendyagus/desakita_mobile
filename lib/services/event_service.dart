@@ -10,7 +10,7 @@ class EventService {
     final end = d['endDate'];
     final c = d['createdAt'];
     final u = d['updatedAt'];
-    
+
     String iso(dynamic v) {
       if (v is Timestamp) return v.toDate().toIso8601String();
       if (v is String) return v;
@@ -42,13 +42,13 @@ class EventService {
         .collection(_col)
         .where('status', isEqualTo: true)
         .get();
-    final list = snap.docs
-        .map((d) => _docToMap(d.id, d.data()))
-        .toList()
+    final list = snap.docs.map((d) => _docToMap(d.id, d.data())).toList()
       ..sort((a, b) {
-        final da = DateTime.tryParse(a['start_date'] as String? ?? '') ??
+        final da =
+            DateTime.tryParse(a['start_date'] as String? ?? '') ??
             DateTime.fromMillisecondsSinceEpoch(0);
-        final db = DateTime.tryParse(b['start_date'] as String? ?? '') ??
+        final db =
+            DateTime.tryParse(b['start_date'] as String? ?? '') ??
             DateTime.fromMillisecondsSinceEpoch(0);
         return da.compareTo(db); // Sort by start date ascending
       });
@@ -56,67 +56,23 @@ class EventService {
   }
 
   Future<List<Map<String, dynamic>>> getUpcomingEvents() async {
-    final now = DateTime.now();
-    final today = DateTime(now.year, now.month, now.day);
+    final now = Timestamp.now();
     final snap = await _db
         .collection(_col)
         .where('status', isEqualTo: true)
-        .where('startDate', isGreaterThanOrEqualTo: Timestamp.fromDate(today))
-        .orderBy('startDate')
+        .where('startDate', isGreaterThanOrEqualTo: now)
         .get();
-    return snap.docs
-        .map((d) => _docToMap(d.id, d.data()))
-        .toList();
-  }
-
-  /// Acara mendatang atau sedang berjalan — untuk tampilan beranda.
-  /// Mengambil event yang endDate-nya belum lewat (sedang berjalan atau akan datang).
-  Future<List<Map<String, dynamic>>> getHomeEvents() async {
-    final now = DateTime.now();
-    final today = DateTime(now.year, now.month, now.day);
-
-    // Ambil semua event aktif, lalu filter endDate di client
-    // (karena butuh inequality di 2 field berbeda: startDate & endDate)
-    final snap = await _db
-        .collection(_col)
-        .where('status', isEqualTo: true)
-        .get();
-
-    return snap.docs
-        .map((d) => _docToMap(d.id, d.data()))
-        .where((event) {
-          final end = DateTime.tryParse(event['end_date'] as String? ?? '');
-          final start = DateTime.tryParse(event['start_date'] as String? ?? '');
-          final endDay = end != null
-              ? DateTime(end.year, end.month, end.day)
-              : (start != null
-                  ? DateTime(start.year, start.month, start.day)
-                  : today);
-          return !endDay.isBefore(today);
-        })
-        .toList()
+    final list = snap.docs.map((d) => _docToMap(d.id, d.data())).toList()
       ..sort((a, b) {
-        final da = DateTime.tryParse(a['start_date'] as String? ?? '') ??
+        final da =
+            DateTime.tryParse(a['start_date'] as String? ?? '') ??
             DateTime.fromMillisecondsSinceEpoch(0);
-        final db = DateTime.tryParse(b['start_date'] as String? ?? '') ??
+        final db =
+            DateTime.tryParse(b['start_date'] as String? ?? '') ??
             DateTime.fromMillisecondsSinceEpoch(0);
         return da.compareTo(db);
       });
-  }
-
-  static String eventPhaseLabel(Map<String, dynamic> event) {
-    final now = DateTime.now();
-    final today = DateTime(now.year, now.month, now.day);
-    final start = DateTime.tryParse(event['start_date'] as String? ?? '');
-    final end = DateTime.tryParse(event['end_date'] as String? ?? '');
-    if (start == null) return 'Akan Datang';
-    final startDay = DateTime(start.year, start.month, start.day);
-    final endDay = end != null
-        ? DateTime(end.year, end.month, end.day)
-        : startDay;
-    if (today.isBefore(startDay)) return 'Akan Datang';
-    if (!today.isAfter(endDay)) return 'Sedang Berjalan';
-    return 'Selesai';
+    return list;
   }
 
   Future<Map<String, dynamic>?> getEventById(String id) async {
@@ -208,42 +164,16 @@ class EventService {
   }
 
   Future<void> registerParticipant(String eventId) async {
-    final ref = _db.collection(_col).doc(eventId);
-    await _db.runTransaction((tx) async {
-      final doc = await tx.get(ref);
-      if (!doc.exists) throw Exception('Event tidak ditemukan.');
-
-      final data = doc.data()!;
-      final max = (data['maxParticipants'] as num?)?.toInt() ?? 0;
-      final current = (data['currentParticipants'] as num?)?.toInt() ?? 0;
-
-      if (max > 0 && current >= max) {
-        throw Exception('Kuota event sudah penuh.');
-      }
-
-      tx.update(ref, {
-        'currentParticipants': current + 1,
-        'updatedAt': FieldValue.serverTimestamp(),
-      });
+    await _db.collection(_col).doc(eventId).update({
+      'currentParticipants': FieldValue.increment(1),
+      'updatedAt': FieldValue.serverTimestamp(),
     });
   }
 
   Future<void> unregisterParticipant(String eventId) async {
-    final ref = _db.collection(_col).doc(eventId);
-    await _db.runTransaction((tx) async {
-      final doc = await tx.get(ref);
-      if (!doc.exists) return;
-
-      final data = doc.data()!;
-      final current = (data['currentParticipants'] as num?)?.toInt() ?? 0;
-
-      // Cegah nilai negatif
-      if (current <= 0) return;
-
-      tx.update(ref, {
-        'currentParticipants': current - 1,
-        'updatedAt': FieldValue.serverTimestamp(),
-      });
+    await _db.collection(_col).doc(eventId).update({
+      'currentParticipants': FieldValue.increment(-1),
+      'updatedAt': FieldValue.serverTimestamp(),
     });
   }
 }

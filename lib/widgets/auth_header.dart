@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:desa_wisata/app/app_assets.dart';
 import 'package:google_fonts/google_fonts.dart';
 
 class AuthHeader extends StatelessWidget {
@@ -17,7 +16,7 @@ class AuthHeader extends StatelessWidget {
           Container(
             decoration: const BoxDecoration(
               image: DecorationImage(
-                image: AssetImage(AppAssets.desakitaLogo),
+                image: AssetImage('../assets/img/desakita.jpg'),
                 fit: BoxFit.cover,
               ),
             ),

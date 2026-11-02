@@ -1,5 +1,4 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
-import 'package:desa_wisata/utils/price_helper.dart';
 
 /// Service untuk mendapatkan statistik dashboard admin
 class StatsService {
@@ -17,7 +16,10 @@ class StatsService {
     final startOfDay = DateTime(now.year, now.month, now.day);
     final snap = await _db
         .collection('users')
-        .where('createdAt', isGreaterThanOrEqualTo: Timestamp.fromDate(startOfDay))
+        .where(
+          'createdAt',
+          isGreaterThanOrEqualTo: Timestamp.fromDate(startOfDay),
+        )
         .count()
         .get();
     return snap.count ?? 0;
@@ -79,13 +81,25 @@ class StatsService {
         .collection('bookings')
         .where('status', isEqualTo: 'confirmed')
         .get();
-    
+
     int total = 0;
     for (var doc in snap.docs) {
-      total += PriceHelper.toInt(doc.data()['totalPrice']);
+      final priceStr = doc.data()['totalPrice'] as String? ?? '0';
+      // Extract numbers from price string (e.g., "Rp 450.000" -> 450000)
+      final numStr = priceStr.replaceAll(RegExp(r'[^0-9]'), '');
+      total += int.tryParse(numStr) ?? 0;
     }
 
-    return PriceHelper.format(total);
+    // Format to Indonesian currency
+    if (total >= 1000000) {
+      final juta = (total / 1000000).toStringAsFixed(1);
+      return 'Rp $juta Jt';
+    } else if (total >= 1000) {
+      final ribu = (total / 1000).toStringAsFixed(0);
+      return 'Rp $ribu Rb';
+    } else {
+      return 'Rp $total';
+    }
   }
 
   /// Get all stats at once
@@ -125,10 +139,11 @@ class StatsService {
         .orderBy('createdAt', descending: true)
         .limit(3)
         .get();
-    
+
     for (var doc in usersSnap.docs) {
       final data = doc.data();
-      final createdAt = (data['createdAt'] as Timestamp?)?.toDate() ?? DateTime.now();
+      final createdAt =
+          (data['createdAt'] as Timestamp?)?.toDate() ?? DateTime.now();
       activities.add({
         'type': 'user',
         'icon': 'person_add_outlined',
@@ -145,10 +160,11 @@ class StatsService {
         .orderBy('createdAt', descending: true)
         .limit(3)
         .get();
-    
+
     for (var doc in bookingsSnap.docs) {
       final data = doc.data();
-      final createdAt = (data['createdAt'] as Timestamp?)?.toDate() ?? DateTime.now();
+      final createdAt =
+          (data['createdAt'] as Timestamp?)?.toDate() ?? DateTime.now();
       activities.add({
         'type': 'booking',
         'icon': 'bookmark_added_outlined',
@@ -165,10 +181,11 @@ class StatsService {
         .orderBy('createdAt', descending: true)
         .limit(2)
         .get();
-    
+
     for (var doc in destSnap.docs) {
       final data = doc.data();
-      final createdAt = (data['createdAt'] as Timestamp?)?.toDate() ?? DateTime.now();
+      final createdAt =
+          (data['createdAt'] as Timestamp?)?.toDate() ?? DateTime.now();
       activities.add({
         'type': 'destination',
         'icon': 'place_outlined',
@@ -185,10 +202,11 @@ class StatsService {
         .orderBy('createdAt', descending: true)
         .limit(2)
         .get();
-    
+
     for (var doc in eventsSnap.docs) {
       final data = doc.data();
-      final createdAt = (data['createdAt'] as Timestamp?)?.toDate() ?? DateTime.now();
+      final createdAt =
+          (data['createdAt'] as Timestamp?)?.toDate() ?? DateTime.now();
       activities.add({
         'type': 'event',
         'icon': 'event_outlined',
@@ -200,7 +218,10 @@ class StatsService {
     }
 
     // Sort by timestamp and take last 10
-    activities.sort((a, b) => (b['timestamp'] as DateTime).compareTo(a['timestamp'] as DateTime));
+    activities.sort(
+      (a, b) =>
+          (b['timestamp'] as DateTime).compareTo(a['timestamp'] as DateTime),
+    );
     return activities.take(10).toList();
   }
 

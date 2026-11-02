@@ -1,8 +1,6 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart' as fa;
-import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/foundation.dart';
-import 'package:desa_wisata/firebase_options.dart';
 import 'package:desa_wisata/models/user_model.dart';
 
 class AuthService {
@@ -52,6 +50,8 @@ class AuthService {
         'avatarUrl': null,
         'role': 'user',
         'isActive': true,
+        'preferencesCompleted': false,
+        'travelPreferences': <String, dynamic>{},
         'createdAt': now,
         'updatedAt': now,
       });
@@ -99,12 +99,7 @@ class AuthService {
       if (profile == null) {
         final u = _auth.currentUser!;
         debugPrint('⚠️  Using auth fallback profile');
-        return _buildTempUser(
-          uid,
-          u.displayName ?? '',
-          u.email ?? email,
-          '',
-        );
+        return _buildTempUser(uid, u.displayName ?? '', u.email ?? email, '');
       }
 
       debugPrint('✅ Login complete - Role: ${profile.role}');
@@ -122,73 +117,6 @@ class AuthService {
 
   Future<void> signOut() async {
     await _auth.signOut();
-  }
-
-  /// Buat akun baru tanpa mengganti sesi admin yang sedang login.
-  Future<UserModel> createUserAsAdmin({
-    required String fullName,
-    required String email,
-    required String phone,
-    required String password,
-    String role = 'user',
-  }) async {
-    FirebaseApp? secondaryApp;
-    try {
-      secondaryApp = await Firebase.initializeApp(
-        name: 'AdminUserCreator_${DateTime.now().millisecondsSinceEpoch}',
-        options: DefaultFirebaseOptions.currentPlatform,
-      );
-      final secondaryAuth = fa.FirebaseAuth.instanceFor(app: secondaryApp);
-
-      final cred = await secondaryAuth.createUserWithEmailAndPassword(
-        email: email.trim(),
-        password: password,
-      );
-      final uid = cred.user?.uid;
-      if (uid == null) {
-        throw fa.FirebaseAuthException(
-          code: 'null-user',
-          message: 'Gagal membuat user',
-        );
-      }
-
-      if (fullName.isNotEmpty) {
-        await cred.user?.updateDisplayName(fullName);
-      }
-
-      final now = FieldValue.serverTimestamp();
-      await _db.collection(_users).doc(uid).set({
-        'fullName': fullName,
-        'email': email.trim(),
-        'phone': phone,
-        'avatarUrl': null,
-        'role': role,
-        'isActive': true,
-        'createdAt': now,
-        'updatedAt': now,
-      });
-
-      await secondaryAuth.signOut();
-
-      final snap = await _db.collection(_users).doc(uid).get();
-      final data = snap.data();
-      if (data == null) {
-        return _buildTempUser(uid, fullName, email.trim(), phone);
-      }
-      return UserModel.fromFirestore(uid, data);
-    } on fa.FirebaseAuthException {
-      rethrow;
-    } catch (e) {
-      debugPrint('❌ createUserAsAdmin error: $e');
-      throw fa.FirebaseAuthException(
-        code: 'unknown',
-        message: 'Gagal menambah user: $e',
-      );
-    } finally {
-      if (secondaryApp != null) {
-        await secondaryApp.delete();
-      }
-    }
   }
 
   Future<void> resetPassword(String email) async {
@@ -286,12 +214,7 @@ class AuthService {
     }, SetOptions(merge: true));
   }
 
-  UserModel _buildTempUser(
-    String id,
-    String name,
-    String email,
-    String phone,
-  ) {
+  UserModel _buildTempUser(String id, String name, String email, String phone) {
     final now = DateTime.now();
     return UserModel(
       id: id,

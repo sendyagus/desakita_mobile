@@ -10,7 +10,8 @@ class UserModel {
   final bool isActive;
   final DateTime createdAt;
   final DateTime updatedAt;
-  final List<String> favorites;
+  final bool preferencesCompleted;
+  final Map<String, dynamic> travelPreferences;
 
   const UserModel({
     required this.id,
@@ -22,7 +23,8 @@ class UserModel {
     required this.isActive,
     required this.createdAt,
     required this.updatedAt,
-    this.favorites = const [],
+    this.preferencesCompleted = false,
+    this.travelPreferences = const {},
   });
 
   bool get isAdmin => role == 'admin';
@@ -47,7 +49,10 @@ class UserModel {
       isActive: data['isActive'] as bool? ?? true,
       createdAt: parseDt(data['createdAt']),
       updatedAt: parseDt(data['updatedAt']),
-      favorites: List<String>.from(data['favorites'] ?? []),
+      preferencesCompleted: data['preferencesCompleted'] as bool? ?? false,
+      travelPreferences: data['travelPreferences'] is Map
+          ? Map<String, dynamic>.from(data['travelPreferences'] as Map)
+          : const {},
     );
   }
 
@@ -63,7 +68,10 @@ class UserModel {
       isActive: map['is_active'] as bool? ?? true,
       createdAt: DateTime.parse(map['created_at'] as String),
       updatedAt: DateTime.parse(map['updated_at'] as String),
-      favorites: List<String>.from(map['favorites'] ?? []),
+      preferencesCompleted: map['preferences_completed'] as bool? ?? false,
+      travelPreferences: map['travel_preferences'] is Map
+          ? Map<String, dynamic>.from(map['travel_preferences'] as Map)
+          : const {},
     );
   }
 
@@ -75,7 +83,8 @@ class UserModel {
       'avatarUrl': avatarUrl,
       'role': role,
       'isActive': isActive,
-      'favorites': favorites,
+      'preferencesCompleted': preferencesCompleted,
+      'travelPreferences': travelPreferences,
       'updatedAt': FieldValue.serverTimestamp(),
     };
   }
@@ -89,7 +98,8 @@ class UserModel {
       'avatar_url': avatarUrl,
       'role': role,
       'is_active': isActive,
-      'favorites': favorites,
+      'preferences_completed': preferencesCompleted,
+      'travel_preferences': travelPreferences,
     };
   }
 
@@ -99,7 +109,8 @@ class UserModel {
     String? avatarUrl,
     String? role,
     bool? isActive,
-    List<String>? favorites,
+    bool? preferencesCompleted,
+    Map<String, dynamic>? travelPreferences,
   }) {
     return UserModel(
       id: id,
@@ -111,7 +122,8 @@ class UserModel {
       isActive: isActive ?? this.isActive,
       createdAt: createdAt,
       updatedAt: DateTime.now(),
-      favorites: favorites ?? this.favorites,
+      preferencesCompleted: preferencesCompleted ?? this.preferencesCompleted,
+      travelPreferences: travelPreferences ?? this.travelPreferences,
     );
   }
 }

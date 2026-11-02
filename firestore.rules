@@ -1,4 +1,4 @@
-﻿rules_version = '2';
+rules_version = '2';
 
 service cloud.firestore {
   match /databases/{database}/documents {
@@ -17,11 +17,17 @@ service cloud.firestore {
       allow read: if isSignedIn()
         && (request.auth.uid == userId || isAdmin());
       // Allow create for authenticated users creating their own profile
-      allow create: if request.auth != null
+      allow create: if isSignedIn()
         && request.auth.uid == userId
-        && request.resource.data.keys().hasAll(['fullName', 'email', 'phone', 'role', 'isActive', 'createdAt', 'updatedAt']);
-      allow update: if isSignedIn()
-        && (request.auth.uid == userId || isAdmin());
+        && request.resource.data.keys().hasAll(['fullName', 'email', 'phone', 'role', 'isActive', 'createdAt', 'updatedAt'])
+        && request.resource.data.role == 'user'
+        && request.resource.data.isActive == true;
+      // Pengguna dapat mengubah profil/preferensinya sendiri, tetapi tidak dapat
+      // menaikkan role menjadi admin atau mengaktifkan kembali akunnya sendiri.
+      allow update: if isAdmin() || (isSignedIn()
+        && request.auth.uid == userId
+        && request.resource.data.role == resource.data.role
+        && request.resource.data.isActive == resource.data.isActive);
       allow delete: if isAdmin();
 
       match /favorites/{destId} {
@@ -30,6 +36,12 @@ service cloud.firestore {
     }
 
     match /destinations/{destId} {
+      allow read: if resource.data.status == true || isAdmin();
+      allow create, update, delete: if isAdmin();
+    }
+
+    // Profil UMKM aktif dapat dibaca untuk katalog. Perubahan hanya oleh admin.
+    match /umkm/{umkmId} {
       allow read: if resource.data.status == true || isAdmin();
       allow create, update, delete: if isAdmin();
     }
@@ -44,35 +56,11 @@ service cloud.firestore {
     }
 
     match /reviews/{reviewId} {
-      // Anyone can read reviews
       allow read: if true;
-
-      // Create review - authenticated user only
-      // Validate required fields and rating range
-      allow create: if request.auth != null
-                    && request.resource.data.userId == request.auth.uid
-                    && request.resource.data.rating >= 1
-                    && request.resource.data.rating <= 5
-                    && request.resource.data.comment.size() >= 20
-                    && request.resource.data.comment.size() <= 1000
-                    && request.resource.data.photos is list
-                    && (request.resource.data.photos.size() == 0 || request.resource.data.photos.size() <= 5)
-                    && (!request.resource.data.hasKey('title') || request.resource.data.title.size() <= 100);
-
-      // Update review - only owner or admin can update
-      // Must validate rating range on update too
-      allow update: if request.auth != null
-                    && (resource.data.userId == request.auth.uid || isAdmin())
-                    && ( !request.resource.data.hasKey('rating')
-                         || (request.resource.data.rating >= 1 && request.resource.data.rating <= 5)
-                       )
-                    && ( !request.resource.data.hasKey('comment')
-                         || request.resource.data.comment.size() <= 1000
-                       );
-
-      // Delete review - only owner or admin
-      allow delete: if request.auth != null
-                    && (resource.data.userId == request.auth.uid || isAdmin());
+      allow create: if isSignedIn()
+        && request.resource.data.userId == request.auth.uid;
+      allow update, delete: if isSignedIn()
+        && (resource.data.userId == request.auth.uid || isAdmin());
     }
 
     match /events/{eventId} {

@@ -24,10 +24,7 @@ class DatabaseTest {
 
       result['success'] = true;
       result['message'] = 'Koneksi Firestore berhasil!';
-      result['details'] = {
-        'initialized': true,
-        'can_query': true,
-      };
+      result['details'] = {'initialized': true, 'can_query': true};
     } on FirebaseException catch (e) {
       result['message'] = 'Firestore error: ${e.message}';
       result['details'] = {'code': e.code};
@@ -39,10 +36,7 @@ class DatabaseTest {
   }
 
   static Future<Map<String, dynamic>> testUsersCollection() async {
-    final result = <String, dynamic>{
-      'success': false,
-      'message': '',
-    };
+    final result = <String, dynamic>{'success': false, 'message': ''};
 
     try {
       if (FirebaseAuth.instance.currentUser == null) {
@@ -80,13 +74,17 @@ class DatabaseTest {
     print('\n1 Testing Firestore...');
     final connTest = await testConnection();
     // ignore: avoid_print
-    print('   ${connTest['success'] == true ? 'OK' : 'FAIL'} ${connTest['message']}');
+    print(
+      '   ${connTest['success'] == true ? 'OK' : 'FAIL'} ${connTest['message']}',
+    );
 
     // ignore: avoid_print
     print('\n2 Testing users doc...');
     final usersTest = await testUsersCollection();
     // ignore: avoid_print
-    print('   ${usersTest['success'] == true ? 'OK' : 'FAIL'} ${usersTest['message']}');
+    print(
+      '   ${usersTest['success'] == true ? 'OK' : 'FAIL'} ${usersTest['message']}',
+    );
 
     // ignore: avoid_print
     print('\n═══════════════════════════════════════');
