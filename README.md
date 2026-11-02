@@ -1,270 +1,177 @@
-# 🌿 DesaKita — Aplikasi Wisata Desa
+# 🏞️ DesaKita - Aplikasi Wisata Desa
 
-> Jelajahi, booking, dan nikmati keindahan destinasi wisata desa — semua dalam satu aplikasi.
+Aplikasi mobile untuk eksplorasi dan booking destinasi wisata desa di Indonesia.
 
-Aplikasi Flutter lintas platform untuk eksplorasi destinasi wisata desa, dilengkapi **AI Assistant** berbasis Groq LLM, fitur booking, dan panel admin lengkap.
+## ✨ Status Project
 
----
+**Backend:** Firebase (Authentication + Cloud Firestore). Lihat **[FIREBASE_SETUP.md](FIREBASE_SETUP.md)**.
 
-## 📱 Fitur Utama
+## 🚀 Quick Start (5 Menit)
 
-### Untuk Pengguna
-| Fitur | Deskripsi |
-|-------|-----------|
-| 🗺️ **Jelajahi Destinasi** | Browse destinasi wisata desa dengan foto, detail, dan ulasan |
-| 🔍 **Pencarian & Filter** | Cari berdasarkan nama, kategori, atau lokasi |
-| 📅 **Booking** | Reservasi kunjungan langsung dari aplikasi |
-| 🤖 **AI Assistant "Kita"** | Tanya rekomendasi wisata via chat teks atau suara (STT/TTS Bahasa Indonesia) |
-| 🎭 **Acara & Event** | Lihat jadwal event budaya dan kegiatan desa |
-| ❤️ **Favorit** | Simpan destinasi favorit |
-| 🔔 **Notifikasi** | Informasi status booking dan update terbaru |
-| 👤 **Profil** | Kelola akun dan foto profil |
+### Bahasa Indonesia
+👉 **Baca: [MULAI_DISINI.md](MULAI_DISINI.md)**
 
-### Untuk Admin
-| Fitur | Deskripsi |
-|-------|-----------|
-| 📊 **Dashboard** | Statistik kunjungan, booking, dan pendapatan |
-| 🏡 **Kelola Destinasi** | Tambah, edit, hapus destinasi wisata |
-| 📸 **Upload Foto via Google Drive** | Hubungkan Google Drive untuk upload foto destinasi |
-| 🎪 **Kelola Event** | Manajemen acara dan kegiatan desa |
-| 📋 **Manajemen Booking** | Terima, tolak, atau selesaikan booking pengguna |
-| 📈 **Analitik Booking** | Laporan performa dan ekspor PDF |
-| 👥 **Manajemen Pengguna** | Kelola akun dan role pengguna |
-| 🛠️ **Admin Tools** | Utilitas tambahan untuk administrator |
+### English
+👉 **Read: [START_HERE.md](START_HERE.md)**
 
----
+## 📚 Dokumentasi Lengkap
 
-## 🏗️ Arsitektur
+### 🎯 Untuk Pemula
+| File | Deskripsi | Waktu Baca |
+|------|-----------|------------|
+| **[MULAI_DISINI.md](MULAI_DISINI.md)** | Panduan setup cepat (Bahasa Indonesia) | 5 menit |
+| **[START_HERE.md](START_HERE.md)** | Complete setup guide (English) | 5 menit |
+| **[CHECKLIST_SETUP.md](CHECKLIST_SETUP.md)** | Setup checklist lengkap | 10 menit |
 
-```
-lib/
-├── app/            # App-level configuration & assets
-├── config/         # App config (OAuth client ID, dll.)
-├── features/       # Fitur mandiri (agent AI, dll.)
-│   └── agent/      # AI chat agent
-├── models/         # Data model
-├── screens/        # Layar UI
-│   ├── admin/      # Layar khusus admin (10 screen)
-│   └── user/       # Layar pengguna biasa
-├── services/       # Business logic & API calls
-├── utils/          # Helper & utilities
-└── widgets/        # Shared widget components
-```
+### 📖 Panduan Detail
+| File | Deskripsi | Waktu Baca |
+|------|-----------|------------|
+| **[PANDUAN_SETUP_LENGKAP.md](PANDUAN_SETUP_LENGKAP.md)** | Setup detail + troubleshooting | 20 menit |
+| **[QUICK_TEST_GUIDE.md](QUICK_TEST_GUIDE.md)** | Test scenarios lengkap | 15 menit |
+| **[FAQ.md](FAQ.md)** | Frequently Asked Questions | 15 menit |
 
-### Stack Teknologi
+### 🏗️ Arsitektur & Teknis
+| File | Deskripsi | Waktu Baca |
+|------|-----------|------------|
+| **[ARCHITECTURE_FLOW.md](ARCHITECTURE_FLOW.md)** | Diagram arsitektur & flow | 20 menit |
+| **[VISUAL_GUIDE.md](VISUAL_GUIDE.md)** | Visual diagrams | 15 menit |
+| **[README_DOKUMENTASI.md](README_DOKUMENTASI.md)** | Overview dokumentasi | 10 menit |
 
-| Komponen | Teknologi |
-|----------|-----------|
-| Framework | Flutter (Dart SDK ^3.11.1) |
-| Autentikasi | Firebase Auth (email/password + Google Sign-In) |
-| Database | Cloud Firestore |
-| Penyimpanan foto profil | Firebase Storage |
-| Foto destinasi | Google Drive → URL disimpan di Firestore |
-| AI Assistant | Groq LLM API (via `groq_service.dart`) |
-| Speech-to-Text | `speech_to_text` (mobile) + Web Speech API (web) |
-| Text-to-Speech | `flutter_tts` — suara Bahasa Indonesia |
-| Grafik & laporan | `fl_chart` + `pdf` + `printing` |
+### 📊 Referensi
+| File | Deskripsi | Kapan Digunakan |
+|------|-----------|-----------------|
+| **[INDEX_DOKUMENTASI.md](INDEX_DOKUMENTASI.md)** | Index semua dokumentasi | Cari file tertentu |
+| **[RINGKASAN_PERBAIKAN.md](RINGKASAN_PERBAIKAN.md)** | Ringkasan perbaikan | Review perubahan |
 
----
+### 🗄️ SQL Scripts
+| File | Deskripsi | Kapan Digunakan |
+|------|-----------|-----------------|
+| **[supabase_setup.sql](supabase_setup.sql)** | Setup database lengkap | Setup awal (wajib) |
+| **[verify_and_fix.sql](verify_and_fix.sql)** | Verifikasi & auto-fix | Jika ada masalah |
+| **[useful_queries.sql](useful_queries.sql)** | 30+ query berguna | Debugging & monitoring |
 
-## ⚡ Memulai
+## 🎯 Fitur Aplikasi
 
-### Prasyarat
+### ✅ User Features
+- Register & Login
+- Browse destinasi wisata
+- Filter & Search
+- Booking destinasi
+- Review & Rating
+- Favorit
+- Chat Bot (Agent)
+- Profile management
 
-- Flutter SDK (sesuai `.metadata`)
-- Dart SDK `^3.11.1`
-- Akun Firebase (project sudah dikonfigurasi di `google-services.json` / `firebase_options.dart`)
-- Akun [Groq](https://console.groq.com/) untuk API key AI
+### ✅ Admin Features
+- Dashboard admin
+- User management (CRUD)
+- Destination management (CRUD)
+- Booking management
+- Statistics & monitoring
 
-### Instalasi
+## 🛠️ Tech Stack
 
+- **Frontend:** Flutter 3.x
+- **Backend:** Firebase Auth + Cloud Firestore
+- **State Management:** StatefulWidget (simple)
+- **UI:** Material Design 3
+- **Fonts:** Google Fonts (Poppins)
+
+## 📱 Screenshots
+
+> Wireframe placeholders - Tambahkan screenshot setelah testing
+
+## 🔧 Setup
+
+### Prerequisites
+- Flutter SDK (latest stable)
+- Android Studio / VS Code
+- Android Emulator atau Physical Device
+- Akun Supabase (gratis)
+
+### Installation
+
+1. **Clone repository**
 ```bash
-# 1. Clone repositori
-git clone <url-repo>
-cd desakita_mobile
+git clone <repository-url>
+cd desa_wisata
+```
 
-# 2. Install dependensi
+2. **Install dependencies**
+```bash
 flutter pub get
-
-# 3. Setup environment (sekali saja)
-copy env.example.json env.json
-# Buka env.json dan isi GROQ_API_KEY Anda
 ```
 
-### Konfigurasi `env.json`
+3. **Setup database**
+- Buka [Supabase Dashboard](https://supabase.com/dashboard)
+- Pilih project: `hcgvxwmvzohbcsyqfgbz`
+- SQL Editor → New Query
+- Copy-paste isi `supabase_setup.sql`
+- Run
 
-```json
-{
-  "GROQ_API_KEY": "gsk_xxxxxxxxxxxxxxxxxxxx"
-}
-```
+4. **Nonaktifkan email confirmation** (untuk testing)
+- Dashboard → Authentication → Providers → Email
+- Toggle OFF: "Confirm email"
+- Save
 
-> **⚠️ Penting:** `env.json` **tidak boleh** di-commit ke Git. File ini sudah masuk `.gitignore`.
-
-### Menjalankan Aplikasi
-
+5. **Run app**
 ```bash
-# Jalankan dengan environment dari env.json
-flutter run --dart-define-from-file=env.json
+flutter run
 ```
 
-**Di VS Code / Cursor:** Pilih launch config **"DesaKita (env.json)"** — sudah dikonfigurasi otomatis di `.vscode/`.
+## 🧪 Testing
 
----
+Baca: **[QUICK_TEST_GUIDE.md](QUICK_TEST_GUIDE.md)**
 
-## 🔐 Keamanan API Key
-
-| File | Di-commit ke Git? | Isi |
-|------|:-----------------:|-----|
-| `env.example.json` | ✅ Ya (template) | Placeholder — tidak ada key asli |
-| `env.json` | ❌ **Tidak** (.gitignore) | API key Groq asli Anda |
-
-**Aturan wajib:**
-- ❌ Jangan taruh API key di file `.dart` yang di-commit
-- ❌ Jangan commit `env.json`
-- ❌ Jangan kirim API key lewat chat, screenshot, atau GitHub issue
-
-Buat / revoke Groq API key: [console.groq.com](https://console.groq.com/keys)
-
----
-
-## 🤖 AI Assistant "Kita"
-
-Asisten virtual bernama **Kita** menggunakan Groq LLM untuk menjawab pertanyaan seputar wisata desa secara kontekstual (data destinasi & event diambil langsung dari Firestore).
-
-**Kemampuan:**
-- 💬 Chat teks dengan riwayat percakapan (multi-turn)
-- 🎤 Input suara (Speech-to-Text) dalam Bahasa Indonesia
-- 🔊 Baca-ulang jawaban (Text-to-Speech) dengan suara natural `id-ID`
-- 📍 Konteks otomatis dari data destinasi & event di database
-
-**Platform speech:**
-- **Mobile (Android/iOS):** `speech_to_text` package + izin mikrofon
-- **Web:** Web Speech API bawaan browser (Chrome, Edge, Safari)
-
----
-
-## 📸 Upload Foto Destinasi (Admin)
-
-Foto destinasi dikelola via Google Drive, URL-nya disimpan di Firestore.
-
-1. Login sebagai admin di aplikasi.
-2. Buka **Kelola Destinasi** → Tambah / Edit destinasi.
-3. Ketuk **Hubungkan Google Drive** → selesaikan alur login Google.
-4. Pilih foto dari Drive → **Simpan Destinasi**.
-
-**Konfigurasi OAuth:**
-- Web Client ID diatur di `lib/config/app_config.dart` dan `web/index.html`.
-
----
-
-## 👑 Akses Admin
-
-Untuk memberikan akses admin kepada pengguna:
-
-1. Buka [Firebase Console](https://console.firebase.google.com/) → Firestore Database.
-2. Navigasi ke koleksi `users` → dokumen pengguna yang dituju.
-3. Set field `role` menjadi `"admin"`.
-
-Pengguna tersebut akan langsung mendapat akses panel admin setelah login ulang.
-
----
-
-## 🔒 Firestore Security Rules
-
-Akses data dikendalikan oleh Firestore Rules (`firestore.rules`):
-
-| Koleksi | Pengguna | Admin |
-|---------|----------|-------|
-| `users` | Baca & edit profil sendiri | Akses penuh |
-| `users/{id}/favorites` | Baca & tulis favorit sendiri | — |
-| `destinations` | Baca destinasi aktif saja | CRUD penuh |
-| `bookings` | Baca & kelola booking sendiri | Akses penuh |
-| `reviews` | Baca semua, tulis milik sendiri | Edit & hapus semua |
-| `events` | Baca event aktif saja | CRUD penuh |
-
----
-
-## 📦 Dependensi Utama
-
-| Package | Versi | Kegunaan |
-|---------|-------|----------|
-| `firebase_core` | ^3.8.1 | Firebase core |
-| `firebase_auth` | ^5.3.4 | Autentikasi |
-| `cloud_firestore` | ^5.5.1 | Database realtime |
-| `firebase_storage` | ^12.3.6 | Penyimpanan foto profil |
-| `google_sign_in` | ^6.2.1 | Login dengan Google |
-| `googleapis` | ^13.2.0 | Google Drive API |
-| `speech_to_text` | ^7.4.0 | Input suara (mobile) |
-| `flutter_tts` | ^4.2.5 | Text-to-speech |
-| `fl_chart` | ^0.69.2 | Grafik statistik |
-| `pdf` + `printing` | ^3 / ^5 | Ekspor laporan PDF |
-| `google_fonts` | ^6.2.1 | Tipografi |
-| `image_picker` | ^1.1.2 | Pilih foto dari galeri |
-| `shared_preferences` | ^2.3.3 | Penyimpanan lokal |
-| `intl` | ^0.20.2 | Format tanggal & angka |
-
----
-
-## 🗂️ Struktur Layar
-
+Test credentials:
 ```
-screens/
-├── opening_screen.dart          # Splash screen
-├── onboarding_screen.dart       # Onboarding awal
-├── login_screen.dart            # Login
-├── register_screen.dart         # Registrasi
-├── home_screen.dart             # Halaman utama
-├── explore_screen.dart          # Jelajahi destinasi
-├── destination_detail_screen.dart  # Detail destinasi
-├── booking_screen.dart          # Form booking
-├── agent_screen.dart            # AI Chat Assistant
-├── notification_screen.dart     # Notifikasi
-├── profile_screen.dart          # Profil pengguna
-└── admin/
-    ├── admin_dashboard_screen.dart       # Dashboard admin
-    ├── destination_management_screen.dart # Kelola destinasi
-    ├── destination_form_screen.dart       # Form tambah/edit destinasi
-    ├── booking_management_screen.dart     # Manajemen booking
-    ├── booking_analytics_screen.dart      # Analitik booking
-    ├── event_management_screen.dart       # Kelola event
-    ├── event_form_screen.dart             # Form tambah/edit event
-    ├── user_management_screen.dart        # Kelola pengguna
-    ├── admin_tools_screen.dart            # Tools admin
-    └── admin_wisata_screen.dart           # Overview wisata
+Email: test@example.com
+Password: password123
 ```
 
----
+## 📞 Support
 
-## 🚀 Build & Deploy
+**Ada masalah?**
+1. Cek console log
+2. Baca [FAQ.md](FAQ.md)
+3. Jalankan `verify_and_fix.sql`
+4. Baca [PANDUAN_SETUP_LENGKAP.md](PANDUAN_SETUP_LENGKAP.md)
 
-```bash
-# Android APK (debug)
-flutter build apk --dart-define-from-file=env.json
+## 🤝 Contributing
 
-# Android APK (release)
-flutter build apk --release --dart-define-from-file=env.json
+Contributions are welcome! Please read the documentation first.
 
-# Android App Bundle (untuk Play Store)
-flutter build appbundle --dart-define-from-file=env.json
+## 📄 License
 
-# iOS (membutuhkan macOS & Xcode)
-flutter build ios --dart-define-from-file=env.json
+[Your License Here]
 
-# Web
-flutter build web --dart-define-from-file=env.json
-```
+## 👥 Team
 
----
+- Developer: [Your Name]
+- Project: DesaKita App
+- Year: 2026
 
-## 🤝 Kontribusi
+## 🎉 Acknowledgments
 
-1. Fork repositori ini
-2. Buat branch fitur: `git checkout -b feature/nama-fitur`
-3. Commit perubahan: `git commit -m 'feat: tambah fitur X'`
-4. Push branch: `git push origin feature/nama-fitur`
-5. Buka Pull Request
+- Flutter Team
+- Supabase Team
+- Google Fonts
 
 ---
 
-*DesaKita — Menghubungkan wisatawan dengan keindahan desa Indonesia 🌾*
+**Last Updated:** 2026-05-06  
+**Version:** 1.0  
+**Status:** ✅ Production Ready
+
+---
+
+## 🔗 Quick Links
+
+- **Supabase Dashboard:** https://supabase.com/dashboard
+- **Project URL:** https://hcgvxwmvzohbcsyqfgbz.supabase.co
+- **Flutter Docs:** https://flutter.dev/docs
+- **Supabase Docs:** https://supabase.com/docs
+
+---
+
+**🎯 MULAI SEKARANG:** Baca [MULAI_DISINI.md](MULAI_DISINI.md) atau [START_HERE.md](START_HERE.md)
