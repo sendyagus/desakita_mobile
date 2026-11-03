@@ -29,20 +29,39 @@ class _ProfileScreenState extends State<ProfileScreen> {
 
   Future<void> _loadUserData() async {
     try {
-      final userId = FirebaseAuth.instance.currentUser?.uid;
+      final authUser = FirebaseAuth.instance.currentUser;
+      final userId = authUser?.uid;
       if (userId != null) {
         final user = await _userService.getUserById(userId);
         if (mounted) {
-          setState(() {
-            _currentUser = user;
-            _isLoading = false;
-          });
+          // Fallback ke data akun Firebase bila dokumen profil belum ada,
+          // supaya halaman tetap dapat dibuka.
+          _currentUser = user ??
+              UserModel.fallback(
+                id: userId,
+                name: authUser?.displayName ?? 'Pengguna DesaKita',
+                email: authUser?.email ?? '',
+                photoUrl: authUser?.photoURL,
+              );
         }
+      } else if (mounted) {
+        // Belum login — tampilkan profil demo alih-alih loading abadi.
+        _currentUser = UserModel.fallback(
+          id: 'demo',
+          name: 'Tamu DesaKita',
+          email: 'belum masuk ke akun',
+        );
       }
     } catch (e) {
-      if (mounted) {
-        setState(() => _isLoading = false);
-      }
+      debugPrint('Gagal memuat data profil: $e');
+      _currentUser ??= UserModel.fallback(
+        id: 'demo',
+        name: 'Pengguna DesaKita',
+        email: '',
+      );
+    } finally {
+      // Apa pun yang terjadi, halaman harus berhenti loading.
+      if (mounted) setState(() => _isLoading = false);
     }
   }
 

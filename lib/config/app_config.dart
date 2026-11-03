@@ -31,9 +31,11 @@ class AppConfig {
       final raw = await rootBundle.loadString('env.json');
       final data = jsonDecode(raw) as Map<String, dynamic>;
       _runtimeGroqApiKey = (data['GROQ_API_KEY'] ?? '').toString();
+      _runtimeMapboxToken = (data['MAPBOX_ACCESS_TOKEN'] ?? '').toString();
     } catch (_) {
       // env.json tidak ada / tidak valid — fallback ke --dart-define.
       _runtimeGroqApiKey = '';
+      _runtimeMapboxToken = '';
     }
   }
 
@@ -68,4 +70,37 @@ class AppConfig {
   /// Endpoint Groq Chat Completions (OpenAI-compatible).
   static const String groqEndpoint =
       'https://api.groq.com/openai/v1/chat/completions';
+
+  // ─── Mapbox Configuration ───────────────────────────────────────────────
+
+  /// Mapbox public token dari --dart-define (opsional, mis. untuk CI).
+  static const String mapboxTokenDefine = String.fromEnvironment(
+    'MAPBOX_ACCESS_TOKEN',
+    defaultValue: '',
+  );
+
+  /// Token yang dimuat runtime dari asset `env.json` (tidak pernah di-commit).
+  static String _runtimeMapboxToken = '';
+
+  /// Nama style Mapbox untuk tile peta (gaya abu-abu + hijau: outdoors).
+  static const String mapboxStyle = String.fromEnvironment(
+    'MAPBOX_STYLE',
+    defaultValue: 'mapbox/outdoors-v12',
+  );
+
+  /// Token Mapbox yang dibersihkan dari spasi/kutip akibat parsing terminal.
+  static String get mapboxAccessToken {
+    final source = mapboxTokenDefine.trim().isNotEmpty
+        ? mapboxTokenDefine
+        : _runtimeMapboxToken;
+    return source.trim().replaceAll('"', '').replaceAll("'", '');
+  }
+
+  /// Apakah token Mapbox sudah dikonfigurasi.
+  static bool get isMapboxConfigured {
+    final token = mapboxAccessToken;
+    return token.isNotEmpty &&
+        token != 'YOUR_MAPBOX_ACCESS_TOKEN_HERE' &&
+        token.startsWith('pk.');
+  }
 }

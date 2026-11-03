@@ -1,7 +1,6 @@
 import 'package:firebase_core/firebase_core.dart';
-import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
-import 'package:device_preview/device_preview.dart';
+import 'package:mapbox_maps_flutter/mapbox_maps_flutter.dart';
 import 'package:desa_wisata/screens/home_screen.dart';
 import 'package:desa_wisata/screens/login_screen.dart';
 import 'package:desa_wisata/screens/splash_screen.dart';
@@ -16,6 +15,11 @@ Future<void> main() async {
   // Muat API key dari asset env.json (gitignored) — tanpa perlu flag dart-define.
   await AppConfig.loadEnv();
 
+  // Token Mapbox untuk SDK native (web/Android/iOS). Diambil dari env.json.
+  if (AppConfig.isMapboxConfigured) {
+    MapboxOptions.setAccessToken(AppConfig.mapboxAccessToken);
+  }
+
   // Initialize Firebase dengan options untuk semua platform
   try {
     await Firebase.initializeApp(
@@ -26,12 +30,7 @@ Future<void> main() async {
     debugPrint('❌ Firebase initialization error: $e');
   }
 
-  runApp(
-    DevicePreview(
-      enabled: !kReleaseMode,
-      builder: (context) => const DesaKitaApp(),
-    ),
-  );
+  runApp(const DesaKitaApp());
 }
 
 class DesaKitaApp extends StatelessWidget {
@@ -40,8 +39,6 @@ class DesaKitaApp extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
-      locale: DevicePreview.locale(context),
-      builder: DevicePreview.appBuilder,
       title: 'DesaKita',
       debugShowCheckedModeBanner: false,
       theme: DesaKitaTheme.light,

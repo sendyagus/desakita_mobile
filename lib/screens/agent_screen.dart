@@ -1,6 +1,7 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:speech_to_text/speech_to_text.dart' as stt;
 import 'package:desa_wisata/theme/desakita_theme.dart';
 import 'package:desa_wisata/widgets/kita_ai_mascot.dart';
 
@@ -18,6 +19,8 @@ class _AgentScreenState extends State<AgentScreen>
     with TickerProviderStateMixin {
   final TextEditingController _inputController = TextEditingController();
   final ScrollController _scrollController = ScrollController();
+  final stt.SpeechToText _speech = stt.SpeechToText();
+  bool _listening = false;
   final List<_ChatMessage> _messages = [];
   bool _isTyping = false;
   bool _showSuggestions = true;
@@ -542,6 +545,8 @@ class _AgentScreenState extends State<AgentScreen>
               textInputAction: TextInputAction.send,
               decoration: InputDecoration(
                 isDense: true,
+                filled: false,
+                fillColor: Colors.transparent,
                 hintText: 'Mulai Obrolan Sekarang..',
                 hintStyle: GoogleFonts.plusJakartaSans(
                   fontSize: 13,
@@ -1037,82 +1042,112 @@ class _AgentScreenState extends State<AgentScreen>
   // ─── Input Bar ─────────────────────────────────────────────────────────────
 
   Widget _buildInputBar() {
-    return Container(
+    return Padding(
       padding: const EdgeInsets.fromLTRB(16, 10, 16, 12),
-      decoration: const BoxDecoration(
-        color: Colors.white,
-        boxShadow: [
-          BoxShadow(
-            color: Color(0x0A000000),
-            blurRadius: 8,
-            offset: Offset(0, -2),
-          ),
-        ],
-      ),
-      child: Row(
-        children: [
-          // Input field
-          Expanded(
-            child: Container(
-              decoration: BoxDecoration(
-                color: const Color(0xFFF9FAF7),
-                borderRadius: BorderRadius.circular(24),
-              ),
+      child: Container(
+        padding: const EdgeInsets.fromLTRB(16, 6, 8, 6),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(30),
+          boxShadow: const [
+            BoxShadow(
+              color: Colors.black26,
+              blurRadius: 10,
+              offset: Offset(0, 3),
+            ),
+          ],
+        ),
+        child: Row(
+          children: [
+            // Input field
+            Expanded(
               child: TextField(
                 controller: _inputController,
                 style: GoogleFonts.plusJakartaSans(fontSize: 14),
                 maxLines: 4,
                 minLines: 1,
                 textCapitalization: TextCapitalization.sentences,
+                textInputAction: TextInputAction.send,
                 decoration: InputDecoration(
-                  hintText: 'Tanyakan sesuatu...',
+                  isDense: true,
+                  filled: false,
+                  fillColor: Colors.transparent,
+                  hintText: 'Mulai Obrolan Sekarang..',
                   hintStyle: GoogleFonts.plusJakartaSans(
                     fontSize: 14,
                     color: Colors.grey[400],
                   ),
                   border: InputBorder.none,
-                  contentPadding: const EdgeInsets.symmetric(
-                    horizontal: 16,
-                    vertical: 10,
-                  ),
+                  contentPadding: const EdgeInsets.symmetric(vertical: 8),
                 ),
-                onSubmitted: _sendMessage,
+                onSubmitted: (value) {
+                  if (_listening) _toggleMic();
+                  _sendMessage(value);
+                },
               ),
             ),
-          ),
 
-          const SizedBox(width: 10),
+            const SizedBox(width: 8),
 
-          // Tombol kirim
-          GestureDetector(
-            onTap: () => _sendMessage(_inputController.text),
-            child: Container(
-              width: 44,
-              height: 44,
-              decoration: BoxDecoration(
-                shape: BoxShape.circle,
-                gradient: const LinearGradient(
-                  colors: [DesaKitaColors.primary, DesaKitaColors.darkGreen],
-                  begin: Alignment.topLeft,
-                  end: Alignment.bottomRight,
-                ),
-                boxShadow: [
-                  BoxShadow(
-                    color: DesaKitaColors.primary.withValues(alpha: 0.35),
-                    blurRadius: 8,
-                    offset: const Offset(0, 3),
-                  ),
-                ],
-              ),
-              child: const Icon(
-                Icons.send_rounded,
-                color: Colors.white,
-                size: 20,
-              ),
+            // Tombol input suara.
+            _CircleMiniButton(
+              icon: _listening ? Icons.stop_rounded : Icons.graphic_eq_rounded,
+              solidColor: _listening ? Colors.red : null,
+              onTap: _toggleMic,
             ),
-          ),
-        ],
+
+            const SizedBox(width: 6),
+
+            // Tombol kirim.
+            _CircleMiniButton(
+              icon: Icons.send_rounded,
+              onTap: () {
+                if (_listening) _toggleMic();
+                _sendMessage(_inputController.text);
+              },
+            ),
+          ],
+        ),
       ),
+    );
+  }
+
+  /// Dengarkan lalu isi kolom chat dengan hasil pengenalan suara (id_ID).
+  Future<void> _toggleMic() async {
+    if (_listening) {
+      await _speech.stop();
+      setState(() => _listening = false);
+      return;
+    }
+    final ok = await _speech.initialize(
+      onStatus: (s) {
+        if (s == 'done' || s == 'notListening') {
+          if (mounted) setState(() => _listening = false);
+        }
+      },
+    );
+    if (!ok) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Pengenalan suara tidak tersedia di perangkat ini'),
+          behavior: SnackBarBehavior.floating,
+        ),
+      );
+      return;
+    }
+    setState(() => _listening = true);
+    _speech.listen(
+      // ignore: deprecated_member_use
+      localeId: 'id_ID',
+      onResult: (r) {
+        setState(() {
+          _inputController.text = r.recognizedWords;
+          _inputController.selection = TextSelection.fromPosition(
+            TextPosition(offset: _inputController.text.length),
+          );
+        });
+      },
     );
   }
 
@@ -1213,8 +1248,13 @@ class _AiQuickAction {
 class _CircleMiniButton extends StatelessWidget {
   final IconData icon;
   final VoidCallback onTap;
+  final Color? solidColor;
 
-  const _CircleMiniButton({required this.icon, required this.onTap});
+  const _CircleMiniButton({
+    required this.icon,
+    required this.onTap,
+    this.solidColor,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -1228,18 +1268,14 @@ class _CircleMiniButton extends StatelessWidget {
           height: 38,
           decoration: BoxDecoration(
             shape: BoxShape.circle,
-            gradient: const LinearGradient(
-              colors: [DesaKitaColors.primary, DesaKitaColors.darkGreen],
-              begin: Alignment.topLeft,
-              end: Alignment.bottomRight,
-            ),
-            boxShadow: [
-              BoxShadow(
-                color: DesaKitaColors.primary.withValues(alpha: 0.3),
-                blurRadius: 6,
-                offset: const Offset(0, 2),
-              ),
-            ],
+            color: solidColor,
+            gradient: solidColor != null
+                ? null
+                : const LinearGradient(
+                    colors: [DesaKitaColors.primary, DesaKitaColors.darkGreen],
+                    begin: Alignment.topLeft,
+                    end: Alignment.bottomRight,
+                  ),
           ),
           child: Icon(icon, color: Colors.white, size: 18),
         ),

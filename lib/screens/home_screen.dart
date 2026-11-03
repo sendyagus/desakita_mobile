@@ -11,6 +11,8 @@ import 'package:desa_wisata/screens/profile_screen.dart';
 import 'package:desa_wisata/screens/trip_screen.dart';
 import 'package:desa_wisata/screens/umkm_detail_screen.dart';
 import 'package:desa_wisata/screens/destination_detail_screen.dart';
+import 'package:desa_wisata/screens/user/user_booking_history_screen.dart';
+import 'package:desa_wisata/services/booking_service.dart';
 import 'package:desa_wisata/services/user_service.dart';
 import 'package:desa_wisata/theme/desakita_theme.dart';
 import 'package:desa_wisata/widgets/destination_photo.dart';
@@ -27,8 +29,11 @@ class _HomeScreenState extends State<HomeScreen> {
   int _selectedNavIndex = 0;
   int _exploreInitialType = 0;
   final UserService _userService = UserService();
+  final BookingService _bookingService = BookingService();
   UserModel? _currentUser;
   bool _isLoadingUser = true;
+  // Riwayat perjalanan (booking user) untuk section paling bawah beranda.
+  List<Map<String, dynamic>> _tripHistory = [];
 
   late final Stream<QuerySnapshot<Map<String, dynamic>>> _destinationsStream;
   late final Stream<QuerySnapshot<Map<String, dynamic>>> _umkmStream;
@@ -67,9 +72,13 @@ class _HomeScreenState extends State<HomeScreen> {
       final user = userId == null
           ? null
           : await _userService.getUserById(userId);
+      final history = userId == null
+          ? <Map<String, dynamic>>[]
+          : await _bookingService.getUserBookings(userId);
       if (!mounted) return;
       setState(() {
         _currentUser = user;
+        _tripHistory = history;
         _isLoadingUser = false;
       });
     } catch (_) {
@@ -119,6 +128,10 @@ class _HomeScreenState extends State<HomeScreen> {
             isUmkm: true,
           ),
         ),
+        if (_tripHistory.isNotEmpty) ...[
+          const SliverToBoxAdapter(child: SizedBox(height: 24)),
+          SliverToBoxAdapter(child: _buildTripHistorySection()),
+        ],
         // Extra padding agar konten tidak terpotong bottom nav
         const SliverToBoxAdapter(child: SizedBox(height: 28)),
       ],
@@ -327,11 +340,11 @@ class _HomeScreenState extends State<HomeScreen> {
               Container(
                 padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 5),
                 decoration: BoxDecoration(
-                  color: Colors.white.withValues(alpha: 0.18),
+                  color: Colors.white.withValues(alpha: 0.15),
                   borderRadius: BorderRadius.circular(20),
                   border: Border.all(
-                    color: Colors.white.withValues(alpha: 0.25),
-                    width: 0.8,
+                    color: Colors.white,
+                    width: 1.2,
                   ),
                 ),
                 child: Row(
@@ -340,7 +353,7 @@ class _HomeScreenState extends State<HomeScreen> {
                     const Icon(
                       Icons.wb_sunny_outlined,
                       size: 13,
-                      color: Color(0xFFA3E635),
+                      color: Colors.white,
                     ),
                     const SizedBox(width: 4),
                     Text(
@@ -348,7 +361,7 @@ class _HomeScreenState extends State<HomeScreen> {
                       style: GoogleFonts.plusJakartaSans(
                         fontSize: 10,
                         fontWeight: FontWeight.w700,
-                        color: const Color(0xFFA3E635),
+                        color: Colors.white,
                       ),
                     ),
                   ],
@@ -360,10 +373,10 @@ class _HomeScreenState extends State<HomeScreen> {
                 height: 34,
                 decoration: BoxDecoration(
                   shape: BoxShape.circle,
-                  color: const Color(0x38354A23),
+                  color: Colors.white.withValues(alpha: 0.15),
                   border: Border.all(
-                    color: Colors.white.withValues(alpha: 0.2),
-                    width: 0.8,
+                    color: Colors.white,
+                    width: 1.2,
                   ),
                 ),
                 child: IconButton(
@@ -374,7 +387,7 @@ class _HomeScreenState extends State<HomeScreen> {
                   ),
                   icon: const Icon(
                     Icons.notifications_none_rounded,
-                    color: Color(0xFF1E3A1A),
+                    color: Colors.white,
                     size: 18,
                   ),
                 ),
@@ -424,11 +437,11 @@ class _HomeScreenState extends State<HomeScreen> {
                     size: 22,
                   ),
                   gradient: const LinearGradient(
-                    colors: [DesaKitaColors.primary, DesaKitaColors.darkGreen],
-                    begin: Alignment.topLeft,
-                    end: Alignment.bottomRight,
+                    colors: [DesaKitaColors.darkGreen, Color(0xFF94A81D)],
+                    begin: Alignment.centerLeft,
+                    end: Alignment.centerRight,
                   ),
-                  shadowColor: const Color(0x281C7A28),
+                  shadowColor: const Color(0x4D145E1E),
                   onTap: () => setState(() => _selectedNavIndex = 2),
                 ),
               ),
@@ -452,11 +465,11 @@ class _HomeScreenState extends State<HomeScreen> {
                     ),
                   ),
                   gradient: const LinearGradient(
-                    colors: [DesaKitaColors.primary, DesaKitaColors.darkGreen],
-                    begin: Alignment.topLeft,
-                    end: Alignment.bottomRight,
+                    colors: [DesaKitaColors.primary, DesaKitaColors.primary],
+                    begin: Alignment.centerLeft,
+                    end: Alignment.centerRight,
                   ),
-                  shadowColor: const Color(0x281C7A28),
+                  shadowColor: const Color(0x4D1C7A28),
                   onTap: () => setState(() => _selectedNavIndex = 1),
                 ),
               ),
@@ -609,6 +622,173 @@ class _HomeScreenState extends State<HomeScreen> {
             ),
           ),
         ],
+      ),
+    );
+  }
+
+  /// Section Riwayat Perjalanan di bagian paling bawah beranda.
+  Widget _buildTripHistorySection() {
+    if (_tripHistory.isEmpty) return const SizedBox.shrink();
+    final items = _tripHistory.take(3).toList();
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        _sectionHeader('Riwayat Perjalanan', _openTripHistory),
+        const SizedBox(height: 12),
+        Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 18),
+          child: Column(
+            children: [
+              for (final b in items)
+                Padding(
+                  padding: const EdgeInsets.only(bottom: 12),
+                  child: _tripHistoryCard(b),
+                ),
+            ],
+          ),
+        ),
+      ],
+    );
+  }
+
+  void _openTripHistory() {
+    Navigator.push(
+      context,
+      MaterialPageRoute(builder: (_) => const UserBookingHistoryScreen()),
+    );
+  }
+
+  static const _dayNames = [
+    'Senin',
+    'Selasa',
+    'Rabu',
+    'Kamis',
+    'Jumat',
+    'Sabtu',
+    'Minggu',
+  ];
+  static const _monthNames = [
+    'Jan',
+    'Feb',
+    'Mar',
+    'Apr',
+    'Mei',
+    'Jun',
+    'Jul',
+    'Agu',
+    'Sep',
+    'Okt',
+    'Nov',
+    'Des',
+  ];
+
+  String _formatTripDate(String? iso) {
+    final d = DateTime.tryParse(iso ?? '');
+    if (d == null) return '-';
+    return '${_dayNames[d.weekday - 1]}, ${d.day} ${_monthNames[d.month - 1]} ${d.year}';
+  }
+
+  Widget _tripHistoryCard(Map<String, dynamic> booking) {
+    final dest = (booking['destinations'] as Map<String, dynamic>?) ?? {};
+    final name = (dest['name'] ?? 'Perjalanan').toString();
+    final location = (dest['location'] ?? '-').toString();
+    final imageUrl = dest['image_url']?.toString();
+
+    final checkIn = DateTime.tryParse(booking['check_in'] as String? ?? '');
+    final checkOut = DateTime.tryParse(booking['check_out'] as String? ?? '');
+    final status = (booking['status'] ?? '').toString();
+    final now = DateTime.now();
+    final ongoing =
+        status != 'cancelled' &&
+        checkIn != null &&
+        checkOut != null &&
+        !now.isBefore(checkIn) &&
+        now.isBefore(checkOut.add(const Duration(days: 1)));
+
+    return GestureDetector(
+      onTap: _openTripHistory,
+      child: Container(
+        padding: const EdgeInsets.all(10),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(16),
+          boxShadow: const [
+            BoxShadow(
+              color: Color(0x0A000000),
+              blurRadius: 8,
+              offset: Offset(0, 2),
+            ),
+          ],
+        ),
+        child: Row(
+          children: [
+            ClipRRect(
+              borderRadius: BorderRadius.circular(12),
+              child: DestinationPhoto(
+                imageUrl: imageUrl,
+                fallbackAsset: 'assets/img/cs1.jpg',
+                width: 56,
+                height: 56,
+                borderRadius: BorderRadius.circular(12),
+              ),
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Text(
+                    name,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: GoogleFonts.plusJakartaSans(
+                      fontSize: 12.5,
+                      fontWeight: FontWeight.w700,
+                      color: DesaKitaColors.text,
+                    ),
+                  ),
+                  const SizedBox(height: 3),
+                  Row(
+                    children: [
+                      const Icon(
+                        Icons.location_on,
+                        size: 11,
+                        color: Color(0xFF2D5016),
+                      ),
+                      const SizedBox(width: 2),
+                      Expanded(
+                        child: Text(
+                          location,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: GoogleFonts.plusJakartaSans(
+                            fontSize: 10.5,
+                            color: const Color(0xFF7A8272),
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(width: 8),
+            Text(
+              ongoing
+                  ? 'Sedang\nberlangsung'
+                  : _formatTripDate(booking['check_in'] as String?),
+              textAlign: TextAlign.end,
+              style: GoogleFonts.plusJakartaSans(
+                fontSize: 9.5,
+                fontWeight: ongoing ? FontWeight.w700 : FontWeight.w600,
+                color: ongoing
+                    ? const Color(0xFF2D5016)
+                    : const Color(0xFF42493E),
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }
@@ -811,15 +991,15 @@ class _QuickActionButton extends StatelessWidget {
         onTap: onTap,
         borderRadius: BorderRadius.circular(14),
         child: Ink(
-          height: 52,
+          height: 56,
           decoration: BoxDecoration(
             gradient: gradient,
             borderRadius: BorderRadius.circular(14),
             boxShadow: [
               BoxShadow(
                 color: shadowColor,
-                blurRadius: 8,
-                offset: const Offset(0, 3),
+                blurRadius: 12,
+                offset: const Offset(0, 5),
               ),
             ],
           ),

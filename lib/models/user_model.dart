@@ -29,6 +29,28 @@ class UserModel {
 
   bool get isAdmin => role == 'admin';
 
+  /// Profil cadangan bila dokumen Firestore belum ada / gagal dimuat,
+  /// supaya halaman Profil tetap bisa dibuka (mis. data akun Firebase).
+  factory UserModel.fallback({
+    required String id,
+    required String name,
+    required String email,
+    String? photoUrl,
+  }) {
+    final now = DateTime.now();
+    return UserModel(
+      id: id,
+      fullName: name,
+      email: email,
+      phone: '',
+      avatarUrl: photoUrl,
+      role: 'user',
+      isActive: true,
+      createdAt: now,
+      updatedAt: now,
+    );
+  }
+
   /// Profil dari Firestore (`users/{id}`).
   factory UserModel.fromFirestore(String id, Map<String, dynamic> data) {
     DateTime parseDt(dynamic v) {
