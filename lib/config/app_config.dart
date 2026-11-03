@@ -15,7 +15,10 @@ class AppConfig {
   /// `flutter run --dart-define-from-file=env.json`
   ///
   /// File [env.json] ada di .gitignore dan tidak pernah di-commit.
-  static const String groqApiKey = String.fromEnvironment('GROQ_API_KEY');
+  static const String groqApiKey = String.fromEnvironment(
+    'GROQ_API_KEY',
+    defaultValue: '',
+  );
 
   /// API key yang dibersihkan dari spasi, kutip dua, atau kutip satu akibat parsing terminal.
   static String get cleanGroqApiKey =>
