@@ -271,7 +271,7 @@ class _FavoriteDestinationCard extends StatelessWidget {
           context,
           MaterialPageRoute(
             builder: (_) => DestinationDetailScreen(
-              destinationId: destination['id'] as String,
+              destination: destination,
             ),
           ),
         );

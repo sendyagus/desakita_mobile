@@ -154,6 +154,25 @@ class BookingService {
     return list;
   }
 
+  /// Stream reaksi langsung semua booking (dipakai layar admin & analitik).
+  Stream<List<Map<String, dynamic>>> watchAllBookings() {
+    return _db.collection(_bookings).snapshots().map((snap) {
+      final list = snap.docs
+          .map((d) => _docToBookingMap(d.id, d.data()))
+          .toList()
+        ..sort((a, b) {
+          final ca =
+              DateTime.tryParse(a['created_at'] as String? ?? '') ??
+              DateTime.fromMillisecondsSinceEpoch(0);
+          final cb =
+              DateTime.tryParse(b['created_at'] as String? ?? '') ??
+              DateTime.fromMillisecondsSinceEpoch(0);
+          return cb.compareTo(ca);
+        });
+      return list;
+    });
+  }
+
   Future<void> updateBookingStatus(String bookingId, String status) async {
     await _db.collection(_bookings).doc(bookingId).update({
       'status': status,

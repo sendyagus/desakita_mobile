@@ -30,6 +30,12 @@ class DestinationService {
     };
   }
 
+  /// Public: konversi dokumen Firestore ke map tampilan (snake_case) yang
+  /// dipakai layar favorit/detail lama.
+  Map<String, dynamic> docDataToFormMap(String id, Map<String, dynamic> d) {
+    return _docToMap(id, d);
+  }
+
   Map<String, dynamic> _inputToFirestore({
     required String name,
     required String category,
@@ -39,6 +45,12 @@ class DestinationService {
     String? description,
     String? imageUrl,
     bool status = true,
+    String? facilities,
+    String? mapsUrl,
+    String? contact,
+    String? openingHours,
+    bool bookable = false,
+    int stock = 0,
   }) {
     return {
       'name': name,
@@ -49,6 +61,12 @@ class DestinationService {
       'description': description,
       'imageUrl': imageUrl,
       'status': status,
+      'facilities': facilities,
+      'mapsUrl': mapsUrl,
+      'contact': contact,
+      'openingHours': openingHours,
+      'bookable': bookable,
+      'stock': stock,
       'updatedAt': FieldValue.serverTimestamp(),
     };
   }
@@ -113,6 +131,12 @@ class DestinationService {
     required String price,
     String? description,
     String? imageUrl,
+    String? facilities,
+    String? mapsUrl,
+    String? contact,
+    String? openingHours,
+    bool bookable = false,
+    int stock = 0,
   }) async {
     final now = FieldValue.serverTimestamp();
     final ref = await _db.collection(_col).add({
@@ -125,6 +149,12 @@ class DestinationService {
         description: description,
         imageUrl: imageUrl,
         status: true,
+        facilities: facilities,
+        mapsUrl: mapsUrl,
+        contact: contact,
+        openingHours: openingHours,
+        bookable: bookable,
+        stock: stock,
       ),
       'createdAt': now,
     });
@@ -142,6 +172,12 @@ class DestinationService {
     String? description,
     String? imageUrl,
     bool? status,
+    String? facilities,
+    String? mapsUrl,
+    String? contact,
+    String? openingHours,
+    bool? bookable,
+    int? stock,
   }) async {
     final updates = <String, dynamic>{
       'updatedAt': FieldValue.serverTimestamp(),
@@ -154,6 +190,12 @@ class DestinationService {
     if (description != null) updates['description'] = description;
     if (imageUrl != null) updates['imageUrl'] = imageUrl;
     if (status != null) updates['status'] = status;
+    if (facilities != null) updates['facilities'] = facilities;
+    if (mapsUrl != null) updates['mapsUrl'] = mapsUrl;
+    if (contact != null) updates['contact'] = contact;
+    if (openingHours != null) updates['openingHours'] = openingHours;
+    if (bookable != null) updates['bookable'] = bookable;
+    if (stock != null) updates['stock'] = stock;
 
     await _db.collection(_col).doc(id).update(updates);
     final doc = await _db.collection(_col).doc(id).get();

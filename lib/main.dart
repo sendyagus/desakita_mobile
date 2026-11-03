@@ -8,9 +8,13 @@ import 'package:desa_wisata/screens/splash_screen.dart';
 import 'package:desa_wisata/screens/booking_screen.dart';
 import 'package:desa_wisata/theme/desakita_theme.dart';
 import 'package:desa_wisata/firebase_options.dart';
+import 'package:desa_wisata/config/app_config.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
+
+  // Muat API key dari asset env.json (gitignored) — tanpa perlu flag dart-define.
+  await AppConfig.loadEnv();
 
   // Initialize Firebase dengan options untuk semua platform
   try {

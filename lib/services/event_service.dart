@@ -37,6 +37,18 @@ class EventService {
     };
   }
 
+  /// Label fase acara berdasarkan tanggal mulai/selesai (pakai key snake_case
+  /// hasil _docToMap: start_date & end_date berupa ISO string).
+  static String eventPhaseLabel(Map<String, dynamic> e) {
+    final now = DateTime.now();
+    final start = DateTime.tryParse(e['start_date'] as String? ?? '');
+    final end = DateTime.tryParse(e['end_date'] as String? ?? '');
+    if (start == null) return 'Akan Datang';
+    if (end != null && now.isAfter(end)) return 'Selesai';
+    if (now.isBefore(start)) return 'Akan Datang';
+    return 'Sedang Berjalan';
+  }
+
   Future<List<Map<String, dynamic>>> getAllEvents() async {
     final snap = await _db
         .collection(_col)
