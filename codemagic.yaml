@@ -10,27 +10,42 @@ workflows:
       xcode: latest
       cocoapods: default
 
-    scripts:
-      - name: Get dependencies
-        script: |
-          flutter pub get
+   
+scripts:
+  - name: Get dependencies
+    script: |
+      flutter pub get
 
-      - name: Build iOS app
-        script: |
-          flutter build ios --release --no-codesign || true
+  - name: Prepare Flutter iOS
+    script: |
+      flutter build ios --release --no-codesign || true
 
-          if [ ! -d "build/ios/iphoneos/Runner.app" ]; then
-            echo "ERROR: Runner.app was not generated"
-            exit 1
-          fi
+  - name: Build unsigned iOS app using Xcode
+    script: |
+      xcodebuild \
+        -workspace ios/Runner.xcworkspace \
+        -scheme Runner \
+        -configuration Release \
+        -sdk iphoneos \
+        -destination 'generic/platform=iOS' \
+        -derivedDataPath build/ios/derived \
+        CODE_SIGNING_ALLOWED=NO \
+        CODE_SIGNING_REQUIRED=NO \
+        CODE_SIGN_IDENTITY="" \
+        build
 
-      - name: Package unsigned IPA
-        script: |
-          mkdir -p Payload
-          cp -R build/ios/iphoneos/Runner.app Payload/
-          mkdir -p build/ios/ipa
-          cd Payload/..
-          zip -r build/ios/ipa/DesaKita.ipa Payload
+  - name: Package IPA
+    script: |
+      APP_PATH="build/ios/derived/Build/Products/Release-iphoneos/Runner.app"
 
-    artifacts:
-      - build/ios/ipa/*.ipa
+      if [ ! -d "$APP_PATH" ]; then
+        echo "Runner.app not found"
+        exit 1
+      fi
+
+      mkdir -p Payload build/ios/ipa
+      cp -R "$APP_PATH" Payload/
+      zip -r build/ios/ipa/DesaKita.ipa Payload
+
+artifacts:
+  - build/ios/ipa/*.ipa
