@@ -1,7 +1,7 @@
 
 workflows:
   ios-build:
-    name: DesaKita iOS IPA
+    name: DesaKita iOS Unsigned
     max_build_duration: 60
     instance_type: mac_mini_m2
 
@@ -10,42 +10,46 @@ workflows:
       xcode: latest
       cocoapods: default
 
-   
-scripts:
-  - name: Get dependencies
-    script: |
-      flutter pub get
+    scripts:
+      - name: Get Flutter dependencies
+        script: |
+          flutter pub get
 
-  - name: Prepare Flutter iOS
-    script: |
-      flutter build ios --release --no-codesign || true
+      - name: Generate iOS project files
+        script: |
+          flutter precache --ios
+          cd ios
+          pod install
+          cd ..
 
-  - name: Build unsigned iOS app using Xcode
-    script: |
-      xcodebuild \
-        -workspace ios/Runner.xcworkspace \
-        -scheme Runner \
-        -configuration Release \
-        -sdk iphoneos \
-        -destination 'generic/platform=iOS' \
-        -derivedDataPath build/ios/derived \
-        CODE_SIGNING_ALLOWED=NO \
-        CODE_SIGNING_REQUIRED=NO \
-        CODE_SIGN_IDENTITY="" \
-        build
+      - name: Build unsigned iOS app
+        script: |
+          xcodebuild \
+            -workspace ios/Runner.xcworkspace \
+            -scheme Runner \
+            -configuration Release \
+            -sdk iphoneos \
+            -destination 'generic/platform=iOS' \
+            -derivedDataPath build/ios/derived \
+            CODE_SIGNING_ALLOWED=NO \
+            CODE_SIGNING_REQUIRED=NO \
+            CODE_SIGN_IDENTITY="" \
+            build
 
-  - name: Package IPA
-    script: |
-      APP_PATH="build/ios/derived/Build/Products/Release-iphoneos/Runner.app"
+      - name: Package unsigned IPA
+        script: |
+          APP_PATH="build/ios/derived/Build/Products/Release-iphoneos/Runner.app"
 
-      if [ ! -d "$APP_PATH" ]; then
-        echo "Runner.app not found"
-        exit 1
-      fi
+          if [ ! -d "$APP_PATH" ]; then
+            echo "ERROR: Runner.app not found"
+            exit 1
+          fi
 
-      mkdir -p Payload build/ios/ipa
-      cp -R "$APP_PATH" Payload/
-      zip -r build/ios/ipa/DesaKita.ipa Payload
+          mkdir -p Payload
+          cp -R "$APP_PATH" Payload/
 
-artifacts:
-  - build/ios/ipa/*.ipa
+          mkdir -p build/ios/ipa
+          zip -r build/ios/ipa/DesaKita.ipa Payload
+
+    artifacts:
+      - build/ios/ipa/DesaKita.ipa
