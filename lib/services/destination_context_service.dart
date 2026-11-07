@@ -24,7 +24,9 @@ class DestinationContextService {
         '${_cachedDestinations.length} destinasi & ${_cachedEvents.length} event.',
       );
     } catch (e, stackTrace) {
-      debugPrint('❌ [DestinationContextService] Gagal menginisialisasi: $e\n$stackTrace');
+      debugPrint(
+        '❌ [DestinationContextService] Gagal menginisialisasi: $e\n$stackTrace',
+      );
     }
   }
 
@@ -37,7 +39,9 @@ class DestinationContextService {
   /// Mencari konteks wisata dan event yang relevan berdasarkan query pengguna
   String searchRelevantContext(String userQuery) {
     if (!_isInitialized) {
-      debugPrint('⚠️ [DestinationContextService] Belum diinisialisasi. Menjalankan pencarian tanpa cache.');
+      debugPrint(
+        '⚠️ [DestinationContextService] Belum diinisialisasi. Menjalankan pencarian tanpa cache.',
+      );
       return '';
     }
 
@@ -45,7 +49,10 @@ class DestinationContextService {
     if (query.isEmpty) return '';
 
     // Pecah query menjadi kata-kata kunci
-    final words = query.split(RegExp(r'\s+')).where((w) => w.length > 1).toList();
+    final words = query
+        .split(RegExp(r'\s+'))
+        .where((w) => w.length > 1)
+        .toList();
     if (words.isEmpty) {
       words.add(query);
     }
@@ -111,7 +118,10 @@ class DestinationContextService {
     scoredEvents.sort((a, b) => b.score.compareTo(a.score));
 
     // Ambil top hasil
-    final topDestinations = scoredDestinations.take(5).map((e) => e.item).toList();
+    final topDestinations = scoredDestinations
+        .take(5)
+        .map((e) => e.item)
+        .toList();
     final topEvents = scoredEvents.take(3).map((e) => e.item).toList();
 
     if (topDestinations.isEmpty && topEvents.isEmpty) {
@@ -120,7 +130,7 @@ class DestinationContextService {
 
     // Build format teks konteks
     final sb = StringBuffer();
-    
+
     if (topDestinations.isNotEmpty) {
       sb.writeln('DATA WISATA/DESTINASI RELEVAN:');
       for (var i = 0; i < topDestinations.length; i++) {
@@ -137,10 +147,12 @@ class DestinationContextService {
         if (d['facilities'] != null && d['facilities'].toString().isNotEmpty) {
           sb.writeln('   Fasilitas: ${d['facilities']}');
         }
-        if (d['openingHours'] != null && d['openingHours'].toString().isNotEmpty) {
+        if (d['openingHours'] != null &&
+            d['openingHours'].toString().isNotEmpty) {
           sb.writeln('   Jam Buka: ${d['openingHours']}');
         }
-        if (d['description'] != null && d['description'].toString().isNotEmpty) {
+        if (d['description'] != null &&
+            d['description'].toString().isNotEmpty) {
           sb.writeln('   Deskripsi: ${d['description']}');
         }
         sb.writeln();
@@ -163,7 +175,8 @@ class DestinationContextService {
         if (e['organizer'] != null && e['organizer'].toString().isNotEmpty) {
           sb.writeln('   Penyelenggara: ${e['organizer']}');
         }
-        if (e['description'] != null && e['description'].toString().isNotEmpty) {
+        if (e['description'] != null &&
+            e['description'].toString().isNotEmpty) {
           sb.writeln('   Deskripsi: ${e['description']}');
         }
         sb.writeln();

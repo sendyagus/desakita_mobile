@@ -53,17 +53,26 @@ class _DestinationFormScreenState extends State<DestinationFormScreen> {
     final dest = widget.destination;
     _nameController = TextEditingController(text: dest?['name'] ?? '');
     _locationController = TextEditingController(text: dest?['location'] ?? '');
-    _descriptionController = TextEditingController(text: dest?['description'] ?? '');
-    _ratingController = TextEditingController(text: dest?['rating']?.toString() ?? '4.0');
+    _descriptionController = TextEditingController(
+      text: dest?['description'] ?? '',
+    );
+    _ratingController = TextEditingController(
+      text: dest?['rating']?.toString() ?? '4.0',
+    );
     _priceController = TextEditingController(text: dest?['price'] ?? '');
-    _facilitiesController = TextEditingController(text: dest?['facilities'] ?? '');
+    _facilitiesController = TextEditingController(
+      text: dest?['facilities'] ?? '',
+    );
     _mapsUrlController = TextEditingController(text: dest?['mapsUrl'] ?? '');
     _contactController = TextEditingController(text: dest?['contact'] ?? '');
-    _openingHoursController = TextEditingController(text: dest?['openingHours'] ?? '');
+    _openingHoursController = TextEditingController(
+      text: dest?['openingHours'] ?? '',
+    );
     _stockController = TextEditingController(
       text: dest?['stock']?.toString() ?? '0',
     );
-    _selectedCategory = AppCategories.normalize(dest?['category'] as String?) == ''
+    _selectedCategory =
+        AppCategories.normalize(dest?['category'] as String?) == ''
         ? 'Alam'
         : AppCategories.normalize(dest?['category'] as String?);
     _bookable = dest?['bookable'] as bool? ?? false;
@@ -139,7 +148,10 @@ class _DestinationFormScreenState extends State<DestinationFormScreen> {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('Gagal memilih gambar: $e', style: GoogleFonts.poppins(fontSize: 13)),
+            content: Text(
+              'Gagal memilih gambar: $e',
+              style: GoogleFonts.poppins(fontSize: 13),
+            ),
             backgroundColor: Colors.red,
           ),
         );
@@ -170,10 +182,12 @@ class _DestinationFormScreenState extends State<DestinationFormScreen> {
       if (_selectedImage != null) {
         debugPrint('🔄 Mulai upload gambar ke Google Drive...');
         debugPrint('📄 File: ${_selectedImage!.name}');
-        
+
         // Upload ke Google Drive dan dapatkan link
-        imageUrl = await _googleDriveService.uploadToGoogleDrive(_selectedImage!);
-        
+        imageUrl = await _googleDriveService.uploadToGoogleDrive(
+          _selectedImage!,
+        );
+
         debugPrint('✅ Upload ke Google Drive berhasil!');
         debugPrint('🔗 Link: $imageUrl');
       } else {
@@ -250,7 +264,9 @@ class _DestinationFormScreenState extends State<DestinationFormScreen> {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text(
-              widget.destination == null ? 'Destinasi berhasil ditambahkan' : 'Destinasi berhasil diperbarui',
+              widget.destination == null
+                  ? 'Destinasi berhasil ditambahkan'
+                  : 'Destinasi berhasil diperbarui',
               style: GoogleFonts.poppins(fontSize: 13),
             ),
             backgroundColor: const Color(0xFF2D5016),
@@ -262,7 +278,10 @@ class _DestinationFormScreenState extends State<DestinationFormScreen> {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('Gagal menyimpan: $e', style: GoogleFonts.poppins(fontSize: 13)),
+            content: Text(
+              'Gagal menyimpan: $e',
+              style: GoogleFonts.poppins(fontSize: 13),
+            ),
             backgroundColor: Colors.red,
             duration: const Duration(seconds: 5),
           ),
@@ -498,14 +517,14 @@ class _DestinationFormScreenState extends State<DestinationFormScreen> {
                           ),
                   )
                 : _existingImageUrl != null && _existingImageUrl!.isNotEmpty
-                    ? AppNetworkImage(
-                        imageUrl: _existingImageUrl,
-                        width: double.infinity,
-                        height: 200,
-                        borderRadius: BorderRadius.circular(14),
-                        placeholderLabel: 'Foto destinasi',
-                      )
-                    : _buildImagePlaceholder(),
+                ? AppNetworkImage(
+                    imageUrl: _existingImageUrl,
+                    width: double.infinity,
+                    height: 200,
+                    borderRadius: BorderRadius.circular(14),
+                    placeholderLabel: 'Foto destinasi',
+                  )
+                : _buildImagePlaceholder(),
           ),
         ),
         const SizedBox(height: 8),
@@ -531,7 +550,9 @@ class _DestinationFormScreenState extends State<DestinationFormScreen> {
           Row(
             children: [
               Icon(
-                connected ? Icons.cloud_done_outlined : Icons.cloud_off_outlined,
+                connected
+                    ? Icons.cloud_done_outlined
+                    : Icons.cloud_off_outlined,
                 size: 20,
                 color: connected ? Colors.green[800] : Colors.orange[800],
               ),
@@ -554,7 +575,10 @@ class _DestinationFormScreenState extends State<DestinationFormScreen> {
             const SizedBox(height: 8),
             Text(
               'Wajib hubungkan Google Drive sebelum menyimpan dengan foto baru.',
-              style: GoogleFonts.poppins(fontSize: 11, color: Colors.orange[900]),
+              style: GoogleFonts.poppins(
+                fontSize: 11,
+                color: Colors.orange[900],
+              ),
             ),
           ],
           const SizedBox(height: 10),
@@ -564,8 +588,8 @@ class _DestinationFormScreenState extends State<DestinationFormScreen> {
               onPressed: _isConnectingGoogle
                   ? null
                   : connected
-                      ? _checkGoogleConnection
-                      : _connectGoogleDrive,
+                  ? _checkGoogleConnection
+                  : _connectGoogleDrive,
               icon: _isConnectingGoogle
                   ? const SizedBox(
                       width: 16,
@@ -577,8 +601,8 @@ class _DestinationFormScreenState extends State<DestinationFormScreen> {
                 _isConnectingGoogle
                     ? 'Menghubungkan...'
                     : connected
-                        ? 'Periksa koneksi'
-                        : 'Hubungkan Google Drive',
+                    ? 'Periksa koneksi'
+                    : 'Hubungkan Google Drive',
                 style: GoogleFonts.poppins(
                   fontSize: 13,
                   fontWeight: FontWeight.w600,
@@ -600,22 +624,20 @@ class _DestinationFormScreenState extends State<DestinationFormScreen> {
     return Column(
       mainAxisAlignment: MainAxisAlignment.center,
       children: [
-        Icon(Icons.add_photo_alternate_outlined, size: 48, color: Colors.grey[400]),
+        Icon(
+          Icons.add_photo_alternate_outlined,
+          size: 48,
+          color: Colors.grey[400],
+        ),
         const SizedBox(height: 8),
         Text(
           'Pilih Foto',
-          style: GoogleFonts.poppins(
-            fontSize: 14,
-            color: Colors.grey[600],
-          ),
+          style: GoogleFonts.poppins(fontSize: 14, color: Colors.grey[600]),
         ),
         const SizedBox(height: 4),
         Text(
           'Tap untuk memilih dari galeri',
-          style: GoogleFonts.poppins(
-            fontSize: 12,
-            color: Colors.grey[500],
-          ),
+          style: GoogleFonts.poppins(fontSize: 12, color: Colors.grey[500]),
         ),
       ],
     );
@@ -642,12 +664,17 @@ class _DestinationFormScreenState extends State<DestinationFormScreen> {
             return GestureDetector(
               onTap: () => setState(() => _selectedCategory = cat),
               child: Container(
-                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 16,
+                  vertical: 10,
+                ),
                 decoration: BoxDecoration(
                   color: isSelected ? const Color(0xFF2D5016) : Colors.white,
                   borderRadius: BorderRadius.circular(12),
                   border: Border.all(
-                    color: isSelected ? const Color(0xFF2D5016) : Colors.grey[300]!,
+                    color: isSelected
+                        ? const Color(0xFF2D5016)
+                        : Colors.grey[300]!,
                     width: 1.5,
                   ),
                 ),
@@ -735,7 +762,10 @@ class _DestinationFormScreenState extends State<DestinationFormScreen> {
           style: GoogleFonts.poppins(fontSize: 14),
           decoration: InputDecoration(
             hintText: hint,
-            hintStyle: GoogleFonts.poppins(fontSize: 13, color: Colors.grey[400]),
+            hintStyle: GoogleFonts.poppins(
+              fontSize: 13,
+              color: Colors.grey[400],
+            ),
             prefixIcon: Icon(icon, color: Colors.grey[500], size: 20),
             filled: true,
             fillColor: Colors.white,
@@ -751,10 +781,14 @@ class _DestinationFormScreenState extends State<DestinationFormScreen> {
               borderRadius: BorderRadius.circular(12),
               borderSide: const BorderSide(color: Color(0xFF2D5016), width: 2),
             ),
-            contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+            contentPadding: const EdgeInsets.symmetric(
+              horizontal: 16,
+              vertical: 14,
+            ),
           ),
           validator: required
-              ? (v) => v == null || v.isEmpty ? '$label tidak boleh kosong' : null
+              ? (v) =>
+                    v == null || v.isEmpty ? '$label tidak boleh kosong' : null
               : null,
         ),
       ],
@@ -784,7 +818,10 @@ class _DestinationFormScreenState extends State<DestinationFormScreen> {
           style: GoogleFonts.poppins(fontSize: 14),
           decoration: InputDecoration(
             hintText: hint,
-            hintStyle: GoogleFonts.poppins(fontSize: 13, color: Colors.grey[400]),
+            hintStyle: GoogleFonts.poppins(
+              fontSize: 13,
+              color: Colors.grey[400],
+            ),
             filled: true,
             fillColor: Colors.white,
             border: OutlineInputBorder(

@@ -16,7 +16,7 @@ class AuthHeader extends StatelessWidget {
           Container(
             decoration: const BoxDecoration(
               image: DecorationImage(
-                image: AssetImage('../assets/img/desakita.jpg'),
+                image: AssetImage('assets/img/desakita.jpg'),
                 fit: BoxFit.cover,
               ),
             ),

@@ -342,10 +342,7 @@ class _HomeScreenState extends State<HomeScreen> {
                 decoration: BoxDecoration(
                   color: Colors.white.withValues(alpha: 0.15),
                   borderRadius: BorderRadius.circular(20),
-                  border: Border.all(
-                    color: Colors.white,
-                    width: 1.2,
-                  ),
+                  border: Border.all(color: Colors.white, width: 1.2),
                 ),
                 child: Row(
                   mainAxisSize: MainAxisSize.min,
@@ -374,10 +371,7 @@ class _HomeScreenState extends State<HomeScreen> {
                 decoration: BoxDecoration(
                   shape: BoxShape.circle,
                   color: Colors.white.withValues(alpha: 0.15),
-                  border: Border.all(
-                    color: Colors.white,
-                    width: 1.2,
-                  ),
+                  border: Border.all(color: Colors.white, width: 1.2),
                 ),
                 child: IconButton(
                   tooltip: 'Notifikasi',

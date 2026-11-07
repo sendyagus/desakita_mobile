@@ -21,7 +21,9 @@ class _BookingAnalyticsScreenState extends State<BookingAnalyticsScreen> {
   String _statusFilter = 'Semua';
   bool _exporting = false;
 
-  List<Map<String, dynamic>> _applyStatusFilter(List<Map<String, dynamic>> list) {
+  List<Map<String, dynamic>> _applyStatusFilter(
+    List<Map<String, dynamic>> list,
+  ) {
     if (_statusFilter == 'Semua') return list;
     return list.where((b) => b['status'] == _statusFilter).toList();
   }
@@ -56,7 +58,10 @@ class _BookingAnalyticsScreenState extends State<BookingAnalyticsScreen> {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('Gagal cetak PDF: $e', style: GoogleFonts.poppins(fontSize: 13)),
+            content: Text(
+              'Gagal cetak PDF: $e',
+              style: GoogleFonts.poppins(fontSize: 13),
+            ),
             backgroundColor: Colors.red,
           ),
         );
@@ -92,12 +97,19 @@ class _BookingAnalyticsScreenState extends State<BookingAnalyticsScreen> {
           }
 
           final all = snapshot.data ?? [];
-          final periodBookings =
-              BookingAnalyticsHelper.filterByPeriod(all, _period);
+          final periodBookings = BookingAnalyticsHelper.filterByPeriod(
+            all,
+            _period,
+          );
           final displayList = _applyStatusFilter(periodBookings);
           final counts = BookingAnalyticsHelper.countByStatus(periodBookings);
-          final revenue = BookingAnalyticsHelper.parseRevenueAmount(periodBookings);
-          final buckets = BookingAnalyticsHelper.barBuckets(periodBookings, _period);
+          final revenue = BookingAnalyticsHelper.parseRevenueAmount(
+            periodBookings,
+          );
+          final buckets = BookingAnalyticsHelper.barBuckets(
+            periodBookings,
+            _period,
+          );
 
           return Column(
             children: [
@@ -112,7 +124,11 @@ class _BookingAnalyticsScreenState extends State<BookingAnalyticsScreen> {
                     children: [
                       _buildExportBar(periodBookings),
                       const SizedBox(height: 12),
-                      _buildSummaryCards(counts, periodBookings.length, revenue),
+                      _buildSummaryCards(
+                        counts,
+                        periodBookings.length,
+                        revenue,
+                      ),
                       const SizedBox(height: 16),
                       _buildPieChart(counts, periodBookings.length),
                       const SizedBox(height: 16),
@@ -153,12 +169,20 @@ class _BookingAnalyticsScreenState extends State<BookingAnalyticsScreen> {
         ElevatedButton.icon(
           onPressed: _exporting ? null : () => _exportPdf(periodBookings),
           icon: const Icon(Icons.print_outlined, size: 18),
-          label: Text('Cetak PDF', style: GoogleFonts.poppins(fontSize: 12, fontWeight: FontWeight.w600)),
+          label: Text(
+            'Cetak PDF',
+            style: GoogleFonts.poppins(
+              fontSize: 12,
+              fontWeight: FontWeight.w600,
+            ),
+          ),
           style: ElevatedButton.styleFrom(
             backgroundColor: const Color(0xFF2D5016),
             foregroundColor: Colors.white,
             padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
-            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(10),
+            ),
             elevation: 0,
           ),
         ),
@@ -175,7 +199,11 @@ class _BookingAnalyticsScreenState extends State<BookingAnalyticsScreen> {
         children: [
           Text(
             'Periode Laporan',
-            style: GoogleFonts.poppins(fontSize: 12, fontWeight: FontWeight.w600, color: Colors.grey[700]),
+            style: GoogleFonts.poppins(
+              fontSize: 12,
+              fontWeight: FontWeight.w600,
+              color: Colors.grey[700],
+            ),
           ),
           const SizedBox(height: 8),
           Row(
@@ -216,7 +244,9 @@ class _BookingAnalyticsScreenState extends State<BookingAnalyticsScreen> {
         scrollDirection: Axis.horizontal,
         padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
         children: filters.map((f) {
-          final label = f == 'Semua' ? 'Semua' : BookingAnalyticsHelper.statusLabel(f);
+          final label = f == 'Semua'
+              ? 'Semua'
+              : BookingAnalyticsHelper.statusLabel(f);
           final selected = _statusFilter == f;
           return Padding(
             padding: const EdgeInsets.only(right: 8),
@@ -225,7 +255,9 @@ class _BookingAnalyticsScreenState extends State<BookingAnalyticsScreen> {
               selected: selected,
               onSelected: (_) => setState(() => _statusFilter = f),
               selectedColor: const Color(0xFF2D5016),
-              labelStyle: TextStyle(color: selected ? Colors.white : Colors.grey[700]),
+              labelStyle: TextStyle(
+                color: selected ? Colors.white : Colors.grey[700],
+              ),
               checkmarkColor: Colors.white,
             ),
           );
@@ -239,17 +271,37 @@ class _BookingAnalyticsScreenState extends State<BookingAnalyticsScreen> {
       children: [
         Row(
           children: [
-            Expanded(child: _statBox('Total', '$total', const Color(0xFF2D5016))),
+            Expanded(
+              child: _statBox('Total', '$total', const Color(0xFF2D5016)),
+            ),
             const SizedBox(width: 10),
-            Expanded(child: _statBox('Menunggu', '${counts['pending']}', Colors.orange)),
+            Expanded(
+              child: _statBox(
+                'Menunggu',
+                '${counts['pending']}',
+                Colors.orange,
+              ),
+            ),
           ],
         ),
         const SizedBox(height: 10),
         Row(
           children: [
-            Expanded(child: _statBox('Dikonfirmasi', '${counts['confirmed']}', const Color(0xFF2196F3))),
+            Expanded(
+              child: _statBox(
+                'Dikonfirmasi',
+                '${counts['confirmed']}',
+                const Color(0xFF2196F3),
+              ),
+            ),
             const SizedBox(width: 10),
-            Expanded(child: _statBox('Dibatalkan', '${counts['cancelled']}', Colors.red)),
+            Expanded(
+              child: _statBox(
+                'Dibatalkan',
+                '${counts['cancelled']}',
+                Colors.red,
+              ),
+            ),
           ],
         ),
         const SizedBox(height: 10),
@@ -263,10 +315,17 @@ class _BookingAnalyticsScreenState extends State<BookingAnalyticsScreen> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Text('Estimasi Pendapatan', style: GoogleFonts.poppins(fontSize: 12, color: Colors.white70)),
+              Text(
+                'Estimasi Pendapatan',
+                style: GoogleFonts.poppins(fontSize: 12, color: Colors.white70),
+              ),
               Text(
                 BookingAnalyticsHelper.formatCurrency(revenue),
-                style: GoogleFonts.poppins(fontSize: 22, fontWeight: FontWeight.w700, color: Colors.white),
+                style: GoogleFonts.poppins(
+                  fontSize: 22,
+                  fontWeight: FontWeight.w700,
+                  color: Colors.white,
+                ),
               ),
             ],
           ),
@@ -293,7 +352,11 @@ class _BookingAnalyticsScreenState extends State<BookingAnalyticsScreen> {
           color: color,
           title: '${pct.toStringAsFixed(0)}%',
           radius: 52,
-          titleStyle: GoogleFonts.poppins(fontSize: 11, fontWeight: FontWeight.w600, color: Colors.white),
+          titleStyle: GoogleFonts.poppins(
+            fontSize: 11,
+            fontWeight: FontWeight.w600,
+            color: Colors.white,
+          ),
         ),
       );
     }
@@ -311,7 +374,13 @@ class _BookingAnalyticsScreenState extends State<BookingAnalyticsScreen> {
                     child: PieChart(
                       PieChartData(
                         sections: sections.isEmpty
-                            ? [PieChartSectionData(value: 1, color: Colors.grey[300]!, title: '')]
+                            ? [
+                                PieChartSectionData(
+                                  value: 1,
+                                  color: Colors.grey[300]!,
+                                  title: '',
+                                ),
+                              ]
                             : sections,
                         sectionsSpace: 2,
                         centerSpaceRadius: 36,
@@ -328,7 +397,14 @@ class _BookingAnalyticsScreenState extends State<BookingAnalyticsScreen> {
                           padding: const EdgeInsets.only(bottom: 6),
                           child: Row(
                             children: [
-                              Container(width: 10, height: 10, decoration: BoxDecoration(color: d.$3, shape: BoxShape.circle)),
+                              Container(
+                                width: 10,
+                                height: 10,
+                                decoration: BoxDecoration(
+                                  color: d.$3,
+                                  shape: BoxShape.circle,
+                                ),
+                              ),
                               const SizedBox(width: 6),
                               Text(
                                 '${BookingAnalyticsHelper.statusLabel(d.$1)} (${d.$2})',
@@ -350,8 +426,8 @@ class _BookingAnalyticsScreenState extends State<BookingAnalyticsScreen> {
     final maxY = buckets.isEmpty
         ? 4.0
         : (buckets.map((b) => b.count).reduce((a, b) => a > b ? a : b) + 1)
-            .clamp(4, 999)
-            .toDouble();
+              .clamp(4, 999)
+              .toDouble();
 
     return _chartCard(
       title: 'Diagram Booking per Waktu',
@@ -379,7 +455,9 @@ class _BookingAnalyticsScreenState extends State<BookingAnalyticsScreen> {
                       sideTitles: SideTitles(
                         showTitles: true,
                         getTitlesWidget: (i, _) {
-                          if (i < 0 || i >= buckets.length) return const SizedBox.shrink();
+                          if (i < 0 || i >= buckets.length) {
+                            return const SizedBox.shrink();
+                          }
                           return Padding(
                             padding: const EdgeInsets.only(top: 6),
                             child: Text(
@@ -390,13 +468,19 @@ class _BookingAnalyticsScreenState extends State<BookingAnalyticsScreen> {
                         },
                       ),
                     ),
-                    topTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
-                    rightTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
+                    topTitles: const AxisTitles(
+                      sideTitles: SideTitles(showTitles: false),
+                    ),
+                    rightTitles: const AxisTitles(
+                      sideTitles: SideTitles(showTitles: false),
+                    ),
                   ),
                   gridData: FlGridData(
                     show: true,
                     drawVerticalLine: false,
-                    horizontalInterval: maxY > 5 ? (maxY / 4).ceilToDouble() : 1.0,
+                    horizontalInterval: maxY > 5
+                        ? (maxY / 4).ceilToDouble()
+                        : 1.0,
                   ),
                   borderData: FlBorderData(show: false),
                   barGroups: List.generate(buckets.length, (i) {
@@ -407,7 +491,9 @@ class _BookingAnalyticsScreenState extends State<BookingAnalyticsScreen> {
                           toY: buckets[i].count.toDouble(),
                           color: const Color(0xFF2D5016),
                           width: 14,
-                          borderRadius: const BorderRadius.vertical(top: Radius.circular(4)),
+                          borderRadius: const BorderRadius.vertical(
+                            top: Radius.circular(4),
+                          ),
                         ),
                       ],
                     );
@@ -425,13 +511,23 @@ class _BookingAnalyticsScreenState extends State<BookingAnalyticsScreen> {
         color: Colors.white,
         borderRadius: BorderRadius.circular(14),
         boxShadow: const [
-          BoxShadow(color: Color(0x08000000), blurRadius: 6, offset: Offset(0, 2)),
+          BoxShadow(
+            color: Color(0x08000000),
+            blurRadius: 6,
+            offset: Offset(0, 2),
+          ),
         ],
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(title, style: GoogleFonts.poppins(fontSize: 14, fontWeight: FontWeight.w700)),
+          Text(
+            title,
+            style: GoogleFonts.poppins(
+              fontSize: 14,
+              fontWeight: FontWeight.w700,
+            ),
+          ),
           const SizedBox(height: 12),
           child,
         ],
@@ -488,7 +584,10 @@ class _BookingAnalyticsScreenState extends State<BookingAnalyticsScreen> {
               Expanded(
                 child: Text(
                   dest['name'] as String? ?? '-',
-                  style: GoogleFonts.poppins(fontWeight: FontWeight.w600, fontSize: 14),
+                  style: GoogleFonts.poppins(
+                    fontWeight: FontWeight.w600,
+                    fontSize: 14,
+                  ),
                 ),
               ),
               Container(
@@ -533,8 +632,18 @@ class _BookingAnalyticsScreenState extends State<BookingAnalyticsScreen> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(value, style: GoogleFonts.poppins(fontSize: 20, fontWeight: FontWeight.w700, color: color)),
-          Text(label, style: GoogleFonts.poppins(fontSize: 11, color: Colors.grey[600])),
+          Text(
+            value,
+            style: GoogleFonts.poppins(
+              fontSize: 20,
+              fontWeight: FontWeight.w700,
+              color: color,
+            ),
+          ),
+          Text(
+            label,
+            style: GoogleFonts.poppins(fontSize: 11, color: Colors.grey[600]),
+          ),
         ],
       ),
     );

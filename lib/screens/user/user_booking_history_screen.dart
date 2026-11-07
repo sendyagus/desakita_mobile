@@ -9,7 +9,8 @@ class UserBookingHistoryScreen extends StatefulWidget {
   const UserBookingHistoryScreen({super.key});
 
   @override
-  State<UserBookingHistoryScreen> createState() => _UserBookingHistoryScreenState();
+  State<UserBookingHistoryScreen> createState() =>
+      _UserBookingHistoryScreenState();
 }
 
 class _UserBookingHistoryScreenState extends State<UserBookingHistoryScreen> {
@@ -101,7 +102,9 @@ class _UserBookingHistoryScreenState extends State<UserBookingHistoryScreen> {
                     builder: (context, snapshot) {
                       if (snapshot.connectionState == ConnectionState.waiting) {
                         return const Center(
-                          child: CircularProgressIndicator(color: Color(0xFF2D5016)),
+                          child: CircularProgressIndicator(
+                            color: Color(0xFF2D5016),
+                          ),
                         );
                       }
                       if (snapshot.hasError) {
@@ -119,11 +122,18 @@ class _UserBookingHistoryScreenState extends State<UserBookingHistoryScreen> {
                           child: Column(
                             mainAxisAlignment: MainAxisAlignment.center,
                             children: [
-                              Icon(Icons.history, size: 56, color: Colors.grey[300]),
+                              Icon(
+                                Icons.history,
+                                size: 56,
+                                color: Colors.grey[300],
+                              ),
                               const SizedBox(height: 12),
                               Text(
                                 'Belum ada riwayat booking',
-                                style: GoogleFonts.poppins(fontSize: 14, color: Colors.grey[500]),
+                                style: GoogleFonts.poppins(
+                                  fontSize: 14,
+                                  color: Colors.grey[500],
+                                ),
                               ),
                             ],
                           ),
@@ -135,7 +145,8 @@ class _UserBookingHistoryScreenState extends State<UserBookingHistoryScreen> {
                         itemCount: filtered.length,
                         itemBuilder: (context, index) {
                           final b = filtered[index];
-                          final dest = b['destinations'] as Map<String, dynamic>? ?? {};
+                          final dest =
+                              b['destinations'] as Map<String, dynamic>? ?? {};
                           final status = b['status'] as String? ?? 'pending';
                           return _BookingHistoryCard(
                             destName: dest['name'] as String? ?? 'Destinasi',
@@ -149,7 +160,8 @@ class _UserBookingHistoryScreenState extends State<UserBookingHistoryScreen> {
                               Navigator.push(
                                 context,
                                 MaterialPageRoute(
-                                  builder: (_) => BookingTicketScreen(booking: b),
+                                  builder: (_) =>
+                                      BookingTicketScreen(booking: b),
                                 ),
                               );
                             },
@@ -256,7 +268,10 @@ class _BookingHistoryCard extends StatelessWidget {
                   ),
                 ),
                 Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 10,
+                    vertical: 4,
+                  ),
                   decoration: BoxDecoration(
                     color: statusColor.withValues(alpha: 0.12),
                     borderRadius: BorderRadius.circular(8),

@@ -24,7 +24,8 @@ class _AdminToolsScreenState extends State<AdminToolsScreen> {
       await FixOldImageUrls.fixAllDestinations();
       if (mounted) {
         setState(() {
-          _resultMessage = 'Berhasil memperbaiki URL gambar! Lihat console untuk detail.';
+          _resultMessage =
+              'Berhasil memperbaiki URL gambar! Lihat console untuk detail.';
         });
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
@@ -43,7 +44,10 @@ class _AdminToolsScreenState extends State<AdminToolsScreen> {
         });
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('Gagal: $e', style: GoogleFonts.poppins(fontSize: 13)),
+            content: Text(
+              'Gagal: $e',
+              style: GoogleFonts.poppins(fontSize: 13),
+            ),
             backgroundColor: Colors.red,
           ),
         );
@@ -84,7 +88,10 @@ class _AdminToolsScreenState extends State<AdminToolsScreen> {
         });
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('Gagal: $e', style: GoogleFonts.poppins(fontSize: 13)),
+            content: Text(
+              'Gagal: $e',
+              style: GoogleFonts.poppins(fontSize: 13),
+            ),
             backgroundColor: Colors.red,
           ),
         );
@@ -133,10 +140,7 @@ class _AdminToolsScreenState extends State<AdminToolsScreen> {
             const SizedBox(height: 8),
             Text(
               'Tools untuk memperbaiki data dan melakukan maintenance database',
-              style: GoogleFonts.poppins(
-                fontSize: 13,
-                color: Colors.grey[600],
-              ),
+              style: GoogleFonts.poppins(fontSize: 13, color: Colors.grey[600]),
             ),
             const SizedBox(height: 24),
 
@@ -224,7 +228,11 @@ class _AdminToolsScreenState extends State<AdminToolsScreen> {
                 children: [
                   Row(
                     children: [
-                      Icon(Icons.info_outline, color: Colors.orange[800], size: 20),
+                      Icon(
+                        Icons.info_outline,
+                        color: Colors.orange[800],
+                        size: 20,
+                      ),
                       const SizedBox(width: 8),
                       Text(
                         'Informasi',

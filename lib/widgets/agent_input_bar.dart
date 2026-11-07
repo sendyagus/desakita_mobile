@@ -66,14 +66,10 @@ class AgentInputBar extends StatelessWidget {
                   Expanded(
                     child: Text(
                       speechHint ??
-                          (isListening
-                              ? 'Mendengarkan…'
-                              : 'Siap mendengarkan'),
+                          (isListening ? 'Mendengarkan…' : 'Siap mendengarkan'),
                       style: GoogleFonts.poppins(
                         fontSize: 11,
-                        color: isListening
-                            ? Colors.red[700]
-                            : Colors.grey[600],
+                        color: isListening ? Colors.red[700] : Colors.grey[600],
                       ),
                       maxLines: 2,
                       overflow: TextOverflow.ellipsis,

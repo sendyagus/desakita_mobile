@@ -41,8 +41,9 @@ class AppConfig {
 
   /// API key yang dibersihkan dari spasi, kutip dua, atau kutip satu akibat parsing terminal.
   static String get cleanGroqApiKey {
-    final source =
-        groqApiKey.trim().isNotEmpty ? groqApiKey : _runtimeGroqApiKey;
+    final source = groqApiKey.trim().isNotEmpty
+        ? groqApiKey
+        : _runtimeGroqApiKey;
     return source.trim().replaceAll('"', '').replaceAll("'", '');
   }
 

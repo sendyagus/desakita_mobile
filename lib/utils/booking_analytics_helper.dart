@@ -69,8 +69,10 @@ class BookingAnalyticsHelper {
     int total = 0;
     for (final b in list) {
       if (b['status'] != 'confirmed' && b['status'] != 'completed') continue;
-      final price =
-          (b['total_price'] as String? ?? '').replaceAll(RegExp(r'[^0-9]'), '');
+      final price = (b['total_price'] as String? ?? '').replaceAll(
+        RegExp(r'[^0-9]'),
+        '',
+      );
       total += int.tryParse(price) ?? 0;
     }
     return total;
@@ -116,9 +118,7 @@ class BookingAnalyticsHelper {
         final count = bookings.where((b) {
           final c = parseCreatedAt(b);
           if (c == null) return false;
-          return c.year == day.year &&
-              c.month == day.month &&
-              c.day == day.day;
+          return c.year == day.year && c.month == day.month && c.day == day.day;
         }).length;
         buckets.add(BarBucket(label: label, count: count));
       }

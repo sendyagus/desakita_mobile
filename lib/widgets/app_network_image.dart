@@ -81,7 +81,9 @@ class _AppNetworkImageState extends State<AppNetworkImage> {
     // Masih ada URL kandidat lain? Coba URL berikutnya.
     if (_index + 1 < _urls.length) {
       _advanceScheduled = true;
-      debugPrint('⚠️ Image load failed, trying next URL (${_index + 1}/${_urls.length})');
+      debugPrint(
+        '⚠️ Image load failed, trying next URL (${_index + 1}/${_urls.length})',
+      );
       WidgetsBinding.instance.addPostFrameCallback((_) {
         _advanceScheduled = false;
         if (!mounted) return;
@@ -107,22 +109,26 @@ class _AppNetworkImageState extends State<AppNetworkImage> {
     debugPrint('🔄 Fallback: byte-fetch dari $url');
 
     try {
-      final response = await http.get(
-        Uri.parse(url),
-        headers: {
-          'User-Agent':
-              'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 '
-              '(KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
-          'Accept': 'image/webp,image/apng,image/*,*/*;q=0.8',
-        },
-      ).timeout(const Duration(seconds: 8));
+      final response = await http
+          .get(
+            Uri.parse(url),
+            headers: {
+              'User-Agent':
+                  'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 '
+                  '(KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+              'Accept': 'image/webp,image/apng,image/*,*/*;q=0.8',
+            },
+          )
+          .timeout(const Duration(seconds: 8));
 
       if (!mounted) return;
 
       if (response.statusCode == 200) {
         final contentType = response.headers['content-type'] ?? '';
         if (contentType.startsWith('image/')) {
-          debugPrint('✅ Fallback byte-fetch berhasil (${response.bodyBytes.length} bytes)');
+          debugPrint(
+            '✅ Fallback byte-fetch berhasil (${response.bodyBytes.length} bytes)',
+          );
           setState(() => _fallbackBytes = response.bodyBytes);
           return;
         } else {
@@ -146,24 +152,28 @@ class _AppNetworkImageState extends State<AppNetworkImage> {
 
     // Fallback: tampilkan gambar dari byte-fetch jika tersedia.
     if (_fallbackBytes != null) {
-      return _wrap(Image.memory(
-        _fallbackBytes!,
+      return _wrap(
+        Image.memory(
+          _fallbackBytes!,
+          width: widget.width,
+          height: widget.height,
+          fit: widget.fit,
+        ),
+      );
+    }
+
+    return _wrap(
+      _TimedNetworkImage(
+        url: _urls[_index],
+        imageKey: ValueKey('${_urls[_index]}-$_index'),
         width: widget.width,
         height: widget.height,
         fit: widget.fit,
-      ));
-    }
-
-    return _wrap(_TimedNetworkImage(
-      url: _urls[_index],
-      imageKey: ValueKey('${_urls[_index]}-$_index'),
-      width: widget.width,
-      height: widget.height,
-      fit: widget.fit,
-      onTimeoutOrError: _scheduleNextDriveUrl,
-      loadingBuilder: _loadingBox,
-      placeholderBuilder: _placeholder,
-    ));
+        onTimeoutOrError: _scheduleNextDriveUrl,
+        loadingBuilder: _loadingBox,
+        placeholderBuilder: _placeholder,
+      ),
+    );
   }
 
   Widget _wrap(Widget child) {
@@ -299,8 +309,9 @@ class _TimedNetworkImageState extends State<_TimedNetworkImage> {
       height: widget.height,
       fit: widget.fit,
       // Web: pakai <img> agar gambar Google Drive tidak diblokir CORS (CanvasKit fetch).
-      webHtmlElementStrategy:
-          kIsWeb ? WebHtmlElementStrategy.prefer : WebHtmlElementStrategy.never,
+      webHtmlElementStrategy: kIsWeb
+          ? WebHtmlElementStrategy.prefer
+          : WebHtmlElementStrategy.never,
       errorBuilder: (context, error, stackTrace) {
         debugPrint('❌ Image error: $error');
         _markCompleted();

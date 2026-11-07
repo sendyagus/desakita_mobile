@@ -10,12 +10,7 @@ class AppLoading extends StatelessWidget {
   final double size;
   final Color? color;
 
-  const AppLoading({
-    super.key,
-    this.message,
-    this.size = 36,
-    this.color,
-  });
+  const AppLoading({super.key, this.message, this.size = 36, this.color});
 
   @override
   Widget build(BuildContext context) {
@@ -60,12 +55,7 @@ class AppError extends StatelessWidget {
   final String? detail;
   final VoidCallback? onRetry;
 
-  const AppError({
-    super.key,
-    required this.message,
-    this.detail,
-    this.onRetry,
-  });
+  const AppError({super.key, required this.message, this.detail, this.onRetry});
 
   @override
   Widget build(BuildContext context) {
@@ -159,10 +149,7 @@ class AppEmpty extends StatelessWidget {
               ),
               textAlign: TextAlign.center,
             ),
-            if (action != null) ...[
-              const SizedBox(height: 20),
-              action!,
-            ],
+            if (action != null) ...[const SizedBox(height: 20), action!],
           ],
         ),
       ),

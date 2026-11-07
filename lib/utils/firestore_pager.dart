@@ -6,11 +6,7 @@ class PagedResult<T> {
   final DocumentSnapshot? lastDoc;
   final bool hasMore;
 
-  const PagedResult({
-    required this.items,
-    this.lastDoc,
-    required this.hasMore,
-  });
+  const PagedResult({required this.items, this.lastDoc, required this.hasMore});
 }
 
 /// Helper untuk menjalankan query paginasi berbasis cursor di Firestore.
@@ -53,10 +49,6 @@ class FirestorePager {
     final items = pageDocs.map((d) => mapper(d.id, d.data())).toList();
     final lastDoc = pageDocs.isNotEmpty ? pageDocs.last : null;
 
-    return PagedResult<T>(
-      items: items,
-      lastDoc: lastDoc,
-      hasMore: hasMore,
-    );
+    return PagedResult<T>(items: items, lastDoc: lastDoc, hasMore: hasMore);
   }
 }

@@ -19,22 +19,20 @@ class GroqResult {
     this.retryable = false,
   });
 
-  factory GroqResult.ok(String text) =>
-      GroqResult(success: true, text: text);
+  factory GroqResult.ok(String text) => GroqResult(success: true, text: text);
 
   factory GroqResult.fail({
     required String text,
     String? errorDetail,
     int? httpStatus,
     bool retryable = false,
-  }) =>
-      GroqResult(
-        success: false,
-        text: text,
-        errorDetail: errorDetail,
-        httpStatus: httpStatus,
-        retryable: retryable,
-      );
+  }) => GroqResult(
+    success: false,
+    text: text,
+    errorDetail: errorDetail,
+    httpStatus: httpStatus,
+    retryable: retryable,
+  );
 }
 
 /// Service untuk memanggil Groq AI via REST API (OpenAI-compatible).
@@ -49,9 +47,9 @@ class GroqService {
     final contextHeader = (contextData == null || contextData.isEmpty)
         ? ''
         : '\n\nDATA APLIKASI YANG RELEVAN UNTUK PERTANYAAN USER:\n'
-          '=================================================\n'
-          '$contextData\n'
-          '=================================================\n';
+              '=================================================\n'
+              '$contextData\n'
+              '=================================================\n';
 
     return 'Kamu adalah Kita, asisten virtual resmi aplikasi DesaKita.\n\n'
         'Aturan Wajib (PENTING):\n'
@@ -83,8 +81,8 @@ class GroqService {
   final String _fallbackModelName;
 
   GroqService()
-      : _modelName = AppConfig.groqModel.trim(),
-        _fallbackModelName = AppConfig.groqFallbackModel.trim() {
+    : _modelName = AppConfig.groqModel.trim(),
+      _fallbackModelName = AppConfig.groqFallbackModel.trim() {
     _logStartupConfig();
   }
 
@@ -107,9 +105,7 @@ class GroqService {
   /// Mengirim daftar riwayat chat ke Groq dengan retry & fallback model.
   ///
   /// [history] berupa list of maps: `{'role': 'user'|'assistant', 'content': '...'}`
-  Future<GroqResult> generateResponse(
-    List<Map<String, String>> history,
-  ) async {
+  Future<GroqResult> generateResponse(List<Map<String, String>> history) async {
     return generateResponseWithContext(history, null);
   }
 
@@ -157,9 +153,7 @@ class GroqService {
 
         if (lastResult.success) {
           if (modelName != _modelName) {
-            debugPrint(
-              '✅ [GroqService] Fallback model "$modelName" berhasil',
-            );
+            debugPrint('✅ [GroqService] Fallback model "$modelName" berhasil');
           }
           return lastResult;
         }
@@ -209,7 +203,9 @@ class GroqService {
     ];
 
     // Jika ada contextData, tingkatkan max token agar respon tidak terpotong
-    final maxTokens = (contextData != null && contextData.isNotEmpty) ? 500 : _maxTokens;
+    final maxTokens = (contextData != null && contextData.isNotEmpty)
+        ? 500
+        : _maxTokens;
 
     return {
       'model': modelName,
@@ -239,7 +235,9 @@ class GroqService {
           )
           .timeout(const Duration(seconds: 30));
 
-      debugPrint('📥 [GroqService] HTTP ${response.statusCode} model=$modelName');
+      debugPrint(
+        '📥 [GroqService] HTTP ${response.statusCode} model=$modelName',
+      );
 
       if (response.statusCode == 200) {
         return _parseSuccessResponse(response.body, modelName);

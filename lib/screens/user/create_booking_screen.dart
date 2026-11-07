@@ -22,8 +22,10 @@ class _CreateBookingScreenState extends State<CreateBookingScreen> {
   int _guestCount = 1;
 
   String get _destinationName => widget.destination['name'] as String? ?? '';
-  String get _destinationLocation => widget.destination['location'] as String? ?? '';
-  String get _destinationPrice => widget.destination['price'] as String? ?? 'Rp 0';
+  String get _destinationLocation =>
+      widget.destination['location'] as String? ?? '';
+  String get _destinationPrice =>
+      widget.destination['price'] as String? ?? 'Rp 0';
 
   int get _numberOfDays {
     if (_checkInDate == null || _checkOutDate == null) return 0;
@@ -75,7 +77,10 @@ class _CreateBookingScreenState extends State<CreateBookingScreen> {
     if (_checkInDate == null) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text('Pilih tanggal check-in terlebih dahulu', style: GoogleFonts.poppins(fontSize: 13)),
+          content: Text(
+            'Pilih tanggal check-in terlebih dahulu',
+            style: GoogleFonts.poppins(fontSize: 13),
+          ),
           backgroundColor: Colors.orange[800],
         ),
       );
@@ -111,7 +116,10 @@ class _CreateBookingScreenState extends State<CreateBookingScreen> {
     if (_checkInDate == null || _checkOutDate == null) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text('Pilih tanggal check-in dan check-out', style: GoogleFonts.poppins(fontSize: 13)),
+          content: Text(
+            'Pilih tanggal check-in dan check-out',
+            style: GoogleFonts.poppins(fontSize: 13),
+          ),
           backgroundColor: Colors.red,
         ),
       );
@@ -122,7 +130,10 @@ class _CreateBookingScreenState extends State<CreateBookingScreen> {
     if (userId == null) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text('Login dulu untuk melanjutkan pembayaran', style: GoogleFonts.poppins(fontSize: 13)),
+          content: Text(
+            'Login dulu untuk melanjutkan pembayaran',
+            style: GoogleFonts.poppins(fontSize: 13),
+          ),
           backgroundColor: Colors.orange[800],
         ),
       );
@@ -244,7 +255,11 @@ class _CreateBookingScreenState extends State<CreateBookingScreen> {
           const SizedBox(height: 4),
           Row(
             children: [
-              const Icon(Icons.location_on_outlined, size: 14, color: Colors.grey),
+              const Icon(
+                Icons.location_on_outlined,
+                size: 14,
+                color: Colors.grey,
+              ),
               const SizedBox(width: 4),
               Expanded(
                 child: Text(
@@ -299,13 +314,21 @@ class _CreateBookingScreenState extends State<CreateBookingScreen> {
             ),
             child: Row(
               children: [
-                Icon(Icons.calendar_today_outlined, size: 20, color: Colors.grey[600]),
+                Icon(
+                  Icons.calendar_today_outlined,
+                  size: 20,
+                  color: Colors.grey[600],
+                ),
                 const SizedBox(width: 12),
                 Text(
-                  date != null ? DateFormat('dd MMMM yyyy', 'id_ID').format(date) : 'Pilih tanggal',
+                  date != null
+                      ? DateFormat('dd MMMM yyyy', 'id_ID').format(date)
+                      : 'Pilih tanggal',
                   style: GoogleFonts.poppins(
                     fontSize: 14,
-                    color: date != null ? const Color(0xFF1A1A1A) : Colors.grey[400],
+                    color: date != null
+                        ? const Color(0xFF1A1A1A)
+                        : Colors.grey[400],
                   ),
                 ),
               ],
@@ -347,7 +370,9 @@ class _CreateBookingScreenState extends State<CreateBookingScreen> {
                 ),
               ),
               IconButton(
-                onPressed: _guestCount > 1 ? () => setState(() => _guestCount--) : null,
+                onPressed: _guestCount > 1
+                    ? () => setState(() => _guestCount--)
+                    : null,
                 icon: const Icon(Icons.remove_circle_outline),
                 color: const Color(0xFF2D5016),
               ),
@@ -376,7 +401,9 @@ class _CreateBookingScreenState extends State<CreateBookingScreen> {
       decoration: BoxDecoration(
         color: const Color(0xFFEEF2E8),
         borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: const Color(0xFF2D5016).withValues(alpha: 0.2)),
+        border: Border.all(
+          color: const Color(0xFF2D5016).withValues(alpha: 0.2),
+        ),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -428,10 +455,7 @@ class _CreateBookingScreenState extends State<CreateBookingScreen> {
       children: [
         Text(
           label,
-          style: GoogleFonts.poppins(
-            fontSize: 13,
-            color: Colors.grey[700],
-          ),
+          style: GoogleFonts.poppins(fontSize: 13, color: Colors.grey[700]),
         ),
         Text(
           value,

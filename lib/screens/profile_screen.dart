@@ -36,7 +36,8 @@ class _ProfileScreenState extends State<ProfileScreen> {
         if (mounted) {
           // Fallback ke data akun Firebase bila dokumen profil belum ada,
           // supaya halaman tetap dapat dibuka.
-          _currentUser = user ??
+          _currentUser =
+              user ??
               UserModel.fallback(
                 id: userId,
                 name: authUser?.displayName ?? 'Pengguna DesaKita',

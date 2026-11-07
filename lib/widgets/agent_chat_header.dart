@@ -115,9 +115,7 @@ class AgentChatHeader extends StatelessWidget {
                 onPressed: messagesEmpty ? null : onClearChat,
                 icon: Icon(
                   Icons.delete_outline_rounded,
-                  color: messagesEmpty
-                      ? Colors.grey[300]
-                      : Colors.grey[500],
+                  color: messagesEmpty ? Colors.grey[300] : Colors.grey[500],
                   size: 22,
                 ),
               ),

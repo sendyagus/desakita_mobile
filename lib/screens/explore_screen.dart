@@ -64,6 +64,11 @@ class _ExploreScreenState extends State<ExploreScreen> {
 
   int _selectedTypeIndex = 0; // 0 = wisata, 1 = UMKM
   int _selectedCategoryIndex = 0;
+
+  /// `true` = tampilkan katalog kartu (wisata/UMKM), `false` = tampilkan peta.
+  /// Halaman selalu dibuka pada peta; katalog hanya lewat tombol kanan atas.
+  bool _catalogView = false;
+
   String _query = '';
   bool _listening = false;
   _ExplorePlace? _selected;
@@ -198,6 +203,47 @@ class _ExploreScreenState extends State<ExploreScreen> {
     ),
   ];
 
+  /// Contoh UMKM untuk katalog bila koleksi `umkm` belum bisa dibaca
+  /// (kosong atau ditolak aturan Firestore), agar tampilan tetap utuh.
+  static const _demoUmkm = <_ExplorePlace>[
+    _ExplorePlace(
+      id: 'demo-umkm-1',
+      name: 'ALYN Tapis',
+      category: 'Kerajinan',
+      location: 'Sumber Agung, Kemiling, Bandar Lampung',
+      description: 'Pengrajin kain tapis khas Lampung.',
+      position: null,
+      isUmkm: true,
+      data: {
+        'name': 'ALYN Tapis',
+        'category': 'Kerajinan',
+        'location': 'Sumber Agung, Kemiling, Bandar Lampung',
+        'description': 'Pengrajin kain tapis khas Lampung.',
+        'rating': 4.8,
+        'reviewCount': 24,
+        'imageUrl': 'assets/img/desakita.jpg',
+      },
+    ),
+    _ExplorePlace(
+      id: 'demo-umkm-2',
+      name: 'Saung Agrowisata',
+      category: 'Kuliner',
+      location: 'Beringin Raya, Kemiling, Bandar Lampung',
+      description: 'Kuliner saung dengan suasana kebun.',
+      position: null,
+      isUmkm: true,
+      data: {
+        'name': 'Saung Agrowisata',
+        'category': 'Kuliner',
+        'location': 'Beringin Raya, Kemiling, Bandar Lampung',
+        'description': 'Kuliner saung dengan suasana kebun.',
+        'rating': 4.4,
+        'reviewCount': 18,
+        'imageUrl': 'assets/img/banner3.png',
+      },
+    ),
+  ];
+
   @override
   void initState() {
     super.initState();
@@ -257,9 +303,11 @@ class _ExploreScreenState extends State<ExploreScreen> {
             setState(() {
               _places = snap.docs.map((d) => _toPlace(d, isUmkm)).toList();
               _popupPlace = null;
-              // Tab Wisata dengan koleksi kosong → tampilkan data demo agar
-              // peta tetap seperti desain.
-              if (_places.isEmpty && !isUmkm) _places = _demoPlaces;
+              // Koleksi kosong → tampilkan data demo agar peta/katalog tetap
+              // seperti desain.
+              if (_places.isEmpty) {
+                _places = isUmkm ? _demoUmkm : _demoPlaces;
+              }
               // Tab Wisata → pastikan SEMUA titik destinasi yang telah
               // ditentukan (demo coordinates) ikut tampil di peta, meskipun
               // namanya belum ada / tidak cocok dengan dokumen Firestore.
@@ -280,15 +328,15 @@ class _ExploreScreenState extends State<ExploreScreen> {
           },
           onError: (e) {
             debugPrint('Explore stream error: $e');
-            _useDemoPlaces();
+            _useDemoPlaces(isUmkm: isUmkm);
           },
         );
   }
 
   /// Pakai data demo bila Firestore kosong / tidak bisa diakses.
-  void _useDemoPlaces() {
+  void _useDemoPlaces({bool isUmkm = false}) {
     if (!mounted) return;
-    setState(() => _places = _demoPlaces);
+    setState(() => _places = isUmkm ? _demoUmkm : _demoPlaces);
     _renderMarkers();
   }
 
@@ -379,6 +427,38 @@ class _ExploreScreenState extends State<ExploreScreen> {
           p.category.toLowerCase() == selectedCategory.toLowerCase();
       return matchesCategory;
     }).toList();
+  }
+
+  /// Daftar untuk katalog kartu: kategori terpilih + kata kunci pencarian.
+  List<_ExplorePlace> get _catalogPlaces {
+    final q = _query.trim().toLowerCase();
+    if (q.isEmpty) return _sheetPlaces;
+    return _sheetPlaces
+        .where(
+          (p) =>
+              p.name.toLowerCase().contains(q) ||
+              p.location.toLowerCase().contains(q),
+        )
+        .toList();
+  }
+
+  /// Pindah antara tampilan peta dan katalog kartu.
+  void _toggleView() {
+    FocusScope.of(context).unfocus();
+    setState(() => _catalogView = !_catalogView);
+  }
+
+  /// Ambil URL gambar dari dokumen (imageUrl / image_url / image).
+  String _imageOf(_ExplorePlace p) {
+    final raw = p.data['imageUrl'] ?? p.data['image_url'] ?? p.data['image'];
+    final url = (raw ?? '').toString().trim();
+    return url == 'null' ? '' : url;
+  }
+
+  double _ratingOf(_ExplorePlace p) {
+    final r = p.data['rating'];
+    if (r is num) return r.toDouble();
+    return double.tryParse(r?.toString() ?? '') ?? 0;
   }
 
   // ---------------- actions ----------------
@@ -1016,139 +1096,32 @@ class _ExploreScreenState extends State<ExploreScreen> {
     return placeholder();
   }
 
-  void _showListSheet() {
-    FocusScope.of(context).unfocus();
-    showModalBottomSheet<void>(
-      context: context,
-      isScrollControlled: true,
-      backgroundColor: Colors.white,
-      shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
-      ),
-      builder: (ctx) => StatefulBuilder(
-        builder: (ctx, setSheet) => SizedBox(
-          height: MediaQuery.of(ctx).size.height * 0.7,
-          child: Padding(
-            padding: const EdgeInsets.fromLTRB(16, 12, 16, 0),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Center(
-                  child: Container(
-                    width: 40,
-                    height: 4,
-                    decoration: BoxDecoration(
-                      color: DesaKitaColors.divider,
-                      borderRadius: BorderRadius.circular(4),
-                    ),
-                  ),
-                ),
-                const SizedBox(height: 14),
-                Text(
-                  'Daftar Lokasi',
-                  style: GoogleFonts.plusJakartaSans(
-                    fontSize: 17,
-                    fontWeight: FontWeight.w800,
-                    color: DesaKitaColors.text,
-                  ),
-                ),
-                const SizedBox(height: 12),
-                _buildTypeSwitcher(setSheet),
-                const SizedBox(height: 12),
-                _buildCategoryFilters(setSheet),
-                const SizedBox(height: 8),
-                Expanded(
-                  child: _sheetPlaces.isEmpty
-                      ? Padding(
-                          padding: const EdgeInsets.all(24),
-                          child: Center(
-                            child: Text(
-                              _selectedTypeIndex == 1
-                                  ? "Belum ada data UMKM di Firestore."
-                                  : 'Belum ada destinasi aktif.',
-                              style: GoogleFonts.plusJakartaSans(
-                                fontSize: 12,
-                                color: DesaKitaColors.textSecondary,
-                              ),
-                            ),
-                          ),
-                        )
-                      : ListView.builder(
-                          padding: EdgeInsets.zero,
-                          itemCount: _sheetPlaces.length,
-                          itemBuilder: (_, i) {
-                            final p = _sheetPlaces[i];
-                            return ListTile(
-                              contentPadding: EdgeInsets.zero,
-                              leading: _PinIcon(
-                                category: p.category,
-                                isUmkm: p.isUmkm,
-                                size: 12,
-                              ),
-                              title: Text(
-                                p.name,
-                                style: GoogleFonts.plusJakartaSans(
-                                  fontSize: 13,
-                                  fontWeight: FontWeight.w700,
-                                  color: DesaKitaColors.text,
-                                ),
-                              ),
-                              subtitle: Text(
-                                p.location.isEmpty
-                                    ? p.category
-                                    : '${p.category} - ${p.location}',
-                                maxLines: 1,
-                                overflow: TextOverflow.ellipsis,
-                                style: GoogleFonts.plusJakartaSans(
-                                  fontSize: 11,
-                                  color: DesaKitaColors.textSecondary,
-                                ),
-                              ),
-                              trailing: const Icon(Icons.chevron_right),
-                              onTap: () {
-                                Navigator.pop(ctx);
-                                _focusPlace(p);
-                              },
-                            );
-                          },
-                        ),
-                ),
-              ],
-            ),
-          ),
-        ),
-      ),
-    );
-  }
-
-  Widget _buildTypeSwitcher(StateSetter setSheet) {
+  /// Segmented control Wisata / UMKM (hanya dipakai pada halaman katalog).
+  Widget _buildTypeSwitcher() {
     return Container(
       padding: const EdgeInsets.all(4),
       decoration: BoxDecoration(
-        color: const Color(0xFFF2F4EF),
+        color: Colors.white,
         borderRadius: BorderRadius.circular(30),
+        border: Border.all(color: DesaKitaColors.divider),
       ),
-      child: Row(
-        children: [
-          _typeButton('Wisata', 0, setSheet),
-          _typeButton('UMKM', 1, setSheet),
-        ],
-      ),
+      child: Row(children: [_typeButton('Wisata', 0), _typeButton('UMKM', 1)]),
     );
   }
 
-  Widget _typeButton(String label, int index, StateSetter setSheet) {
+  Widget _typeButton(String label, int index) {
     final selected = _selectedTypeIndex == index;
     return Expanded(
       child: GestureDetector(
+        behavior: HitTestBehavior.opaque,
         onTap: () {
-          setSheet(() {
-            setState(() {
-              _selectedTypeIndex = index;
-              _selectedCategoryIndex = 0;
-            });
-            _listenPlaces();
+          if (selected) return;
+          FocusScope.of(context).unfocus();
+          setState(() {
+            _selectedTypeIndex = index;
+            _selectedCategoryIndex = 0;
           });
+          _listenPlaces();
         },
         child: AnimatedContainer(
           duration: const Duration(milliseconds: 180),
@@ -1161,7 +1134,7 @@ class _ExploreScreenState extends State<ExploreScreen> {
           child: Text(
             label,
             style: GoogleFonts.plusJakartaSans(
-              fontSize: 12,
+              fontSize: 12.5,
               fontWeight: FontWeight.w800,
               color: selected ? Colors.white : DesaKitaColors.textSecondary,
             ),
@@ -1171,40 +1144,215 @@ class _ExploreScreenState extends State<ExploreScreen> {
     );
   }
 
-  Widget _buildCategoryFilters(StateSetter setSheet) {
-    final categories = _categories;
-    return SizedBox(
-      height: 34,
-      child: ListView.separated(
-        scrollDirection: Axis.horizontal,
-        itemCount: categories.length,
-        separatorBuilder: (_, _) => const SizedBox(width: 7),
-        itemBuilder: (context, index) {
-          final selected = _selectedCategoryIndex == index;
-          return ChoiceChip(
-            label: Text(categories[index]),
-            selected: selected,
-            onSelected: (_) =>
-                setSheet(() => setState(() => _selectedCategoryIndex = index)),
-            labelStyle: GoogleFonts.plusJakartaSans(
-              fontSize: 10,
-              fontWeight: FontWeight.w700,
-              color: selected ? Colors.white : DesaKitaColors.textSecondary,
+  // ---------------- katalog kartu ----------------
+
+  /// Halaman katalog: search bar + segmented control + daftar kartu.
+  Widget _buildCatalogBody() {
+    final places = _catalogPlaces;
+    return Column(
+      children: [
+        ColoredBox(
+          color: Colors.white,
+          child: SafeArea(
+            bottom: false,
+            child: Padding(
+              padding: const EdgeInsets.fromLTRB(16, 12, 16, 10),
+              child: Column(
+                children: [
+                  Row(
+                    children: [
+                      Expanded(child: _buildSearchBar(onLight: true)),
+                      const SizedBox(width: 10),
+                      _buildViewButton(),
+                    ],
+                  ),
+                  const SizedBox(height: 10),
+                  _buildTypeSwitcher(),
+                ],
+              ),
             ),
-            selectedColor: DesaKitaColors.darkGreen,
-            backgroundColor: Colors.white,
-            side: BorderSide(
-              color: selected
-                  ? DesaKitaColors.darkGreen
-                  : DesaKitaColors.divider,
+          ),
+        ),
+        Expanded(
+          child: places.isEmpty
+              ? Center(
+                  child: Padding(
+                    padding: const EdgeInsets.all(24),
+                    child: Text(
+                      _selectedTypeIndex == 1
+                          ? 'Belum ada data UMKM di Firestore.'
+                          : 'Belum ada destinasi aktif.',
+                      textAlign: TextAlign.center,
+                      style: GoogleFonts.plusJakartaSans(
+                        fontSize: 12,
+                        color: DesaKitaColors.textSecondary,
+                      ),
+                    ),
+                  ),
+                )
+              : ListView.separated(
+                  padding: const EdgeInsets.fromLTRB(16, 6, 16, 20),
+                  itemCount: places.length,
+                  separatorBuilder: (_, _) => const SizedBox(height: 16),
+                  itemBuilder: (_, i) => _catalogCard(places[i]),
+                ),
+        ),
+      ],
+    );
+  }
+
+  /// Kartu katalog: foto besar + badge rating, nama, lokasi, tombol detail.
+  Widget _catalogCard(_ExplorePlace p) {
+    return Container(
+      clipBehavior: Clip.antiAlias,
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(18),
+        border: Border.all(color: DesaKitaColors.divider),
+        boxShadow: const [
+          BoxShadow(
+            blurRadius: 14,
+            color: Color(0x14000000),
+            offset: Offset(0, 5),
+          ),
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Stack(
+            children: [
+              SizedBox(
+                height: 190,
+                width: double.infinity,
+                child: _catalogImage(_imageOf(p)),
+              ),
+              Positioned(top: 10, left: 10, child: _ratingBadge(_ratingOf(p))),
+            ],
+          ),
+          Padding(
+            padding: const EdgeInsets.fromLTRB(14, 12, 14, 14),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  p.name,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: GoogleFonts.plusJakartaSans(
+                    fontSize: 19,
+                    fontWeight: FontWeight.w800,
+                    color: DesaKitaColors.text,
+                  ),
+                ),
+                const SizedBox(height: 10),
+                Row(
+                  children: [
+                    const Icon(
+                      Icons.place_outlined,
+                      size: 15,
+                      color: DesaKitaColors.textSecondary,
+                    ),
+                    const SizedBox(width: 4),
+                    Expanded(
+                      child: Text(
+                        p.location.isEmpty ? p.category : p.location,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: GoogleFonts.plusJakartaSans(
+                          fontSize: 11.5,
+                          color: DesaKitaColors.textSecondary,
+                        ),
+                      ),
+                    ),
+                    const SizedBox(width: 10),
+                    _detailButton(p),
+                  ],
+                ),
+              ],
             ),
-            padding: const EdgeInsets.symmetric(horizontal: 8),
-            visualDensity: VisualDensity.compact,
-            showCheckmark: false,
-          );
-        },
+          ),
+        ],
       ),
     );
+  }
+
+  Widget _detailButton(_ExplorePlace p) {
+    return Material(
+      color: DesaKitaColors.buttonGreen,
+      borderRadius: BorderRadius.circular(10),
+      child: InkWell(
+        borderRadius: BorderRadius.circular(10),
+        onTap: () => _openDetail(p),
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 9),
+          child: Text(
+            'Lihat detail',
+            style: GoogleFonts.plusJakartaSans(
+              fontSize: 11.5,
+              fontWeight: FontWeight.w700,
+              color: Colors.white,
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  /// Badge rating melayang di sudut kiri atas foto.
+  Widget _ratingBadge(double rating) {
+    if (rating <= 0) return const SizedBox.shrink();
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(20),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          const Icon(Icons.star_rounded, size: 14, color: DesaKitaColors.amber),
+          const SizedBox(width: 3),
+          Text(
+            rating.toStringAsFixed(1),
+            style: GoogleFonts.plusJakartaSans(
+              fontSize: 11.5,
+              fontWeight: FontWeight.w700,
+              color: DesaKitaColors.text,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  /// Foto kartu: URL jaringan, asset lokal, atau placeholder.
+  Widget _catalogImage(String url) {
+    Widget placeholder() => Container(
+      color: DesaKitaColors.mutedGreen,
+      child: const Center(
+        child: Icon(
+          Icons.storefront,
+          size: 36,
+          color: DesaKitaColors.darkGreen,
+        ),
+      ),
+    );
+    if (url.startsWith('http')) {
+      return Image.network(
+        url,
+        fit: BoxFit.cover,
+        errorBuilder: (_, _, _) => placeholder(),
+      );
+    }
+    if (url.startsWith('assets/')) {
+      return Image.asset(
+        url,
+        fit: BoxFit.cover,
+        errorBuilder: (_, _, _) => placeholder(),
+      );
+    }
+    return placeholder();
   }
 
   // ---------------- build ----------------
@@ -1212,140 +1360,148 @@ class _ExploreScreenState extends State<ExploreScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      body: Stack(
-        children: [
-          // ===== PETA (SDK Mapbox) =====
-          if (AppConfig.isMapboxConfigured)
-            MapWidget(
-              key: const ValueKey('exploreMapbox'),
-              styleUri: _baseStyle,
-              viewport: CameraViewportState(
-                // Pusat Kecamatan Kemiling (dari kemiling_boundary.json).
-                center: Point(coordinates: Position(105.2015, -5.3971)),
-                zoom: 13.5,
-              ),
-              onMapCreated: _onMapCreated,
-              onStyleLoadedListener: _onStyleLoaded,
-              onCameraChangeListener: (_) => _enforceKemilingBounds(),
-            )
-          else
-            const Center(
-              child: Padding(
-                padding: EdgeInsets.all(24),
-                child: Text(
-                  'Token Mapbox belum dikonfigurasi.\n\n'
-                  'Isi MAPBOX_ACCESS_TOKEN di env.json lalu jalankan ulang.',
-                  textAlign: TextAlign.center,
-                ),
+      backgroundColor: _catalogView ? Colors.white : Colors.transparent,
+      body: _catalogView ? _buildCatalogBody() : _buildMapBody(),
+    );
+  }
+
+  /// Tampilan peta penuh dengan search bar dan segmented control.
+  Widget _buildMapBody() {
+    return Stack(
+      children: [
+        // ===== PETA (SDK Mapbox) =====
+        if (AppConfig.isMapboxConfigured)
+          MapWidget(
+            key: const ValueKey('exploreMapbox'),
+            styleUri: _baseStyle,
+            viewport: CameraViewportState(
+              // Pusat Kecamatan Kemiling (dari kemiling_boundary.json).
+              center: Point(coordinates: Position(105.2015, -5.3971)),
+              zoom: 13.5,
+            ),
+            onMapCreated: _onMapCreated,
+            onStyleLoadedListener: _onStyleLoaded,
+            onCameraChangeListener: (_) => _enforceKemilingBounds(),
+          )
+        else
+          const Center(
+            child: Padding(
+              padding: EdgeInsets.all(24),
+              child: Text(
+                'Token Mapbox belum dikonfigurasi.\n\n'
+                'Isi MAPBOX_ACCESS_TOKEN di env.json lalu jalankan ulang.',
+                textAlign: TextAlign.center,
               ),
             ),
+          ),
 
-          // ===== SEARCH BAR + TOMBOL LIST =====
-          SafeArea(
+        // ===== SEARCH BAR + TOMBOL KATALOG =====
+        SafeArea(
+          child: Padding(
+            padding: const EdgeInsets.fromLTRB(16, 12, 16, 0),
+            child: Column(
+              children: [
+                Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Expanded(child: _buildSearchBar()),
+                    const SizedBox(width: 10),
+                    _buildViewButton(),
+                  ],
+                ),
+                if (_results.isNotEmpty) _buildSearchResults(),
+              ],
+            ),
+          ),
+        ),
+
+        // ===== TOMBOL LOKASI & RUTE (kanan) =====
+        SafeArea(
+          child: Align(
+            alignment: Alignment.centerRight,
             child: Padding(
-              padding: const EdgeInsets.fromLTRB(16, 12, 16, 0),
+              padding: const EdgeInsets.only(right: 16, top: 74),
               child: Column(
                 children: [
-                  Row(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Expanded(child: _buildSearchBar()),
-                      const SizedBox(width: 10),
-                      _buildListButton(),
-                    ],
+                  _RoundButton(icon: Icons.my_location, onTap: _goToMyLocation),
+                  const SizedBox(height: 12),
+                  _RoundButton(
+                    icon: Icons.directions,
+                    onTap: () {
+                      if (_selected != null) {
+                        _openRoute(_selected!);
+                      } else {
+                        _toast('Pilih lokasi dulu untuk melihat rute');
+                      }
+                    },
                   ),
-                  if (_results.isNotEmpty) _buildSearchResults(),
+                  const SizedBox(height: 12),
+                  _RoundButton(
+                    icon: _is3D ? Icons.map_outlined : Icons.view_in_ar,
+                    onTap: _toggle3D,
+                  ),
+                  const SizedBox(height: 12),
+                  PopupMenuButton<String>(
+                    tooltip: 'Ganti gaya peta',
+                    onSelected: _changeStyle,
+                    initialValue: _baseStyle,
+                    itemBuilder: (_) => const [
+                      PopupMenuItem(
+                        value: MapboxStyles.OUTDOORS,
+                        child: Text('Outdoor'),
+                      ),
+                      PopupMenuItem(
+                        value: MapboxStyles.LIGHT,
+                        child: Text('Standar'),
+                      ),
+                      PopupMenuItem(
+                        value: MapboxStyles.SATELLITE_STREETS,
+                        child: Text('Satelit'),
+                      ),
+                    ],
+                    child: const _StyleButton(icon: Icons.layers),
+                  ),
                 ],
               ),
             ),
           ),
-
-          // ===== TOMBOL LOKASI & RUTE (kanan) =====
-          SafeArea(
-            child: Align(
-              alignment: Alignment.centerRight,
+        ),
+        // ===== POPUP INFO LOKASI (tap marker) =====
+        // Align di LUAR Material: Align tidak menyerap tap di luar kartu,
+        // sedangkan Material (full-size) akan memblokir seluruh peta.
+        if (_popupPlace != null)
+          Align(
+            alignment: Alignment.bottomLeft,
+            child: SafeArea(
               child: Padding(
-                padding: const EdgeInsets.only(right: 16, top: 120),
-                child: Column(
-                  children: [
-                    _RoundButton(
-                      icon: Icons.my_location,
-                      onTap: _goToMyLocation,
-                    ),
-                    const SizedBox(height: 12),
-                    _RoundButton(
-                      icon: Icons.directions,
-                      onTap: () {
-                        if (_selected != null) {
-                          _openRoute(_selected!);
-                        } else {
-                          _toast('Pilih lokasi dulu untuk melihat rute');
-                        }
-                      },
-                    ),
-                    const SizedBox(height: 12),
-                    _RoundButton(
-                      icon: _is3D ? Icons.map_outlined : Icons.view_in_ar,
-                      onTap: _toggle3D,
-                    ),
-                    const SizedBox(height: 12),
-                    PopupMenuButton<String>(
-                      tooltip: 'Ganti gaya peta',
-                      onSelected: _changeStyle,
-                      initialValue: _baseStyle,
-                      itemBuilder: (_) => const [
-                        PopupMenuItem(
-                          value: MapboxStyles.OUTDOORS,
-                          child: Text('Outdoor'),
-                        ),
-                        PopupMenuItem(
-                          value: MapboxStyles.LIGHT,
-                          child: Text('Standar'),
-                        ),
-                        PopupMenuItem(
-                          value: MapboxStyles.SATELLITE_STREETS,
-                          child: Text('Satelit'),
-                        ),
-                      ],
-                      child: const _StyleButton(icon: Icons.layers),
-                    ),
-                  ],
-                ),
+                padding: const EdgeInsets.fromLTRB(16, 0, 16, 20),
+                child: _buildInfoPopup(_popupPlace!),
               ),
             ),
           ),
-          // ===== POPUP INFO LOKASI (tap marker) =====
-          // Align di LUAR Material: Align tidak menyerap tap di luar kartu,
-          // sedangkan Material (full-size) akan memblokir seluruh peta.
-          if (_popupPlace != null)
-            Align(
-              alignment: Alignment.bottomLeft,
-              child: SafeArea(
-                child: Padding(
-                  padding: const EdgeInsets.fromLTRB(16, 0, 16, 20),
-                  child: _buildInfoPopup(_popupPlace!),
-                ),
-              ),
-            ),
-        ],
-      ),
+      ],
     );
   }
 
-  Widget _buildSearchBar() {
+  /// Kolom pencarian. [onLight] = `true` bila latar halaman sudah putih
+  /// (katalog), sehingga cukup garis tipis tanpa bayangan.
+  Widget _buildSearchBar({bool onLight = false}) {
     return Container(
       height: 50,
       padding: const EdgeInsets.only(left: 16, right: 6),
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(30),
-        boxShadow: const [
-          BoxShadow(
-            blurRadius: 10,
-            color: Colors.black26,
-            offset: Offset(0, 3),
-          ),
-        ],
+        border: onLight ? Border.all(color: DesaKitaColors.borderMuted) : null,
+        boxShadow: onLight
+            ? null
+            : const [
+                BoxShadow(
+                  blurRadius: 10,
+                  color: Colors.black26,
+                  offset: Offset(0, 3),
+                ),
+              ],
       ),
       child: Row(
         children: [
@@ -1388,18 +1544,22 @@ class _ExploreScreenState extends State<ExploreScreen> {
     );
   }
 
-  Widget _buildListButton() {
+  /// Tombol hijau kanan atas: beralih antara katalog kartu dan peta.
+  Widget _buildViewButton() {
     return Material(
       color: DesaKitaColors.buttonGreen,
       borderRadius: BorderRadius.circular(16),
       elevation: 4,
       child: InkWell(
         borderRadius: BorderRadius.circular(16),
-        onTap: _showListSheet,
-        child: const SizedBox(
+        onTap: _toggleView,
+        child: SizedBox(
           width: 50,
           height: 50,
-          child: Icon(Icons.format_list_bulleted, color: Colors.white),
+          child: Icon(
+            _catalogView ? Icons.map_outlined : Icons.format_list_bulleted,
+            color: Colors.white,
+          ),
         ),
       ),
     );
@@ -1443,21 +1603,20 @@ class _ExploreScreenState extends State<ExploreScreen> {
 class _PinIcon extends StatelessWidget {
   final String category;
   final bool isUmkm;
-  final double size;
 
-  const _PinIcon({required this.category, this.isUmkm = false, this.size = 14});
+  const _PinIcon({required this.category, this.isUmkm = false});
 
   bool get _isKuliner => isUmkm || category.toLowerCase().contains('kuliner');
 
   @override
   Widget build(BuildContext context) {
     return CircleAvatar(
-      radius: size,
+      radius: 14,
       backgroundColor: DesaKitaColors.darkGreen,
       child: Icon(
         _isKuliner ? Icons.restaurant : Icons.terrain,
         color: Colors.white,
-        size: size,
+        size: 14,
       ),
     );
   }

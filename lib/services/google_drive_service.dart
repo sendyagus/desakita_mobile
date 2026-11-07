@@ -136,7 +136,8 @@ class GoogleDriveService {
 
       // Gunakan format thumbnail yang lebih stabil untuk ditampilkan
       debugPrint('✅ File ID: $fileId');
-      final displayUrl = 'https://drive.google.com/thumbnail?id=$fileId&sz=w2000';
+      final displayUrl =
+          'https://drive.google.com/thumbnail?id=$fileId&sz=w2000';
       debugPrint('🔗 Display URL: $displayUrl');
       return displayUrl;
     } catch (e, stackTrace) {

@@ -3,9 +3,13 @@ import 'package:google_fonts/google_fonts.dart';
 
 /// Design tokens mengikuti halaman DESAIN FIX di Figma DesaKita.
 class DesaKitaColors {
-  static const primary = Color(0xFF1C7A28); // Hijau navbar & tombol DesaKita (sedikit lebih gelap)
+  static const primary = Color(
+    0xFF1C7A28,
+  ); // Hijau navbar & tombol DesaKita (sedikit lebih gelap)
   static const darkGreen = Color(0xFF145E1E);
-  static const buttonGreen = Color(0xFF006400); // Hijau tombol mikro (peta/eksplorasi)
+  static const buttonGreen = Color(
+    0xFF006400,
+  ); // Hijau tombol mikro (peta/eksplorasi)
   static const accent = Color(0xFF10B981);
   static const amber = Color(0xFFF59E0B);
   static const text = Color(0xFF1B1C16);

@@ -107,7 +107,10 @@ class BookingTicketScreen extends StatelessWidget {
                         ),
                         const Spacer(),
                         Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 10,
+                            vertical: 4,
+                          ),
                           decoration: BoxDecoration(
                             color: _statusColor(status),
                             borderRadius: BorderRadius.circular(20),
@@ -137,8 +140,11 @@ class BookingTicketScreen extends StatelessWidget {
                         Center(
                           child: Column(
                             children: [
-                              const Icon(Icons.confirmation_number_outlined,
-                                  size: 40, color: Color(0xFF2D5016)),
+                              const Icon(
+                                Icons.confirmation_number_outlined,
+                                size: 40,
+                                color: Color(0xFF2D5016),
+                              ),
                               const SizedBox(height: 8),
                               Text(
                                 ticketCode,
@@ -151,26 +157,51 @@ class BookingTicketScreen extends StatelessWidget {
                               ),
                               Text(
                                 'Kode Tiket',
-                                style: GoogleFonts.poppins(fontSize: 11, color: Colors.grey[500]),
+                                style: GoogleFonts.poppins(
+                                  fontSize: 11,
+                                  color: Colors.grey[500],
+                                ),
                               ),
                             ],
                           ),
                         ),
                         const Divider(height: 28),
-                        _ticketRow(Icons.place_outlined, 'Destinasi',
-                            dest['name'] as String? ?? 'Destinasi'),
-                        _ticketRow(Icons.location_on_outlined, 'Lokasi',
-                            dest['location'] as String? ?? '-'),
-                        _ticketRow(Icons.calendar_today_outlined, 'Check-in',
-                            _formatDate(booking['check_in'] as String?)),
-                        _ticketRow(Icons.event_outlined, 'Check-out',
-                            _formatDate(booking['check_out'] as String?)),
-                        _ticketRow(Icons.people_outline, 'Tamu',
-                            '${booking['guest_count']} orang'),
-                        _ticketRow(Icons.payments_outlined, 'Total Bayar',
-                            booking['total_price'] as String? ?? '-'),
+                        _ticketRow(
+                          Icons.place_outlined,
+                          'Destinasi',
+                          dest['name'] as String? ?? 'Destinasi',
+                        ),
+                        _ticketRow(
+                          Icons.location_on_outlined,
+                          'Lokasi',
+                          dest['location'] as String? ?? '-',
+                        ),
+                        _ticketRow(
+                          Icons.calendar_today_outlined,
+                          'Check-in',
+                          _formatDate(booking['check_in'] as String?),
+                        ),
+                        _ticketRow(
+                          Icons.event_outlined,
+                          'Check-out',
+                          _formatDate(booking['check_out'] as String?),
+                        ),
+                        _ticketRow(
+                          Icons.people_outline,
+                          'Tamu',
+                          '${booking['guest_count']} orang',
+                        ),
+                        _ticketRow(
+                          Icons.payments_outlined,
+                          'Total Bayar',
+                          booking['total_price'] as String? ?? '-',
+                        ),
                         if (user?.email != null)
-                          _ticketRow(Icons.email_outlined, 'Email', user!.email!),
+                          _ticketRow(
+                            Icons.email_outlined,
+                            'Email',
+                            user!.email!,
+                          ),
                       ],
                     ),
                   ),
@@ -180,7 +211,10 @@ class BookingTicketScreen extends StatelessWidget {
                     child: Text(
                       'Simpan tiket ini. Status akan diperbarui setelah admin menyetujui booking.',
                       textAlign: TextAlign.center,
-                      style: GoogleFonts.poppins(fontSize: 11, color: Colors.white70),
+                      style: GoogleFonts.poppins(
+                        fontSize: 11,
+                        color: Colors.white70,
+                      ),
                     ),
                   ),
                 ],
@@ -194,7 +228,10 @@ class BookingTicketScreen extends StatelessWidget {
                 onPressed: () {
                   Navigator.pop(context);
                 },
-                icon: const Icon(Icons.history_outlined, color: Color(0xFF2D5016)),
+                icon: const Icon(
+                  Icons.history_outlined,
+                  color: Color(0xFF2D5016),
+                ),
                 label: Text(
                   'Kembali ke Riwayat',
                   style: GoogleFonts.poppins(
@@ -204,7 +241,9 @@ class BookingTicketScreen extends StatelessWidget {
                 ),
                 style: OutlinedButton.styleFrom(
                   side: const BorderSide(color: Color(0xFF2D5016)),
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(12),
+                  ),
                 ),
               ),
             ),
@@ -226,10 +265,19 @@ class BookingTicketScreen extends StatelessWidget {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(label, style: GoogleFonts.poppins(fontSize: 11, color: Colors.grey[500])),
+                Text(
+                  label,
+                  style: GoogleFonts.poppins(
+                    fontSize: 11,
+                    color: Colors.grey[500],
+                  ),
+                ),
                 Text(
                   value,
-                  style: GoogleFonts.poppins(fontSize: 13, fontWeight: FontWeight.w600),
+                  style: GoogleFonts.poppins(
+                    fontSize: 13,
+                    fontWeight: FontWeight.w600,
+                  ),
                 ),
               ],
             ),

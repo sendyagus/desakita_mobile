@@ -1,8 +1,12 @@
-import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:speech_to_text/speech_to_text.dart' as stt;
+import 'package:desa_wisata/models/ai_chat_models.dart';
+import 'package:desa_wisata/screens/ticket_booking_screen.dart';
+import 'package:desa_wisata/services/ai_agent_service.dart';
+import 'package:desa_wisata/services/trip_plan_service.dart';
 import 'package:desa_wisata/theme/desakita_theme.dart';
+import 'package:desa_wisata/widgets/ai_chat_cards.dart';
 import 'package:desa_wisata/widgets/kita_ai_mascot.dart';
 
 /// GIF animasi maskot KITA AI (lanskap lengkap: langit, bukit, robot).
@@ -65,6 +69,9 @@ class _AgentScreenState extends State<AgentScreen>
     'Cara pesan tiket wisata',
   ];
 
+  /// Destinasi yang ditambahkan user lewat tombol "Tambahkan ke Rencana".
+  final List<Map<String, dynamic>> _planned = [];
+
   void _enterChat({String? presetPrompt}) {
     setState(() {
       _showDashboard = false;
@@ -72,7 +79,10 @@ class _AgentScreenState extends State<AgentScreen>
         _messages.add(
           _ChatMessage(
             text:
-                'Halo! Saya **Kita AI**, pendamping perjalanan DesaKita.\n\nSaya dapat membantu mencari destinasi, melihat profil UMKM, dan memberi panduan pemesanan berdasarkan data yang tersedia di aplikasi. Saat ini saya masih dalam **mode demo** dan belum terhubung ke model AI generatif.',
+                'Halo! Saya **Kita AI**, pendamping perjalanan DesaKita.\n\n'
+                'Saya bisa merekomendasikan tempat wisata dari katalog, '
+                'menyusun jadwal kegiatan (itinerary) sesuai budget, dan '
+                'membantu kamu memesan tiket destinasi.',
             isUser: false,
           ),
         );
@@ -133,207 +143,61 @@ class _AgentScreenState extends State<AgentScreen>
     _inputController.clear();
     _scrollToBottom();
 
-    await Future<void>.delayed(const Duration(milliseconds: 350));
-    final response = await _getBotResponse(message.toLowerCase());
+    final reply = await AiAgentService.instance.respond(message);
     if (!mounted) return;
     setState(() {
       _isTyping = false;
-      _messages.add(_ChatMessage(text: response, isUser: false));
+      _messages.add(
+        _ChatMessage(
+          text: reply.text,
+          isUser: false,
+          attachment: reply.attachment,
+        ),
+      );
     });
     _scrollToBottom();
   }
 
-  Future<String> _getBotResponse(String input) async {
-    if (input.contains('rute') ||
-        input.contains('jalan') ||
-        input.contains('peta') ||
-        input.contains('navigasi')) {
-      return 'Informasi lokasi berupa teks tersedia pada detail destinasi. Petunjuk rute dan navigasi langsung belum terhubung karena integrasi peta belum dipasang.';
-    }
+  // ---------------- aksi pada kartu rekomendasi & itinerary ----------------
 
-    if (input.contains('tiket') ||
-        input.contains('pesan') ||
-        input.contains('booking') ||
-        input.contains('reservasi')) {
-      return 'Untuk memesan tiket, buka tab **Explorasi**, pilih destinasi, buka **Lihat detail**, lalu tekan **Pesan Tiket**. Versi saat ini hanya menyimpan pesanan dengan status menunggu pembayaran; pembayaran dan QR tiket aktif belum terintegrasi.';
-    }
-
-    if (input.contains('budget') ||
-        input.contains('anggaran') ||
-        input.contains('itinerary') ||
-        input.contains('rencana perjalanan') ||
-        input.contains('healing') ||
-        input.contains('pasangan')) {
-      return 'Saya dapat membantu menyusun gambaran awal, tetapi belum memakai AI generatif untuk menghitung rekomendasi secara otomatis. Preferensi anggaran, gaya liburan, dan teman perjalanan bisa diisi lewat onboarding. Untuk sekarang, saya bisa menampilkan data destinasi yang tersedia di katalog.';
-    }
-
-    if (input.contains('acara') ||
-        input.contains('event') ||
-        input.contains('festival')) {
-      return _getUpcomingEvents();
-    }
-
-    if (input.contains('umkm') ||
-        input.contains('kuliner') ||
-        input.contains('makan') ||
-        input.contains('oleh-oleh') ||
-        input.contains('oleh oleh') ||
-        input.contains('kerajinan')) {
-      return _getCatalogRecommendations(
-        collectionName: 'umkm',
-        input: input,
-        label: 'UMKM lokal',
-      );
-    }
-
-    if (input.contains('penginapan') ||
-        input.contains('hotel') ||
-        input.contains('villa') ||
-        input.contains('homestay')) {
-      return _getCatalogRecommendations(
-        collectionName: 'destinations',
-        input: 'penginapan $input',
-        label: 'akomodasi yang terdaftar',
-      );
-    }
-
-    return _getCatalogRecommendations(
-      collectionName: 'destinations',
-      input: input,
-      label: 'destinasi wisata',
+  void _toast(String message) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text(message), behavior: SnackBarBehavior.floating),
     );
   }
 
-  Future<String> _getCatalogRecommendations({
-    required String collectionName,
-    required String input,
-    required String label,
-  }) async {
-    try {
-      final snapshot = await FirebaseFirestore.instance
-          .collection(collectionName)
-          .where('status', isEqualTo: true)
-          .get();
-      if (snapshot.docs.isEmpty) {
-        if (collectionName == 'umkm') {
-          return "Belum ada profil UMKM aktif pada koleksi **umkm** di Firestore. Setelah data usaha dimasukkan, daftar rekomendasinya akan muncul di sini dan pada halaman Explorasi > UMKM.";
-        }
-        return 'Belum ada $label aktif pada katalog Firestore. Silakan coba lagi setelah pengelola menambahkan data.';
-      }
-
-      final words = input
-          .replaceAll(RegExp(r'[^a-z0-9\s]'), ' ')
-          .split(RegExp(r'\s+'))
-          .where(
-            (word) =>
-                word.length > 3 &&
-                !const {
-                  'untuk',
-                  'saya',
-                  'yang',
-                  'dari',
-                  'dengan',
-                  'rekomendasikan',
-                  'tempat',
-                  'wisata',
-                  'tolong',
-                  'bantu',
-                  'cari',
-                }.contains(word),
-          )
-          .toSet();
-      final items = snapshot.docs.map((doc) {
-        final data = doc.data();
-        return <String, dynamic>{
-          'name': (data['name'] ?? 'Tanpa nama').toString(),
-          'location': (data['location'] ?? 'Lokasi belum tersedia').toString(),
-          'category': (data['category'] ?? '').toString(),
-          'description': (data['description'] ?? '').toString(),
-          'price': (data['price'] ?? '').toString(),
-          'rating': (data['rating'] as num?)?.toDouble() ?? 0.0,
-        };
-      }).toList();
-
-      var filtered = items.where((item) {
-        if (words.isEmpty) return true;
-        final searchable =
-            '${item['name']} ${item['location']} ${item['category']} ${item['description']}'
-                .toString()
-                .toLowerCase();
-        return words.any(searchable.contains);
-      }).toList();
-      if (filtered.isEmpty) filtered = items;
-      filtered.sort(
-        (a, b) => (b['rating'] as double).compareTo(a['rating'] as double),
-      );
-      final top = filtered.take(3).toList();
-      final lines = <String>[];
-      for (var i = 0; i < top.length; i++) {
-        final item = top[i];
-        final price = (item['price'] as String).trim();
-        final rating = item['rating'] as double;
-        lines.add(
-          '${i + 1}. **${item['name']}**\n   ${item['location']}\n   ${item['category'].toString().isEmpty ? label : item['category']}${rating > 0 ? ' • Rating ${rating.toStringAsFixed(1)}' : ''}${price.isNotEmpty ? ' • $price' : ''}',
-        );
-      }
-      return 'Berikut $label yang tercatat pada katalog DesaKita. Daftar ini disusun dari data Firestore dan rating yang tersedia, bukan hasil model AI generatif:\n\n${lines.join('\n\n')}\n\nBuka halaman Explorasi untuk melihat detail datanya.';
-    } catch (_) {
-      return 'Saya belum dapat membaca data katalog sekarang. Periksa koneksi internet dan izin baca Firestore, lalu coba kembali.';
-    }
+  void _addToPlan(Map<String, dynamic> place) {
+    setState(() => _planned.add(place));
+    _toast(
+      'Ditambahkan ke rencana: ${place['name']} (${_planned.length} tujuan)',
+    );
   }
 
-  Future<String> _getUpcomingEvents() async {
-    try {
-      final snapshot = await FirebaseFirestore.instance
-          .collection('events')
-          .where('status', isEqualTo: true)
-          .get();
-      final now = DateTime.now();
-      final events =
-          snapshot.docs
-              .map((doc) {
-                final data = doc.data();
-                final rawDate = data['startDate'];
-                final date = rawDate is Timestamp
-                    ? rawDate.toDate()
-                    : DateTime.tryParse(rawDate?.toString() ?? '');
-                return <String, dynamic>{
-                  'name': (data['name'] ?? 'Acara Desa').toString(),
-                  'location': (data['location'] ?? 'Lokasi belum tersedia')
-                      .toString(),
-                  'startDate': date,
-                  'price': (data['price'] ?? '').toString(),
-                };
-              })
-              .where(
-                (event) =>
-                    event['startDate'] is DateTime &&
-                    (event['startDate'] as DateTime).isAfter(now),
-              )
-              .toList()
-            ..sort(
-              (a, b) => (a['startDate'] as DateTime).compareTo(
-                b['startDate'] as DateTime,
-              ),
-            );
+  /// Buka alur pesan tiket untuk destinasi pada kartu/itinerary.
+  /// Itinerary yang sedang tampil ikut diteruskan agar tersimpan sebagai
+  /// "Susunan Perjalanan" setelah pemesanan berhasil.
+  void _bookTicket(Map<String, dynamic> place, {AiItinerary? itinerary}) {
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (_) =>
+            TicketBookingScreen(destination: place, itinerary: itinerary),
+      ),
+    );
+  }
 
-      if (events.isEmpty) {
-        return 'Belum ada acara mendatang yang tercatat pada katalog DesaKita. Informasi acara akan ditampilkan setelah pengelola menambah data ke halaman acara.';
-      }
-      final lines = events
-          .take(3)
-          .map((event) {
-            final date = event['startDate'] as DateTime;
-            final dateLabel =
-                '${date.day.toString().padLeft(2, '0')}/${date.month.toString().padLeft(2, '0')}/${date.year}';
-            final price = (event['price'] as String).trim();
-            return '• **${event['name']}** — $dateLabel\n  ${event['location']}${price.isNotEmpty ? ' • $price' : ''}';
-          })
-          .join('\n\n');
-      return 'Berikut acara mendatang yang tercatat di aplikasi:\n\n$lines';
-    } catch (_) {
-      return 'Saya belum dapat membaca data acara. Periksa koneksi dan izin baca Firestore, atau buka halaman acara jika tersedia.';
-    }
+  /// Chip budget dipilih → diteruskan sebagai pertanyaan user.
+  void _chooseBudget(String option) => _sendMessage('Budget $option');
+
+  /// "Nanti" → jadwal disimpan lebih dulu dan siap tampil di halaman Trip.
+  void _laterItinerary(AiItinerary itinerary) {
+    final date = TripPlanService.suggestedVisitDate();
+    final plan = TripPlanService.instance.planFromItinerary(
+      itinerary,
+      visitDate: date,
+    );
+    TripPlanService.instance.save(plan);
+    _toast('Jadwal ${plan.destinationName} disimpan. Lihat di menu Trip.');
   }
 
   void _scrollToBottom() {
@@ -972,7 +836,15 @@ class _AgentScreenState extends State<AgentScreen>
         if (_isTyping && index == _messages.length) {
           return _TypingIndicator();
         }
-        return _MessageBubble(message: _messages[index]);
+        return _MessageBubble(
+          message: _messages[index],
+          onPlan: _addToPlan,
+          onBook: (place) => _bookTicket(place),
+          onBookItinerary: (trip) =>
+              _bookTicket(trip.destination, itinerary: trip),
+          onBudget: _chooseBudget,
+          onLater: _laterItinerary,
+        );
       },
     );
   }
@@ -1214,7 +1086,10 @@ class _ChatMessage {
   final bool isUser;
   final DateTime time;
 
-  _ChatMessage({required this.text, required this.isUser})
+  /// Kartu rekomendasi/chip budget/itinerary di bawah bubble (khusus bot).
+  final AiChatAttachment? attachment;
+
+  _ChatMessage({required this.text, required this.isUser, this.attachment})
     : time = DateTime.now();
 }
 
@@ -1375,7 +1250,21 @@ class _AiScenePainter extends CustomPainter {
 class _MessageBubble extends StatelessWidget {
   final _ChatMessage message;
 
-  const _MessageBubble({required this.message});
+  /// Aksi pada kartu rekomendasi & itinerary.
+  final ValueChanged<Map<String, dynamic>> onPlan;
+  final ValueChanged<Map<String, dynamic>> onBook;
+  final ValueChanged<AiItinerary> onBookItinerary;
+  final ValueChanged<String> onBudget;
+  final ValueChanged<AiItinerary> onLater;
+
+  const _MessageBubble({
+    required this.message,
+    required this.onPlan,
+    required this.onBook,
+    required this.onBookItinerary,
+    required this.onBudget,
+    required this.onLater,
+  });
 
   String _formatTime(DateTime time) {
     final h = time.hour.toString().padLeft(2, '0');
@@ -1387,7 +1276,7 @@ class _MessageBubble extends StatelessWidget {
   Widget build(BuildContext context) {
     final isUser = message.isUser;
 
-    return Padding(
+    final bubble = Padding(
       padding: const EdgeInsets.only(bottom: 12),
       child: Row(
         mainAxisAlignment: isUser
@@ -1464,6 +1353,35 @@ class _MessageBubble extends StatelessWidget {
         ],
       ),
     );
+
+    final attachment = message.attachment;
+    if (isUser || attachment == null) return bubble;
+
+    // Balasan bot berkarta kaya: bubble teks lalu kartunya di bawahnya.
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [bubble, _buildAttachment(attachment)],
+    );
+  }
+
+  Widget _buildAttachment(AiChatAttachment attachment) {
+    switch (attachment.kind) {
+      case AiAttachmentKind.destinations:
+        return AiDestinationCards(
+          places: attachment.places,
+          onPlan: onPlan,
+          onBook: onBook,
+        );
+      case AiAttachmentKind.budgetOptions:
+        return AiBudgetChips(options: attachment.options, onSelect: onBudget);
+      case AiAttachmentKind.itinerary:
+        final trip = attachment.itinerary!;
+        return AiItineraryCard(
+          itinerary: trip,
+          onBook: () => onBookItinerary(trip),
+          onLater: () => onLater(trip),
+        );
+    }
   }
 
   Widget _buildMessageText(String text, bool isUser) {

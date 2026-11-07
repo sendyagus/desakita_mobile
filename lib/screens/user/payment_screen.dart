@@ -31,11 +31,36 @@ class _PaymentScreenState extends State<PaymentScreen> {
   bool _isProcessing = false;
 
   final List<Map<String, dynamic>> _methods = [
-    {'id': 'gopay', 'label': 'GoPay', 'icon': Icons.account_balance_wallet_outlined, 'color': Color(0xFF00AA5B)},
-    {'id': 'shopeepay', 'label': 'ShopeePay', 'icon': Icons.shopping_bag_outlined, 'color': Color(0xFFEE4D2D)},
-    {'id': 'bank', 'label': 'Transfer Bank', 'icon': Icons.account_balance_outlined, 'color': Color(0xFF1A73E8)},
-    {'id': 'card', 'label': 'Kartu Kredit/Debit', 'icon': Icons.credit_card_outlined, 'color': Color(0xFF5C6BC0)},
-    {'id': 'qris', 'label': 'QRIS', 'icon': Icons.qr_code_2_outlined, 'color': Color(0xFF212121)},
+    {
+      'id': 'gopay',
+      'label': 'GoPay',
+      'icon': Icons.account_balance_wallet_outlined,
+      'color': Color(0xFF00AA5B),
+    },
+    {
+      'id': 'shopeepay',
+      'label': 'ShopeePay',
+      'icon': Icons.shopping_bag_outlined,
+      'color': Color(0xFFEE4D2D),
+    },
+    {
+      'id': 'bank',
+      'label': 'Transfer Bank',
+      'icon': Icons.account_balance_outlined,
+      'color': Color(0xFF1A73E8),
+    },
+    {
+      'id': 'card',
+      'label': 'Kartu Kredit/Debit',
+      'icon': Icons.credit_card_outlined,
+      'color': Color(0xFF5C6BC0),
+    },
+    {
+      'id': 'qris',
+      'label': 'QRIS',
+      'icon': Icons.qr_code_2_outlined,
+      'color': Color(0xFF212121),
+    },
   ];
 
   Future<void> _processPayment() async {
@@ -74,7 +99,10 @@ class _PaymentScreenState extends State<PaymentScreen> {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('Pembayaran gagal: $e', style: GoogleFonts.poppins(fontSize: 13)),
+            content: Text(
+              'Pembayaran gagal: $e',
+              style: GoogleFonts.poppins(fontSize: 13),
+            ),
             backgroundColor: Colors.red,
           ),
         );
@@ -102,25 +130,38 @@ class _PaymentScreenState extends State<PaymentScreen> {
                   shape: BoxShape.circle,
                   color: Color(0xFFE8F5E9),
                 ),
-                child: const Icon(Icons.check_circle, color: Color(0xFF4CAF50), size: 48),
+                child: const Icon(
+                  Icons.check_circle,
+                  color: Color(0xFF4CAF50),
+                  size: 48,
+                ),
               ),
               const SizedBox(height: 16),
               Text(
                 'Pembayaran Berhasil',
-                style: GoogleFonts.poppins(fontSize: 18, fontWeight: FontWeight.w700),
+                style: GoogleFonts.poppins(
+                  fontSize: 18,
+                  fontWeight: FontWeight.w700,
+                ),
               ),
               const SizedBox(height: 8),
               Text(
                 'Tiket booking tersimpan.\nCek kapan saja di menu Riwayat Booking.',
                 textAlign: TextAlign.center,
-                style: GoogleFonts.poppins(fontSize: 13, color: Colors.grey[600]),
+                style: GoogleFonts.poppins(
+                  fontSize: 13,
+                  color: Colors.grey[600],
+                ),
               ),
               const SizedBox(height: 20),
               SizedBox(
                 width: double.infinity,
                 child: ElevatedButton.icon(
                   onPressed: () => Navigator.pop(ctx, true),
-                  icon: const Icon(Icons.confirmation_number_outlined, size: 20),
+                  icon: const Icon(
+                    Icons.confirmation_number_outlined,
+                    size: 20,
+                  ),
                   label: Text(
                     'Lihat Tiket Booking',
                     style: GoogleFonts.poppins(fontWeight: FontWeight.w600),
@@ -128,7 +169,9 @@ class _PaymentScreenState extends State<PaymentScreen> {
                   style: ElevatedButton.styleFrom(
                     backgroundColor: const Color(0xFF2D5016),
                     foregroundColor: Colors.white,
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(10),
+                    ),
                     elevation: 0,
                     padding: const EdgeInsets.symmetric(vertical: 12),
                   ),
@@ -201,7 +244,9 @@ class _PaymentScreenState extends State<PaymentScreen> {
                                 width: 40,
                                 height: 40,
                                 decoration: BoxDecoration(
-                                  color: (m['color'] as Color).withValues(alpha: 0.12),
+                                  color: (m['color'] as Color).withValues(
+                                    alpha: 0.12,
+                                  ),
                                   borderRadius: BorderRadius.circular(10),
                                 ),
                                 child: Icon(
@@ -244,12 +289,19 @@ class _PaymentScreenState extends State<PaymentScreen> {
                     ),
                     child: Row(
                       children: [
-                        const Icon(Icons.info_outline, size: 18, color: Color(0xFFF57C00)),
+                        const Icon(
+                          Icons.info_outline,
+                          size: 18,
+                          color: Color(0xFFF57C00),
+                        ),
                         const SizedBox(width: 10),
                         Expanded(
                           child: Text(
                             'Ini hanya simulasi tampilan pembayaran. Tidak ada transaksi nyata.',
-                            style: GoogleFonts.poppins(fontSize: 11, color: Colors.grey[800]),
+                            style: GoogleFonts.poppins(
+                              fontSize: 11,
+                              color: Colors.grey[800],
+                            ),
                           ),
                         ),
                       ],
@@ -302,7 +354,10 @@ class _PaymentScreenState extends State<PaymentScreen> {
                 ),
                 Text(
                   'Pembayaran Aman & Terpercaya',
-                  style: GoogleFonts.poppins(fontSize: 11, color: Colors.white70),
+                  style: GoogleFonts.poppins(
+                    fontSize: 11,
+                    color: Colors.white70,
+                  ),
                 ),
               ],
             ),
@@ -313,7 +368,11 @@ class _PaymentScreenState extends State<PaymentScreen> {
               color: Colors.white.withValues(alpha: 0.2),
               shape: BoxShape.circle,
             ),
-            child: const Icon(Icons.lock_outline, color: Colors.white, size: 18),
+            child: const Icon(
+              Icons.lock_outline,
+              color: Colors.white,
+              size: 18,
+            ),
           ),
         ],
       ),
@@ -327,7 +386,11 @@ class _PaymentScreenState extends State<PaymentScreen> {
         color: Colors.white,
         borderRadius: BorderRadius.circular(12),
         boxShadow: const [
-          BoxShadow(color: Color(0x0D000000), blurRadius: 8, offset: Offset(0, 2)),
+          BoxShadow(
+            color: Color(0x0D000000),
+            blurRadius: 8,
+            offset: Offset(0, 2),
+          ),
         ],
       ),
       child: Column(
@@ -335,7 +398,11 @@ class _PaymentScreenState extends State<PaymentScreen> {
         children: [
           Text(
             'Detail Pesanan',
-            style: GoogleFonts.poppins(fontSize: 13, fontWeight: FontWeight.w600, color: Colors.grey[700]),
+            style: GoogleFonts.poppins(
+              fontSize: 13,
+              fontWeight: FontWeight.w600,
+              color: Colors.grey[700],
+            ),
           ),
           const Divider(height: 20),
           _orderRow('Destinasi', destName),
@@ -349,7 +416,10 @@ class _PaymentScreenState extends State<PaymentScreen> {
             children: [
               Text(
                 'Total Bayar',
-                style: GoogleFonts.poppins(fontSize: 14, fontWeight: FontWeight.w600),
+                style: GoogleFonts.poppins(
+                  fontSize: 14,
+                  fontWeight: FontWeight.w600,
+                ),
               ),
               Text(
                 widget.totalPrice,
@@ -370,12 +440,18 @@ class _PaymentScreenState extends State<PaymentScreen> {
     return Row(
       mainAxisAlignment: MainAxisAlignment.spaceBetween,
       children: [
-        Text(label, style: GoogleFonts.poppins(fontSize: 12, color: Colors.grey[600])),
+        Text(
+          label,
+          style: GoogleFonts.poppins(fontSize: 12, color: Colors.grey[600]),
+        ),
         Flexible(
           child: Text(
             value,
             textAlign: TextAlign.right,
-            style: GoogleFonts.poppins(fontSize: 12, fontWeight: FontWeight.w500),
+            style: GoogleFonts.poppins(
+              fontSize: 12,
+              fontWeight: FontWeight.w500,
+            ),
           ),
         ),
       ],
@@ -387,7 +463,13 @@ class _PaymentScreenState extends State<PaymentScreen> {
       padding: const EdgeInsets.all(20),
       decoration: const BoxDecoration(
         color: Colors.white,
-        boxShadow: [BoxShadow(color: Color(0x15000000), blurRadius: 12, offset: Offset(0, -2))],
+        boxShadow: [
+          BoxShadow(
+            color: Color(0x15000000),
+            blurRadius: 12,
+            offset: Offset(0, -2),
+          ),
+        ],
       ),
       child: SafeArea(
         top: false,
@@ -399,18 +481,26 @@ class _PaymentScreenState extends State<PaymentScreen> {
             style: ElevatedButton.styleFrom(
               backgroundColor: const Color(0xFF2D5016),
               foregroundColor: Colors.white,
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(10),
+              ),
               elevation: 0,
             ),
             child: _isProcessing
                 ? const SizedBox(
                     width: 22,
                     height: 22,
-                    child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2),
+                    child: CircularProgressIndicator(
+                      color: Colors.white,
+                      strokeWidth: 2,
+                    ),
                   )
                 : Text(
                     'Bayar Sekarang',
-                    style: GoogleFonts.poppins(fontSize: 15, fontWeight: FontWeight.w600),
+                    style: GoogleFonts.poppins(
+                      fontSize: 15,
+                      fontWeight: FontWeight.w600,
+                    ),
                   ),
           ),
         ),

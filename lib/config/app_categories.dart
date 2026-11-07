@@ -1,22 +1,11 @@
 /// Kategori destinasi yang dipakai di Home, Explore, dan Admin.
 class AppCategories {
-  static const List<String> all = [
-    'Alam',
-    'Penginapan',
-    'Kuliner',
-    'Edukasi',
-  ];
+  static const List<String> all = ['Alam', 'Penginapan', 'Kuliner', 'Edukasi'];
 
-  static const List<String> exploreFilters = [
-    'Semua',
-    ...all,
-  ];
+  static const List<String> exploreFilters = ['Semua', ...all];
 
   /// Kategori yang bisa dibooking (Penginapan + wisata/Alam).
-  static const List<String> bookableCategories = [
-    'Penginapan',
-    'Alam',
-  ];
+  static const List<String> bookableCategories = ['Penginapan', 'Alam'];
 
   static String normalize(String? raw) {
     if (raw == null || raw.trim().isEmpty) return '';

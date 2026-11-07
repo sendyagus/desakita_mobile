@@ -85,7 +85,10 @@ class _EventFormScreenState extends State<EventFormScreen> {
     if (_startDate == null || _endDate == null) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text('Pilih tanggal mulai dan selesai', style: GoogleFonts.poppins(fontSize: 13)),
+          content: Text(
+            'Pilih tanggal mulai dan selesai',
+            style: GoogleFonts.poppins(fontSize: 13),
+          ),
           backgroundColor: Colors.orange[800],
         ),
       );
@@ -134,7 +137,10 @@ class _EventFormScreenState extends State<EventFormScreen> {
         Navigator.pop(context, true);
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('Acara berhasil disimpan', style: GoogleFonts.poppins(fontSize: 13)),
+            content: Text(
+              'Acara berhasil disimpan',
+              style: GoogleFonts.poppins(fontSize: 13),
+            ),
             backgroundColor: const Color(0xFF2D5016),
           ),
         );
@@ -175,7 +181,11 @@ class _EventFormScreenState extends State<EventFormScreen> {
             _field('Nama Acara (opsional)', _nameController),
             _field('Deskripsi (opsional)', _descController, maxLines: 3),
             _field('Lokasi (opsional)', _locationController),
-            _field('Kategori', _categoryController, hint: 'Budaya, Festival, dll'),
+            _field(
+              'Kategori',
+              _categoryController,
+              hint: 'Budaya, Festival, dll',
+            ),
             _dateTile('Tanggal Mulai *', _startDate, () => _pickDate(true)),
             _dateTile('Tanggal Selesai *', _endDate, () => _pickDate(false)),
             _field('Harga/Tiket (opsional)', _priceController),
@@ -190,12 +200,20 @@ class _EventFormScreenState extends State<EventFormScreen> {
                 style: ElevatedButton.styleFrom(
                   backgroundColor: const Color(0xFF2D5016),
                   foregroundColor: Colors.white,
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(12),
+                  ),
                   elevation: 0,
                 ),
                 child: _isLoading
-                    ? const CircularProgressIndicator(color: Colors.white, strokeWidth: 2)
-                    : Text('Simpan', style: GoogleFonts.poppins(fontWeight: FontWeight.w600)),
+                    ? const CircularProgressIndicator(
+                        color: Colors.white,
+                        strokeWidth: 2,
+                      )
+                    : Text(
+                        'Simpan',
+                        style: GoogleFonts.poppins(fontWeight: FontWeight.w600),
+                      ),
               ),
             ),
           ],
@@ -204,13 +222,24 @@ class _EventFormScreenState extends State<EventFormScreen> {
     );
   }
 
-  Widget _field(String label, TextEditingController c, {int maxLines = 1, String? hint}) {
+  Widget _field(
+    String label,
+    TextEditingController c, {
+    int maxLines = 1,
+    String? hint,
+  }) {
     return Padding(
       padding: const EdgeInsets.only(bottom: 14),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(label, style: GoogleFonts.poppins(fontSize: 13, fontWeight: FontWeight.w600)),
+          Text(
+            label,
+            style: GoogleFonts.poppins(
+              fontSize: 13,
+              fontWeight: FontWeight.w600,
+            ),
+          ),
           const SizedBox(height: 6),
           TextFormField(
             controller: c,
@@ -220,7 +249,9 @@ class _EventFormScreenState extends State<EventFormScreen> {
               hintText: hint,
               filled: true,
               fillColor: Colors.white,
-              border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+              border: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(12),
+              ),
             ),
           ),
         ],
@@ -234,7 +265,13 @@ class _EventFormScreenState extends State<EventFormScreen> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(label, style: GoogleFonts.poppins(fontSize: 13, fontWeight: FontWeight.w600)),
+          Text(
+            label,
+            style: GoogleFonts.poppins(
+              fontSize: 13,
+              fontWeight: FontWeight.w600,
+            ),
+          ),
           const SizedBox(height: 6),
           InkWell(
             onTap: onTap,
@@ -247,7 +284,11 @@ class _EventFormScreenState extends State<EventFormScreen> {
               ),
               child: Row(
                 children: [
-                  const Icon(Icons.calendar_today_outlined, size: 18, color: Color(0xFF2D5016)),
+                  const Icon(
+                    Icons.calendar_today_outlined,
+                    size: 18,
+                    color: Color(0xFF2D5016),
+                  ),
                   const SizedBox(width: 10),
                   Text(
                     date != null

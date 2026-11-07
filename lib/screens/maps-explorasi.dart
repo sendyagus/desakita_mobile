@@ -30,20 +30,55 @@ class Place {
 }
 
 const places = <Place>[
-  Place(id: '1', name: 'Puncak Mas', category: PlaceCategory.wisata,
-      position: LatLng(-5.3560, 105.3000), description: 'Wisata puncak dengan pemandangan kota.'),
-  Place(id: '2', name: 'Bukit Sakura', category: PlaceCategory.wisata,
-      position: LatLng(-5.3700, 105.2850), description: 'Taman bunga di atas bukit.'),
-  Place(id: '3', name: 'Saung Agrowisata', category: PlaceCategory.kuliner,
-      position: LatLng(-5.3740, 105.2720), description: 'Makan di saung dengan suasana kebun.'),
-  Place(id: '4', name: 'Lembah Durian', category: PlaceCategory.wisata,
-      position: LatLng(-5.3920, 105.2900), description: 'Wisata kebun durian.'),
-  Place(id: '5', name: 'Kampoeng Vietnam', category: PlaceCategory.wisata,
-      position: LatLng(-5.3960, 105.2740), description: 'Kampung bertema Vietnam.'),
-  Place(id: '6', name: 'Farm Day', category: PlaceCategory.wisata,
-      position: LatLng(-5.3980, 105.2870), description: 'Wisata edukasi pertanian.'),
-  Place(id: '7', name: 'Lengkung Langit', category: PlaceCategory.wisata,
-      position: LatLng(-5.4030, 105.2820), description: 'Spot foto lengkung di tengah alam.'),
+  Place(
+    id: '1',
+    name: 'Puncak Mas',
+    category: PlaceCategory.wisata,
+    position: LatLng(-5.3560, 105.3000),
+    description: 'Wisata puncak dengan pemandangan kota.',
+  ),
+  Place(
+    id: '2',
+    name: 'Bukit Sakura',
+    category: PlaceCategory.wisata,
+    position: LatLng(-5.3700, 105.2850),
+    description: 'Taman bunga di atas bukit.',
+  ),
+  Place(
+    id: '3',
+    name: 'Saung Agrowisata',
+    category: PlaceCategory.kuliner,
+    position: LatLng(-5.3740, 105.2720),
+    description: 'Makan di saung dengan suasana kebun.',
+  ),
+  Place(
+    id: '4',
+    name: 'Lembah Durian',
+    category: PlaceCategory.wisata,
+    position: LatLng(-5.3920, 105.2900),
+    description: 'Wisata kebun durian.',
+  ),
+  Place(
+    id: '5',
+    name: 'Kampoeng Vietnam',
+    category: PlaceCategory.wisata,
+    position: LatLng(-5.3960, 105.2740),
+    description: 'Kampung bertema Vietnam.',
+  ),
+  Place(
+    id: '6',
+    name: 'Farm Day',
+    category: PlaceCategory.wisata,
+    position: LatLng(-5.3980, 105.2870),
+    description: 'Wisata edukasi pertanian.',
+  ),
+  Place(
+    id: '7',
+    name: 'Lengkung Langit',
+    category: PlaceCategory.wisata,
+    position: LatLng(-5.4030, 105.2820),
+    description: 'Spot foto lengkung di tengah alam.',
+  ),
 ];
 
 // Batas area wisata (garis merah putus-putus). Gambar di geojson.io lalu salin.
@@ -96,8 +131,8 @@ class _MapPageState extends State<MapPage> {
   List<Place> get _results => _query.isEmpty
       ? []
       : places
-          .where((p) => p.name.toLowerCase().contains(_query.toLowerCase()))
-          .toList();
+            .where((p) => p.name.toLowerCase().contains(_query.toLowerCase()))
+            .toList();
 
   // ---------------- actions ----------------
   void _focusPlace(Place p) {
@@ -134,7 +169,8 @@ class _MapPageState extends State<MapPage> {
 
   Future<void> _openRoute(Place p) async {
     final uri = Uri.parse(
-        'https://www.google.com/maps/dir/?api=1&destination=${p.position.latitude},${p.position.longitude}');
+      'https://www.google.com/maps/dir/?api=1&destination=${p.position.latitude},${p.position.longitude}',
+    );
     if (!await launchUrl(uri, mode: LaunchMode.externalApplication)) {
       _toast('Tidak bisa membuka Google Maps');
     }
@@ -169,30 +205,37 @@ class _MapPageState extends State<MapPage> {
     );
   }
 
-  void _toast(String msg) => ScaffoldMessenger.of(context)
-      .showSnackBar(SnackBar(content: Text(msg)));
+  void _toast(String msg) =>
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(msg)));
 
   // ---------------- bottom sheets ----------------
   void _showDetail(Place p) {
     showModalBottomSheet(
       context: context,
       shape: const RoundedRectangleBorder(
-          borderRadius: BorderRadius.vertical(top: Radius.circular(24))),
+        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+      ),
       builder: (_) => Padding(
         padding: const EdgeInsets.all(20),
         child: Column(
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Row(children: [
-              _PinIcon(category: p.category, size: 20),
-              const SizedBox(width: 12),
-              Expanded(
-                child: Text(p.name,
+            Row(
+              children: [
+                _PinIcon(category: p.category, size: 20),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Text(
+                    p.name,
                     style: const TextStyle(
-                        fontSize: 20, fontWeight: FontWeight.bold)),
-              ),
-            ]),
+                      fontSize: 20,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                ),
+              ],
+            ),
             const SizedBox(height: 12),
             Text(p.description),
             const SizedBox(height: 20),
@@ -216,7 +259,8 @@ class _MapPageState extends State<MapPage> {
       context: context,
       isScrollControlled: true,
       shape: const RoundedRectangleBorder(
-          borderRadius: BorderRadius.vertical(top: Radius.circular(24))),
+        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+      ),
       builder: (_) => DraggableScrollableSheet(
         expand: false,
         initialChildSize: 0.5,
@@ -230,9 +274,10 @@ class _MapPageState extends State<MapPage> {
             if (i == 0) {
               return const Padding(
                 padding: EdgeInsets.all(8),
-                child: Text('Daftar Lokasi',
-                    style:
-                        TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+                child: Text(
+                  'Daftar Lokasi',
+                  style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                ),
               );
             }
             final p = places[i - 1];
@@ -240,7 +285,8 @@ class _MapPageState extends State<MapPage> {
               leading: _PinIcon(category: p.category, size: 18),
               title: Text(p.name),
               subtitle: Text(
-                  p.category == PlaceCategory.kuliner ? 'Kuliner' : 'Wisata'),
+                p.category == PlaceCategory.kuliner ? 'Kuliner' : 'Wisata',
+              ),
               trailing: const Icon(Icons.chevron_right),
               onTap: () {
                 Navigator.pop(ctx);
@@ -309,7 +355,7 @@ class _MapPageState extends State<MapPage> {
                           shape: BoxShape.circle,
                           border: Border.all(color: Colors.white, width: 3),
                           boxShadow: const [
-                            BoxShadow(blurRadius: 6, color: Colors.black26)
+                            BoxShadow(blurRadius: 6, color: Colors.black26),
                           ],
                         ),
                       ),
@@ -380,7 +426,11 @@ class _MapPageState extends State<MapPage> {
         color: Colors.white,
         borderRadius: BorderRadius.circular(30),
         boxShadow: const [
-          BoxShadow(blurRadius: 10, color: Colors.black26, offset: Offset(0, 3))
+          BoxShadow(
+            blurRadius: 10,
+            color: Colors.black26,
+            offset: Offset(0, 3),
+          ),
         ],
       ),
       child: Row(
@@ -407,8 +457,11 @@ class _MapPageState extends State<MapPage> {
                 color: _listening ? Colors.red : kButtonGreen,
                 shape: BoxShape.circle,
               ),
-              child: Icon(_listening ? Icons.stop : Icons.mic,
-                  color: Colors.white, size: 20),
+              child: Icon(
+                _listening ? Icons.stop : Icons.mic,
+                color: Colors.white,
+                size: 20,
+              ),
             ),
           ),
         ],
@@ -498,7 +551,10 @@ class _PlaceMarker extends StatelessWidget {
             maxLines: 1,
             overflow: TextOverflow.ellipsis,
             style: const TextStyle(
-                fontSize: 9, fontWeight: FontWeight.bold, color: kGreen),
+              fontSize: 9,
+              fontWeight: FontWeight.bold,
+              color: kGreen,
+            ),
           ),
         ),
       ],

@@ -2,70 +2,187 @@ import 'package:flutter/material.dart';
 import 'package:flutter_map/flutter_map.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:latlong2/latlong.dart';
+import 'package:url_launcher/url_launcher.dart';
 import 'package:desa_wisata/config/app_config.dart';
+import 'package:desa_wisata/models/trip_plan.dart';
+import 'package:desa_wisata/services/trip_plan_service.dart';
 import 'package:desa_wisata/theme/desakita_theme.dart';
 
-/// Layar demo "Susunan Perjalanan" (itinerary) — murni tampilan,
-/// tanpa fungsi Edit/Hapus/Lihat yang sebenarnya.
-class TripItineraryScreen extends StatelessWidget {
-  const TripItineraryScreen({super.key});
+/// Layar "Susunan Perjalanan": peta rute, ringkasan, dan linimasa kegiatan.
+///
+/// Isinya datang dari [TripPlan] — jadwal hasil KITA AI, jadwal otomatis dari
+/// pemesanan tiket, atau contoh bawaan. [persistChanges] aktif hanya bila plan
+/// berasal dari booking sungguhan, supaya Edit/Hapus ikut tersimpan.
+class TripItineraryScreen extends StatefulWidget {
+  final TripPlan plan;
+  final bool persistChanges;
 
-  // Titik rute demo: Rumah -> Bukit Sakura -> Puncak Mas (Kemiling).
-  static const _route = <LatLng>[
-    LatLng(-5.4290, 105.2530),
-    LatLng(-5.4210, 105.2430),
-    LatLng(-5.4150, 105.2330),
-    LatLng(-5.4100, 105.2260),
-    LatLng(-5.4043, 105.2202),
-    LatLng(-5.4120, 105.2190),
-    LatLng(-5.4206, 105.2225),
-  ];
+  const TripItineraryScreen({
+    super.key,
+    required this.plan,
+    this.persistChanges = false,
+  });
 
-  static const _bukitSakura = LatLng(-5.4043, 105.2202);
-  static const _puncakMas = LatLng(-5.4206, 105.2225);
+  @override
+  State<TripItineraryScreen> createState() => _TripItineraryScreenState();
+}
 
-  static const _items = <_ItineraryItem>[
-    _ItineraryItem(
-      time: '08:00',
-      title: '08:00 - Berangkat dari Rumah',
-      subtitle: 'Factual location',
-      actions: [_ItemAction.edit, _ItemAction.hapus],
-    ),
-    _ItineraryItem(
-      time: '08:20',
-      title: '08:20 - Terdapat Umkm di Sekitar sini',
-      subtitle: 'Factual location',
-      actions: [_ItemAction.lihat],
-    ),
-    _ItineraryItem(
-      time: '09:00',
-      title: '09:00 - Sampai ke Bukit Sakura',
-      subtitle: 'Factual location',
-      rating: 4.8,
-      thumbnail: 'assets/img/desakita.jpg',
-      actions: [_ItemAction.edit, _ItemAction.hapus],
-    ),
-    _ItineraryItem(
-      time: '12:00',
-      title: '12:00 - Makan Siang',
-      subtitle: 'Factual location',
-      actions: [_ItemAction.edit, _ItemAction.hapus],
-    ),
-    _ItineraryItem(
-      time: '14:00',
-      title: '14:00 - Sore di Puncak Mas',
-      subtitle: 'Factual location',
-      rating: 4.9,
-      thumbnail: 'assets/img/banner1.png',
-      actions: [_ItemAction.edit, _ItemAction.hapus],
-    ),
-    _ItineraryItem(
-      time: '17:00',
-      title: '17:00 - Kembali ke Rumah',
-      subtitle: 'Factual location',
-      actions: [_ItemAction.lihat],
-    ),
-  ];
+class _TripItineraryScreenState extends State<TripItineraryScreen> {
+  late TripPlan _plan = widget.plan;
+  final MapController _mapController = MapController();
+
+  TripStats get _stats => TripPlanService.statsOf(_plan);
+
+  List<LatLng> get _route {
+    final points = _plan.stops
+        .where((s) => s.hasPosition)
+        .map((s) => LatLng(s.lat!, s.lng!))
+        .toList();
+    return points.length < 2 ? TripPlanService.fallbackRoute : points;
+  }
+
+  void _toast(String message) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text(message), behavior: SnackBarBehavior.floating),
+    );
+  }
+
+  void _apply(List<TripStop> stops) {
+    setState(() {
+      _plan = _plan.copyWith(stops: stops);
+    });
+    if (widget.persistChanges) TripPlanService.instance.save(_plan);
+  }
+
+  /// Ubah jam kegiatan memakai TimePicker 24 jam.
+  Future<void> _editTime(TripStop stop) async {
+    final parts = stop.normalizedTime.split(':');
+    final initial = TimeOfDay(
+      hour: int.tryParse(parts.first) ?? 8,
+      minute: int.tryParse(parts.last) ?? 0,
+    );
+    final picked = await showTimePicker(
+      context: context,
+      initialTime: initial,
+      helpText: 'Ubah jam ${stop.title}',
+    );
+    if (picked == null) return;
+    final time =
+        '${picked.hour.toString().padLeft(2, '0')}:'
+        '${picked.minute.toString().padLeft(2, '0')}';
+    final stops = _plan.stops.map((s) {
+      return s == stop ? s.copyWith(time: time) : s;
+    }).toList()..sort((a, b) => a.minutesOfDay.compareTo(b.minutesOfDay));
+    _apply(stops);
+    _toast('Jam ${stop.title} diubah ke $time');
+  }
+
+  Future<void> _deleteStop(TripStop stop) async {
+    if (_plan.stops.length <= 1) {
+      _toast('Minimal satu kegiatan harus tersisa dalam perjalanan.');
+      return;
+    }
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Hapus kegiatan?'),
+        content: Text(
+          '${stop.time} - ${stop.title} akan dikeluarkan dari '
+          'susunan perjalanan.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: const Text('Batal'),
+          ),
+          FilledButton(
+            style: FilledButton.styleFrom(
+              backgroundColor: const Color(0xFFD53030),
+            ),
+            onPressed: () => Navigator.pop(context, true),
+            child: const Text('Hapus'),
+          ),
+        ],
+      ),
+    );
+    if (confirmed != true) return;
+    _apply(_plan.stops.where((s) => s != stop).toList());
+    _toast('Kegiatan dihapus dari susunan perjalanan.');
+  }
+
+  /// Buka detail kegiatan; bila titik punya koordinat, sediakan rutenya.
+  void _viewStop(TripStop stop) {
+    showModalBottomSheet<void>(
+      context: context,
+      showDragHandle: true,
+      builder: (sheetContext) {
+        final position = stop.hasPosition
+            ? LatLng(stop.lat!, stop.lng!)
+            : _route.first;
+        return Padding(
+          padding: const EdgeInsets.fromLTRB(20, 4, 20, 24),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Text(
+                '${stop.time} - ${stop.title}',
+                style: GoogleFonts.plusJakartaSans(
+                  fontSize: 15,
+                  fontWeight: FontWeight.w800,
+                  color: DesaKitaColors.text,
+                ),
+              ),
+              const SizedBox(height: 6),
+              Text(
+                stop.note,
+                style: GoogleFonts.plusJakartaSans(
+                  fontSize: 12,
+                  height: 1.5,
+                  color: DesaKitaColors.textSecondary,
+                ),
+              ),
+              const SizedBox(height: 16),
+              SizedBox(
+                width: double.infinity,
+                child: FilledButton.icon(
+                  style: FilledButton.styleFrom(
+                    backgroundColor: DesaKitaColors.buttonGreen,
+                  ),
+                  onPressed: () {
+                    Navigator.pop(sheetContext);
+                    _openRoute(position);
+                  },
+                  icon: const Icon(Icons.navigation_outlined),
+                  label: const Text('Buka Rute di Google Maps'),
+                ),
+              ),
+            ],
+          ),
+        );
+      },
+    );
+  }
+
+  Future<void> _openRoute(LatLng point) async {
+    final uri = Uri.parse(
+      'https://www.google.com/maps/dir/?api=1&destination='
+      '${point.latitude},${point.longitude}',
+    );
+    if (!await launchUrl(uri, mode: LaunchMode.externalApplication)) {
+      _toast('Tidak bisa membuka Google Maps');
+    }
+  }
+
+  /// Kembalikan kamera ke seluruh rute perjalanan.
+  void _recenter() {
+    _mapController.fitCamera(
+      CameraFit.coordinates(
+        coordinates: _route,
+        padding: const EdgeInsets.all(24),
+      ),
+    );
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -109,15 +226,25 @@ class TripItineraryScreen extends StatelessWidget {
                   height: 210,
                   child: Stack(
                     children: [
-                      _RouteMap(),
+                      _RouteMap(
+                        route: _route,
+                        plan: _plan,
+                        controller: _mapController,
+                      ),
                       Positioned(
                         right: 10,
                         bottom: 10,
                         child: Row(
                           children: [
-                            _MapCircleButton(icon: Icons.navigation_outlined),
+                            _MapCircleButton(
+                              icon: Icons.navigation_outlined,
+                              onTap: () => _openRoute(_route.last),
+                            ),
                             const SizedBox(width: 8),
-                            _MapCircleButton(icon: Icons.my_location),
+                            _MapCircleButton(
+                              icon: Icons.my_location,
+                              onTap: _recenter,
+                            ),
                           ],
                         ),
                       ),
@@ -137,18 +264,30 @@ class TripItineraryScreen extends StatelessWidget {
                   border: Border.all(color: DesaKitaColors.divider),
                 ),
                 padding: const EdgeInsets.symmetric(vertical: 14),
-                child: const Row(
+                child: Row(
                   children: [
                     Expanded(
                       child: _Stat(
                         label: 'Estimasi Perjalanan',
-                        value: '9 Jam',
+                        value: _stats.duration,
                       ),
                     ),
-                    _StatDivider(),
-                    Expanded(child: _Stat(label: 'Jarak Total', value: '8.6')),
-                    _StatDivider(),
-                    Expanded(child: _Stat(label: '', value: '3', unit: 'Tempat')),
+                    const _StatDivider(),
+                    Expanded(
+                      child: _Stat(
+                        label: 'Jarak Total',
+                        value: _stats.distanceKm.toStringAsFixed(1),
+                        unit: 'KM',
+                      ),
+                    ),
+                    const _StatDivider(),
+                    Expanded(
+                      child: _Stat(
+                        label: '',
+                        value: '${_stats.placeCount}',
+                        unit: 'Tempat',
+                      ),
+                    ),
                   ],
                 ),
               ),
@@ -156,14 +295,60 @@ class TripItineraryScreen extends StatelessWidget {
 
             // ===== TIMELINE =====
             Expanded(
-              child: ListView.separated(
-                padding: const EdgeInsets.fromLTRB(16, 10, 16, 24),
-                itemCount: _items.length,
-                separatorBuilder: (_, _) => const SizedBox(height: 14),
-                itemBuilder: (context, index) => _TimelineRow(
-                  item: _items[index],
-                  isLast: index == _items.length - 1,
-                ),
+              child: _plan.stops.isEmpty
+                  ? _emptyTimeline()
+                  : ListView.separated(
+                      padding: const EdgeInsets.fromLTRB(16, 10, 16, 24),
+                      itemCount: _plan.stops.length,
+                      separatorBuilder: (_, _) => const SizedBox(height: 14),
+                      itemBuilder: (context, index) {
+                        final stop = _plan.stops[index];
+                        return _TimelineRow(
+                          stop: stop,
+                          isLast: index == _plan.stops.length - 1,
+                          onEdit: () => _editTime(stop),
+                          onDelete: () => _deleteStop(stop),
+                          onView: () => _viewStop(stop),
+                        );
+                      },
+                    ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _emptyTimeline() {
+    return Center(
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 32),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const Icon(
+              Icons.event_busy_outlined,
+              size: 34,
+              color: DesaKitaColors.primary,
+            ),
+            const SizedBox(height: 10),
+            Text(
+              'Belum ada kegiatan tersisa',
+              style: GoogleFonts.plusJakartaSans(
+                fontSize: 14,
+                fontWeight: FontWeight.w800,
+                color: DesaKitaColors.text,
+              ),
+            ),
+            const SizedBox(height: 6),
+            Text(
+              'Minta KITA AI membuatkan jadwal baru, lalu tambahkan lewat '
+              'halaman Trip.',
+              textAlign: TextAlign.center,
+              style: GoogleFonts.plusJakartaSans(
+                fontSize: 11.5,
+                height: 1.5,
+                color: DesaKitaColors.textSecondary,
               ),
             ),
           ],
@@ -174,30 +359,20 @@ class TripItineraryScreen extends StatelessWidget {
 }
 
 // ---------------------------------------------------------------------------
-// DATA & WIDGET DEMO
+// PETA & WIDGET PENDUKUNG
 // ---------------------------------------------------------------------------
 
-enum _ItemAction { edit, hapus, lihat }
-
-class _ItineraryItem {
-  final String time;
-  final String title;
-  final String subtitle;
-  final double? rating;
-  final String? thumbnail;
-  final List<_ItemAction> actions;
-
-  const _ItineraryItem({
-    required this.time,
-    required this.title,
-    required this.subtitle,
-    this.rating,
-    this.thumbnail,
-    required this.actions,
-  });
-}
-
 class _RouteMap extends StatelessWidget {
+  final List<LatLng> route;
+  final TripPlan plan;
+  final MapController controller;
+
+  const _RouteMap({
+    required this.route,
+    required this.plan,
+    required this.controller,
+  });
+
   @override
   Widget build(BuildContext context) {
     final tileUrl = AppConfig.isMapboxConfigured
@@ -205,58 +380,58 @@ class _RouteMap extends StatelessWidget {
               '/tiles/256/{z}/{x}/{y}?access_token='
               '${AppConfig.mapboxAccessToken}'
         : 'https://tile.openstreetmap.org/{z}/{x}/{y}.png';
-    return IgnorePointer(
-      child: FlutterMap(
-        options: const MapOptions(
-          initialCenter: LatLng(-5.4140, 105.2330),
-          initialZoom: 11.6,
+
+    final labeled = plan.stops
+        .where((s) => s.kind == TripStopKind.destination && s.hasPosition)
+        .toList();
+
+    return FlutterMap(
+      mapController: controller,
+      options: MapOptions(
+        initialCameraFit: CameraFit.coordinates(
+          coordinates: route,
+          padding: const EdgeInsets.all(24),
+          maxZoom: 15,
         ),
-        children: [
-          TileLayer(urlTemplate: tileUrl, userAgentPackageName: 'com.desakita.desa_wisata'),
-          PolylineLayer(
-            polylines: [
-              Polyline(
-                points: TripItineraryScreen._route,
-                strokeWidth: 4,
-                color: const Color(0xFF4F3DF0),
-              ),
-            ],
-          ),
-          MarkerLayer(
-            markers: [
+        interactionOptions: const InteractionOptions(
+          flags: InteractiveFlag.drag | InteractiveFlag.pinchZoom,
+        ),
+      ),
+      children: [
+        TileLayer(
+          urlTemplate: tileUrl,
+          userAgentPackageName: 'com.desakita.desa_wisata',
+        ),
+        PolylineLayer(
+          polylines: [
+            Polyline(
+              points: route,
+              strokeWidth: 4,
+              color: const Color(0xFF4F3DF0),
+            ),
+          ],
+        ),
+        MarkerLayer(
+          markers: [
+            Marker(
+              point: route.first,
+              width: 28,
+              height: 28,
+              child: const Icon(Icons.circle, size: 14, color: Colors.white),
+            ),
+            for (final stop in labeled)
               Marker(
-                point: TripItineraryScreen._route.first,
-                width: 28,
-                height: 28,
-                child: const Icon(
-                  Icons.circle,
-                  size: 14,
-                  color: Colors.white,
-                ),
-              ),
-              Marker(
-                point: TripItineraryScreen._bukitSakura,
+                point: LatLng(stop.lat!, stop.lng!),
                 width: 130,
                 height: 56,
-                child: const _MapLabel(
-                  label: 'Bukit Sakura',
+                child: _MapLabel(
+                  label: stop.title.replaceFirst('Sampai ke ', ''),
                   icon: Icons.landscape_outlined,
                 ),
               ),
-              Marker(
-                point: TripItineraryScreen._puncakMas,
-                width: 130,
-                height: 56,
-                child: const _MapLabel(
-                  label: 'Puncak Mas',
-                  icon: Icons.place,
-                  iconColor: Color(0xFFD53030),
-                ),
-              ),
-            ],
-          ),
-        ],
-      ),
+          ],
+        ),
+      ],
     );
   }
 }
@@ -264,20 +439,15 @@ class _RouteMap extends StatelessWidget {
 class _MapLabel extends StatelessWidget {
   final String label;
   final IconData icon;
-  final Color iconColor;
 
-  const _MapLabel({
-    required this.label,
-    required this.icon,
-    this.iconColor = Colors.white,
-  });
+  const _MapLabel({required this.label, required this.icon});
 
   @override
   Widget build(BuildContext context) {
     return Column(
       mainAxisSize: MainAxisSize.min,
       children: [
-        Icon(icon, color: iconColor, size: 18),
+        Icon(icon, color: Colors.white, size: 18),
         const SizedBox(height: 2),
         Container(
           padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
@@ -301,7 +471,9 @@ class _MapLabel extends StatelessWidget {
 
 class _MapCircleButton extends StatelessWidget {
   final IconData icon;
-  const _MapCircleButton({required this.icon});
+  final VoidCallback onTap;
+
+  const _MapCircleButton({required this.icon, required this.onTap});
 
   @override
   Widget build(BuildContext context) {
@@ -311,7 +483,7 @@ class _MapCircleButton extends StatelessWidget {
       elevation: 3,
       child: InkWell(
         customBorder: const CircleBorder(),
-        onTap: () {},
+        onTap: onTap,
         child: SizedBox(
           width: 38,
           height: 38,
@@ -332,42 +504,43 @@ class _Stat extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Column(
+      mainAxisAlignment: MainAxisAlignment.center,
       children: [
         if (label.isNotEmpty)
           Text(
             label.toUpperCase(),
-            textAlign: TextAlign.center,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
             style: GoogleFonts.plusJakartaSans(
-              fontSize: 8.5,
+              fontSize: 8,
               fontWeight: FontWeight.w700,
               letterSpacing: 0.4,
               color: DesaKitaColors.textSecondary,
             ),
-          )
-        else
-          const SizedBox(height: 11),
+          ),
         const SizedBox(height: 4),
         Text.rich(
           TextSpan(
             text: value,
-            style: GoogleFonts.plusJakartaSans(
-              fontSize: 16,
-              fontWeight: FontWeight.w800,
-              color: DesaKitaColors.text,
-            ),
-            children: [
-              if (unit.isNotEmpty)
-                TextSpan(
-                  text: ' $unit',
-                  style: GoogleFonts.plusJakartaSans(
-                    fontSize: 9,
-                    fontWeight: FontWeight.w700,
-                    color: DesaKitaColors.textSecondary,
-                  ),
-                ),
-            ],
+            children: unit.isEmpty
+                ? null
+                : [
+                    TextSpan(
+                      text: ' $unit',
+                      style: GoogleFonts.plusJakartaSans(
+                        fontSize: 9,
+                        fontWeight: FontWeight.w700,
+                        color: DesaKitaColors.textSecondary,
+                      ),
+                    ),
+                  ],
           ),
           textAlign: TextAlign.center,
+          style: GoogleFonts.plusJakartaSans(
+            fontSize: 14,
+            fontWeight: FontWeight.w800,
+            color: DesaKitaColors.text,
+          ),
         ),
       ],
     );
@@ -383,197 +556,237 @@ class _StatDivider extends StatelessWidget {
   }
 }
 
+/// Satu baris linimasa: jam, kartu kegiatan, dan aksi Edit/Hapus/Lihat.
 class _TimelineRow extends StatelessWidget {
-  final _ItineraryItem item;
+  final TripStop stop;
   final bool isLast;
+  final VoidCallback onEdit;
+  final VoidCallback onDelete;
+  final VoidCallback onView;
 
-  const _TimelineRow({required this.item, required this.isLast});
+  const _TimelineRow({
+    required this.stop,
+    required this.isLast,
+    required this.onEdit,
+    required this.onDelete,
+    required this.onView,
+  });
 
   @override
   Widget build(BuildContext context) {
-    return Row(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        // Jam + garis vertikal
-        SizedBox(
-          width: 46,
-          child: Column(
-            children: [
-              Text(
-                item.time,
-                style: GoogleFonts.plusJakartaSans(
-                  fontSize: 11,
-                  fontWeight: FontWeight.w800,
-                  color: DesaKitaColors.text,
+    return IntrinsicHeight(
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          // Kolom jam + garis penghubung.
+          SizedBox(
+            width: 46,
+            child: Column(
+              children: [
+                Text(
+                  stop.time,
+                  style: GoogleFonts.plusJakartaSans(
+                    fontSize: 11,
+                    fontWeight: FontWeight.w800,
+                    color: DesaKitaColors.text,
+                  ),
                 ),
-              ),
-              const SizedBox(height: 6),
-              Container(
-                width: 2,
-                height: isLast ? 24 : 84,
-                color: const Color(0xFF9DBFA6),
-              ),
-            ],
-          ),
-        ),
-        // Kartu kegiatan
-        Expanded(
-          child: Container(
-            decoration: BoxDecoration(
-              color: Colors.white,
-              borderRadius: BorderRadius.circular(16),
-              border: Border.all(color: DesaKitaColors.divider),
-              boxShadow: const [
-                BoxShadow(
-                  color: Color(0x08000000),
-                  blurRadius: 8,
-                  offset: Offset(0, 2),
+                const SizedBox(height: 6),
+                Expanded(
+                  child: Container(width: 2, color: DesaKitaColors.divider),
                 ),
+                if (isLast) const SizedBox(height: 12),
               ],
             ),
-            padding: const EdgeInsets.fromLTRB(14, 12, 8, 12),
-            child: Row(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        item.title,
-                        style: GoogleFonts.plusJakartaSans(
-                          fontSize: 12.5,
-                          fontWeight: FontWeight.w800,
-                          color: DesaKitaColors.text,
-                        ),
+          ),
+          const SizedBox(width: 10),
+          Expanded(child: _card(context)),
+        ],
+      ),
+    );
+  }
+
+  Widget _card(BuildContext context) {
+    return Container(
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: DesaKitaColors.divider),
+        boxShadow: const [
+          BoxShadow(
+            color: Color(0x0A000000),
+            blurRadius: 10,
+            offset: Offset(0, 3),
+          ),
+        ],
+      ),
+      padding: const EdgeInsets.fromLTRB(12, 12, 8, 10),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      '${stop.time} - ${stop.title}',
+                      style: GoogleFonts.plusJakartaSans(
+                        fontSize: 12.5,
+                        fontWeight: FontWeight.w800,
+                        color: DesaKitaColors.text,
                       ),
-                      const SizedBox(height: 3),
-                      Text(
-                        item.subtitle,
-                        style: GoogleFonts.plusJakartaSans(
-                          fontSize: 10,
-                          color: DesaKitaColors.textSecondary,
-                        ),
+                    ),
+                    const SizedBox(height: 4),
+                    Text(
+                      stop.note,
+                      style: GoogleFonts.plusJakartaSans(
+                        fontSize: 10,
+                        color: DesaKitaColors.textSecondary,
                       ),
-                      if (item.thumbnail != null || item.rating != null) ...[
-                        const SizedBox(height: 8),
-                        Row(
-                          children: [
-                            if (item.thumbnail != null)
-                              ClipRRect(
-                                borderRadius: BorderRadius.circular(8),
-                                child: Image.asset(
-                                  item.thumbnail!,
-                                  width: 40,
-                                  height: 40,
-                                  fit: BoxFit.cover,
-                                  errorBuilder: (_, _, _) => Container(
-                                    width: 40,
-                                    height: 40,
-                                    color: DesaKitaColors.mutedGreen,
-                                    child: const Icon(
-                                      Icons.image_outlined,
-                                      size: 18,
-                                      color: DesaKitaColors.primary,
-                                    ),
-                                  ),
-                                ),
-                              ),
-                            const SizedBox(width: 10),
-                            if (item.rating != null)
-                              Row(
-                                children: [
-                                  ...List.generate(
-                                    5,
-                                    (i) => Icon(
-                                      Icons.star,
-                                      size: 12,
-                                      color: i < item.rating!.round()
-                                          ? const Color(0xFFF2B01E)
-                                          : const Color(0xFFE0E0E0),
-                                    ),
-                                  ),
-                                  const SizedBox(width: 4),
-                                  Text(
-                                    item.rating!.toStringAsFixed(1),
-                                    style: GoogleFonts.plusJakartaSans(
-                                      fontSize: 10,
-                                      fontWeight: FontWeight.w800,
-                                      color: DesaKitaColors.text,
-                                    ),
-                                  ),
-                                ],
-                              ),
-                          ],
-                        ),
-                      ],
-                      const SizedBox(height: 8),
-                      Wrap(
-                        spacing: 8,
-                        runSpacing: 6,
+                    ),
+                    if ((stop.rating ?? 0) > 0) ...[
+                      const SizedBox(height: 6),
+                      Row(
                         children: [
-                          for (final action in item.actions)
-                            _ActionChip(action: action),
+                          const Icon(
+                            Icons.star_rounded,
+                            size: 14,
+                            color: DesaKitaColors.amber,
+                          ),
+                          const SizedBox(width: 3),
+                          Text(
+                            stop.rating!.toStringAsFixed(1),
+                            style: GoogleFonts.plusJakartaSans(
+                              fontSize: 10.5,
+                              fontWeight: FontWeight.w800,
+                              color: DesaKitaColors.text,
+                            ),
+                          ),
                         ],
                       ),
                     ],
-                  ),
+                  ],
                 ),
-                IconButton(
-                  onPressed: () {},
-                  icon: const Icon(
-                    Icons.more_vert,
-                    size: 18,
-                    color: DesaKitaColors.textSecondary,
-                  ),
+              ),
+              if (stop.imageUrl != null && stop.imageUrl!.isNotEmpty)
+                Padding(
+                  padding: const EdgeInsets.only(left: 10, right: 4),
+                  child: _Thumbnail(path: stop.imageUrl!),
                 ),
-              ],
-            ),
+            ],
           ),
-        ),
-      ],
+          const SizedBox(height: 10),
+          Wrap(
+            spacing: 8,
+            runSpacing: 8,
+            children: [
+              if (stop.isEditable) ...[
+                _ActionChip(
+                  label: 'Edit',
+                  icon: Icons.edit_outlined,
+                  background: const Color(0xFFE3F0E1),
+                  foreground: DesaKitaColors.darkGreen,
+                  onTap: onEdit,
+                ),
+                _ActionChip(
+                  label: 'Hapus',
+                  icon: Icons.delete_outline,
+                  background: const Color(0xFFFDE8E7),
+                  foreground: const Color(0xFFD53030),
+                  onTap: onDelete,
+                ),
+              ] else
+                _ActionChip(
+                  label: 'Lihat',
+                  icon: Icons.visibility_outlined,
+                  background: const Color(0xFFE3F0E1),
+                  foreground: DesaKitaColors.darkGreen,
+                  onTap: onView,
+                ),
+            ],
+          ),
+        ],
+      ),
     );
   }
 }
 
-class _ActionChip extends StatelessWidget {
-  final _ItemAction action;
-  const _ActionChip({required this.action});
+/// Thumbnail baris jadwal; menerima aset lokal maupun URL jaringan.
+class _Thumbnail extends StatelessWidget {
+  final String path;
+
+  const _Thumbnail({required this.path});
 
   @override
   Widget build(BuildContext context) {
-    final (label, bg, fg) = switch (action) {
-      _ItemAction.edit => (
-        'Edit',
-        const Color(0xFFE3F0E1),
-        DesaKitaColors.darkGreen,
+    final isNetwork = path.startsWith('http');
+    return ClipRRect(
+      borderRadius: BorderRadius.circular(12),
+      child: SizedBox(
+        width: 44,
+        height: 44,
+        child: isNetwork
+            ? Image.network(
+                path,
+                fit: BoxFit.cover,
+                errorBuilder: (_, _, _) => _assetFallback(),
+              )
+            : Image.asset(
+                path,
+                fit: BoxFit.cover,
+                errorBuilder: (_, _, _) => _assetFallback(),
+              ),
       ),
-      _ItemAction.hapus => (
-        'Hapus',
-        const Color(0xFFFDE8E7),
-        const Color(0xFFD53030),
-      ),
-      _ItemAction.lihat => (
-        'Lihat',
-        const Color(0xFFE3F0E1),
-        DesaKitaColors.darkGreen,
-      ),
-    };
+    );
+  }
+
+  Widget _assetFallback() {
+    return Image.asset('assets/img/desakita.jpg', fit: BoxFit.cover);
+  }
+}
+
+class _ActionChip extends StatelessWidget {
+  final String label;
+  final IconData icon;
+  final Color background;
+  final Color foreground;
+  final VoidCallback onTap;
+
+  const _ActionChip({
+    required this.label,
+    required this.icon,
+    required this.background,
+    required this.foreground,
+    required this.onTap,
+  });
+
+  @override
+  Widget build(BuildContext context) {
     return Material(
-      color: bg,
+      color: background,
       borderRadius: BorderRadius.circular(20),
       child: InkWell(
         borderRadius: BorderRadius.circular(20),
-        onTap: () {},
+        onTap: onTap,
         child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 7),
-          child: Text(
-            label,
-            style: GoogleFonts.plusJakartaSans(
-              fontSize: 10,
-              fontWeight: FontWeight.w800,
-              color: fg,
-            ),
+          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 7),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Icon(icon, size: 13, color: foreground),
+              const SizedBox(width: 4),
+              Text(
+                label,
+                style: GoogleFonts.plusJakartaSans(
+                  fontSize: 10,
+                  fontWeight: FontWeight.w800,
+                  color: foreground,
+                ),
+              ),
+            ],
           ),
         ),
       ),

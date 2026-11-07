@@ -7,15 +7,24 @@ class BookingManagementScreen extends StatefulWidget {
   const BookingManagementScreen({super.key});
 
   @override
-  State<BookingManagementScreen> createState() => _BookingManagementScreenState();
+  State<BookingManagementScreen> createState() =>
+      _BookingManagementScreenState();
 }
 
 class _BookingManagementScreenState extends State<BookingManagementScreen> {
   final BookingService _bookingService = BookingService();
   String _selectedFilter = 'Semua';
-  final List<String> _filters = ['Semua', 'Pending', 'Confirmed', 'Cancelled', 'Completed'];
+  final List<String> _filters = [
+    'Semua',
+    'Pending',
+    'Confirmed',
+    'Cancelled',
+    'Completed',
+  ];
 
-  List<Map<String, dynamic>> _filterBookings(List<Map<String, dynamic>> bookings) {
+  List<Map<String, dynamic>> _filterBookings(
+    List<Map<String, dynamic>> bookings,
+  ) {
     if (_selectedFilter == 'Semua') return bookings;
     final filterStatus = _selectedFilter.toLowerCase();
     return bookings.where((b) => b['status'] == filterStatus).toList();
@@ -65,7 +74,10 @@ class _BookingManagementScreenState extends State<BookingManagementScreen> {
         setState(() {});
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('Status booking berhasil diubah', style: GoogleFonts.poppins(fontSize: 13)),
+            content: Text(
+              'Status booking berhasil diubah',
+              style: GoogleFonts.poppins(fontSize: 13),
+            ),
             backgroundColor: const Color(0xFF2D5016),
           ),
         );
@@ -74,7 +86,10 @@ class _BookingManagementScreenState extends State<BookingManagementScreen> {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('Gagal mengubah status: $e', style: GoogleFonts.poppins(fontSize: 13)),
+            content: Text(
+              'Gagal mengubah status: $e',
+              style: GoogleFonts.poppins(fontSize: 13),
+            ),
             backgroundColor: Colors.red,
           ),
         );
@@ -86,7 +101,10 @@ class _BookingManagementScreenState extends State<BookingManagementScreen> {
     final confirm = await showDialog<bool>(
       context: context,
       builder: (context) => AlertDialog(
-        title: Text('Hapus Booking?', style: GoogleFonts.poppins(fontWeight: FontWeight.w600)),
+        title: Text(
+          'Hapus Booking?',
+          style: GoogleFonts.poppins(fontWeight: FontWeight.w600),
+        ),
         content: Text(
           'Apakah Anda yakin ingin menghapus booking ini?',
           style: GoogleFonts.poppins(fontSize: 14),
@@ -94,7 +112,10 @@ class _BookingManagementScreenState extends State<BookingManagementScreen> {
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context, false),
-            child: Text('Batal', style: GoogleFonts.poppins(color: Colors.grey[600])),
+            child: Text(
+              'Batal',
+              style: GoogleFonts.poppins(color: Colors.grey[600]),
+            ),
           ),
           TextButton(
             onPressed: () => Navigator.pop(context, true),
@@ -111,7 +132,10 @@ class _BookingManagementScreenState extends State<BookingManagementScreen> {
           setState(() {});
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
-              content: Text('Booking berhasil dihapus', style: GoogleFonts.poppins(fontSize: 13)),
+              content: Text(
+                'Booking berhasil dihapus',
+                style: GoogleFonts.poppins(fontSize: 13),
+              ),
               backgroundColor: const Color(0xFF2D5016),
             ),
           );
@@ -120,7 +144,10 @@ class _BookingManagementScreenState extends State<BookingManagementScreen> {
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
-              content: Text('Gagal menghapus booking: $e', style: GoogleFonts.poppins(fontSize: 13)),
+              content: Text(
+                'Gagal menghapus booking: $e',
+                style: GoogleFonts.poppins(fontSize: 13),
+              ),
               backgroundColor: Colors.red,
             ),
           );
@@ -187,11 +214,18 @@ class _BookingManagementScreenState extends State<BookingManagementScreen> {
                     child: Column(
                       mainAxisAlignment: MainAxisAlignment.center,
                       children: [
-                        Icon(Icons.error_outline, size: 56, color: Colors.red[300]),
+                        Icon(
+                          Icons.error_outline,
+                          size: 56,
+                          color: Colors.red[300],
+                        ),
                         const SizedBox(height: 12),
                         Text(
                           'Terjadi kesalahan',
-                          style: GoogleFonts.poppins(fontSize: 14, color: Colors.grey[600]),
+                          style: GoogleFonts.poppins(
+                            fontSize: 14,
+                            color: Colors.grey[600],
+                          ),
                         ),
                       ],
                     ),
@@ -206,7 +240,11 @@ class _BookingManagementScreenState extends State<BookingManagementScreen> {
                     child: Column(
                       mainAxisAlignment: MainAxisAlignment.center,
                       children: [
-                        Icon(Icons.event_busy_outlined, size: 64, color: Colors.grey[300]),
+                        Icon(
+                          Icons.event_busy_outlined,
+                          size: 64,
+                          color: Colors.grey[300],
+                        ),
                         const SizedBox(height: 16),
                         Text(
                           'Belum ada booking',
@@ -263,7 +301,9 @@ class _BookingManagementScreenState extends State<BookingManagementScreen> {
               margin: const EdgeInsets.only(right: 8),
               padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 8),
               decoration: BoxDecoration(
-                color: isSelected ? const Color(0xFF2D5016) : const Color(0xFFE8EDE3),
+                color: isSelected
+                    ? const Color(0xFF2D5016)
+                    : const Color(0xFFE8EDE3),
                 borderRadius: BorderRadius.circular(20),
               ),
               child: Text(
@@ -350,7 +390,10 @@ class _BookingCard extends StatelessWidget {
                     ),
                   ),
                   Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 12,
+                      vertical: 6,
+                    ),
                     decoration: BoxDecoration(
                       color: getStatusColor(status).withValues(alpha: 0.1),
                       borderRadius: BorderRadius.circular(20),
@@ -369,11 +412,18 @@ class _BookingCard extends StatelessWidget {
               const SizedBox(height: 12),
               Row(
                 children: [
-                  Icon(Icons.calendar_today_outlined, size: 14, color: Colors.grey[600]),
+                  Icon(
+                    Icons.calendar_today_outlined,
+                    size: 14,
+                    color: Colors.grey[600],
+                  ),
                   const SizedBox(width: 6),
                   Text(
                     '${formatDate(booking['check_in'] as String?)} - ${formatDate(booking['check_out'] as String?)}',
-                    style: GoogleFonts.poppins(fontSize: 12, color: Colors.grey[700]),
+                    style: GoogleFonts.poppins(
+                      fontSize: 12,
+                      color: Colors.grey[700],
+                    ),
                   ),
                 ],
               ),
@@ -384,7 +434,10 @@ class _BookingCard extends StatelessWidget {
                   const SizedBox(width: 6),
                   Text(
                     '${booking['guest_count'] ?? 1} tamu',
-                    style: GoogleFonts.poppins(fontSize: 12, color: Colors.grey[700]),
+                    style: GoogleFonts.poppins(
+                      fontSize: 12,
+                      color: Colors.grey[700],
+                    ),
                   ),
                   const Spacer(),
                   Text(
@@ -460,20 +513,38 @@ class _BookingDetailSheet extends StatelessWidget {
           _DetailRow(label: 'Email', value: user?['email'] ?? '-'),
           _DetailRow(label: 'Telepon', value: user?['phone'] ?? '-'),
           const Divider(height: 24),
-          _DetailRow(label: 'Check-in', value: formatDate(booking['check_in'] as String?)),
-          _DetailRow(label: 'Check-out', value: formatDate(booking['check_out'] as String?)),
-          _DetailRow(label: 'Jumlah Tamu', value: '${booking['guest_count'] ?? 1} orang'),
-          _DetailRow(label: 'Total Harga', value: booking['total_price'] as String? ?? 'Rp 0'),
+          _DetailRow(
+            label: 'Check-in',
+            value: formatDate(booking['check_in'] as String?),
+          ),
+          _DetailRow(
+            label: 'Check-out',
+            value: formatDate(booking['check_out'] as String?),
+          ),
+          _DetailRow(
+            label: 'Jumlah Tamu',
+            value: '${booking['guest_count'] ?? 1} orang',
+          ),
+          _DetailRow(
+            label: 'Total Harga',
+            value: booking['total_price'] as String? ?? 'Rp 0',
+          ),
           const SizedBox(height: 20),
           Row(
             children: [
               Text(
                 'Status:',
-                style: GoogleFonts.poppins(fontSize: 14, fontWeight: FontWeight.w600),
+                style: GoogleFonts.poppins(
+                  fontSize: 14,
+                  fontWeight: FontWeight.w600,
+                ),
               ),
               const SizedBox(width: 8),
               Container(
-                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 12,
+                  vertical: 6,
+                ),
                 decoration: BoxDecoration(
                   color: getStatusColor(status).withValues(alpha: 0.1),
                   borderRadius: BorderRadius.circular(20),
@@ -507,7 +578,10 @@ class _BookingDetailSheet extends StatelessWidget {
                       ),
                       padding: const EdgeInsets.symmetric(vertical: 14),
                     ),
-                    child: Text('Tolak', style: GoogleFonts.poppins(fontWeight: FontWeight.w600)),
+                    child: Text(
+                      'Tolak',
+                      style: GoogleFonts.poppins(fontWeight: FontWeight.w600),
+                    ),
                   ),
                 ),
                 const SizedBox(width: 12),
@@ -526,7 +600,10 @@ class _BookingDetailSheet extends StatelessWidget {
                       padding: const EdgeInsets.symmetric(vertical: 14),
                       elevation: 0,
                     ),
-                    child: Text('Konfirmasi', style: GoogleFonts.poppins(fontWeight: FontWeight.w600)),
+                    child: Text(
+                      'Konfirmasi',
+                      style: GoogleFonts.poppins(fontWeight: FontWeight.w600),
+                    ),
                   ),
                 ),
               ],
@@ -548,7 +625,10 @@ class _BookingDetailSheet extends StatelessWidget {
                   padding: const EdgeInsets.symmetric(vertical: 14),
                   elevation: 0,
                 ),
-                child: Text('Tandai Selesai', style: GoogleFonts.poppins(fontWeight: FontWeight.w600)),
+                child: Text(
+                  'Tandai Selesai',
+                  style: GoogleFonts.poppins(fontWeight: FontWeight.w600),
+                ),
               ),
             ),
           ],
@@ -576,10 +656,7 @@ class _DetailRow extends StatelessWidget {
             width: 120,
             child: Text(
               label,
-              style: GoogleFonts.poppins(
-                fontSize: 13,
-                color: Colors.grey[600],
-              ),
+              style: GoogleFonts.poppins(fontSize: 13, color: Colors.grey[600]),
             ),
           ),
           Expanded(

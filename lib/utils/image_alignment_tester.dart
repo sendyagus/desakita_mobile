@@ -30,9 +30,7 @@ class _ImageAlignmentTesterState extends State<ImageAlignmentTester> {
               errorBuilder: (context, error, stackTrace) {
                 return Container(
                   color: Colors.grey[300],
-                  child: const Center(
-                    child: Icon(Icons.error, size: 80),
-                  ),
+                  child: const Center(child: Icon(Icons.error, size: 80)),
                 );
               },
             ),
@@ -65,8 +63,9 @@ class _ImageAlignmentTesterState extends State<ImageAlignmentTester> {
                   padding: const EdgeInsets.all(20),
                   decoration: BoxDecoration(
                     color: Colors.white,
-                    borderRadius:
-                        const BorderRadius.vertical(top: Radius.circular(20)),
+                    borderRadius: const BorderRadius.vertical(
+                      top: Radius.circular(20),
+                    ),
                   ),
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
@@ -236,16 +235,13 @@ class _PresetButton extends StatelessWidget {
         minimumSize: Size.zero,
         tapTargetSize: MaterialTapTargetSize.shrinkWrap,
       ),
-      child: Text(
-        label,
-        style: GoogleFonts.poppins(fontSize: 11),
-      ),
+      child: Text(label, style: GoogleFonts.poppins(fontSize: 11)),
     );
   }
 }
 
 /// Cara menggunakan:
-/// 
+///
 /// Navigator.push(
 ///   context,
 ///   MaterialPageRoute(

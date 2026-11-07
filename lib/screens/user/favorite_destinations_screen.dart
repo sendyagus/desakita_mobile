@@ -30,8 +30,10 @@ class _FavoriteDestinationsScreenState
           backgroundColor: Colors.white,
           elevation: 0,
           leading: IconButton(
-            icon: const Icon(Icons.arrow_back_ios_new_rounded,
-                color: Color(0xFF2D5016)),
+            icon: const Icon(
+              Icons.arrow_back_ios_new_rounded,
+              color: Color(0xFF2D5016),
+            ),
             onPressed: () => Navigator.pop(context),
           ),
           title: Text(
@@ -59,8 +61,10 @@ class _FavoriteDestinationsScreenState
         backgroundColor: Colors.white,
         elevation: 0,
         leading: IconButton(
-          icon: const Icon(Icons.arrow_back_ios_new_rounded,
-              color: Color(0xFF2D5016)),
+          icon: const Icon(
+            Icons.arrow_back_ios_new_rounded,
+            color: Color(0xFF2D5016),
+          ),
           onPressed: () => Navigator.pop(context),
         ),
         title: Text(
@@ -85,7 +89,9 @@ class _FavoriteDestinationsScreenState
             );
           }
 
-          if (userSnap.hasError || !userSnap.hasData || !userSnap.data!.exists) {
+          if (userSnap.hasError ||
+              !userSnap.hasData ||
+              !userSnap.data!.exists) {
             return Center(
               child: Text(
                 'Gagal memuat data',
@@ -95,8 +101,9 @@ class _FavoriteDestinationsScreenState
           }
 
           final userData = userSnap.data!.data() as Map<String, dynamic>;
-          final List<String> favoriteIds =
-              List<String>.from(userData['favorites'] ?? []);
+          final List<String> favoriteIds = List<String>.from(
+            userData['favorites'] ?? [],
+          );
 
           if (favoriteIds.isEmpty) {
             return _buildEmptyState();
@@ -129,7 +136,9 @@ class _FavoriteDestinationsScreenState
                     final d = doc.data() as Map<String, dynamic>;
                     return _destinationService.docDataToFormMap(doc.id, d);
                   })
-                  .where((d) => d['status'] == true) // hanya tampilkan yang aktif
+                  .where(
+                    (d) => d['status'] == true,
+                  ) // hanya tampilkan yang aktif
                   .toList();
 
               if (favoritedDestinations.isEmpty) {
@@ -270,9 +279,7 @@ class _FavoriteDestinationCard extends StatelessWidget {
         Navigator.push(
           context,
           MaterialPageRoute(
-            builder: (_) => DestinationDetailScreen(
-              destination: destination,
-            ),
+            builder: (_) => DestinationDetailScreen(destination: destination),
           ),
         );
       },
