@@ -8,6 +8,7 @@ import 'package:desa_wisata/screens/booking_screen.dart';
 import 'package:desa_wisata/theme/desakita_theme.dart';
 import 'package:desa_wisata/firebase_options.dart';
 import 'package:desa_wisata/config/app_config.dart';
+import 'package:desa_wisata/services/auth_service.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -28,6 +29,13 @@ Future<void> main() async {
     debugPrint('✅ Firebase initialized successfully');
   } catch (e) {
     debugPrint('❌ Firebase initialization error: $e');
+  }
+
+  // Web: pulihkan hasil alur redirect Google (bila popup diblokir browser).
+  try {
+    await AuthService.instance.handlePendingGoogleRedirect();
+  } catch (e) {
+    debugPrint('⚠️  Pending Google redirect: $e');
   }
 
   runApp(const DesaKitaApp());

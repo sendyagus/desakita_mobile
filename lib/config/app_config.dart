@@ -7,8 +7,14 @@ class AppConfig {
   /// Folder Google Drive tempat admin mengunggah foto destinasi.
   static const String googleDriveFolderId = '19QjJ9MoUUbk4lpnQt5ay_5EMv8HgZ4dE';
 
-  /// OAuth 2.0 Web Client ID (sama dengan meta tag di web/index.html).
-  static const String webGoogleClientId =
+  /// OAuth 2.0 Web Client ID untuk Google Drive (proyek Google Cloud terpisah
+  /// dari Firebase). Hanya dipakai di platform web; di Android/iOS Drive
+  /// memakai konfigurasi bawaan google-services.json / Info.plist.
+  ///
+  /// Catatan: login Google di web TIDAK memakai client ID ini — ia memakai
+  /// FirebaseAuth.signInWithPopup yang memakai OAuth client bawaan Firebase,
+  /// sehingga bebas dari error "origin_mismatch".
+  static const String driveWebGoogleClientId =
       '866210125594-sbafjaiafirlc7bt98snnd78gcfrb2ni.apps.googleusercontent.com';
 
   // ─── Groq AI Configuration ──────────────────────────────────────────────

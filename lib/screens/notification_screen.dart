@@ -1,26 +1,27 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:desa_wisata/theme/desakita_theme.dart';
 
-enum NotificationType { update, promo, booking, system }
-
-class NotificationItem {
-  final String id;
+/// Satu item notifikasi (data demo lokal; belum terhubung ke backend).
+class _NotificationItem {
+  final IconData icon;
+  final Color iconColor;
   final String title;
   final String body;
-  final NotificationType type;
-  final DateTime date;
-  bool isRead;
+  final String time;
+  final bool unread;
 
-  NotificationItem({
-    required this.id,
+  const _NotificationItem({
+    required this.icon,
+    required this.iconColor,
     required this.title,
     required this.body,
-    required this.type,
-    required this.date,
-    this.isRead = false,
+    required this.time,
+    this.unread = false,
   });
 }
 
+/// Layar Notifikasi — dikelompokkan per "Hari Ini" dan "Minggu Ini".
 class NotificationScreen extends StatefulWidget {
   const NotificationScreen({super.key});
 
@@ -29,457 +30,230 @@ class NotificationScreen extends StatefulWidget {
 }
 
 class _NotificationScreenState extends State<NotificationScreen> {
-  // Simulasi data notifikasi, termasuk update aplikasi
-  final List<NotificationItem> _notifications = [
-    NotificationItem(
-      id: '1',
-      title: 'Pembaruan Aplikasi v1.2.0 Tersedia! 🚀',
+  late List<_NotificationItem> _today = const [
+    _NotificationItem(
+      icon: Icons.local_activity_outlined,
+      iconColor: DesaKitaColors.primary,
+      title: 'Trip terbaru',
       body:
-          'Kami telah merilis versi terbaru! Update kali ini menghadirkan asisten AI yang lebih pintar, perbaikan bug di halaman Booking, serta peningkatan kecepatan aplikasi hingga 40%. Yuk update sekarang!',
-      type: NotificationType.update,
-      date: DateTime.now().subtract(const Duration(minutes: 30)),
-      isRead: false,
+          'Perbarui itinerary baru anda cek sekarang untuk memulai perjalanan yang menyenangkan',
+      time: '1 menit yang lalu',
+      unread: true,
     ),
-    NotificationItem(
-      id: '2',
-      title: 'Diskon Spesial 25% Tiket Wisata Alam! 🍃',
+    _NotificationItem(
+      icon: Icons.verified_outlined,
+      iconColor: DesaKitaColors.primary,
+      title: 'Pesanan Tiket Dikonfirmasi',
       body:
-          'Dapatkan potongan harga khusus untuk pemesanan tiket wisata alam di desa terpilih sepanjang minggu ini. Masukkan kode promo: ALAMINDONESIA saat checkout.',
-      type: NotificationType.promo,
-      date: DateTime.now().subtract(const Duration(hours: 4)),
-      isRead: false,
-    ),
-    NotificationItem(
-      id: '3',
-      title: 'Booking Berhasil Dikonfirmasi! ✅',
-      body:
-          'Selamat! Pemesanan tiket Anda untuk paket "Eksplorasi Desa Pelangi" pada tanggal 25 Mei 2026 telah disetujui oleh admin. Silakan cek detail e-ticket di halaman Booking.',
-      type: NotificationType.booking,
-      date: DateTime.now().subtract(const Duration(days: 1)),
-      isRead: true,
-    ),
-    NotificationItem(
-      id: '4',
-      title: 'Fitur Baru: DesaKita AI Agent 🤖',
-      body:
-          'Kini Anda bisa berkonsultasi langsung mengenai rekomendasi wisata, kuliner terbaik, serta rute perjalanan terdekat melalui AI Agent interaktif baru di tab tengah.',
-      type: NotificationType.update,
-      date: DateTime.now().subtract(const Duration(days: 2)),
-      isRead: true,
-    ),
-    NotificationItem(
-      id: '5',
-      title: 'Pemberitahuan Sistem ⚙️',
-      body:
-          'Akan dilakukan pemeliharaan server berkala pada hari Minggu pukul 01:00 - 03:00 WIB. Aplikasi mungkin tidak dapat diakses untuk sementara waktu selama proses ini.',
-      type: NotificationType.system,
-      date: DateTime.now().subtract(const Duration(days: 3)),
-      isRead: true,
+          'Pesanan Tiket Anda untuk \'Bukit sakura dan puncak mas\' pada 10 July telah...',
+      time: '1 menit yang lalu',
+      unread: true,
     ),
   ];
 
-  void _markAllAsRead() {
+  late List<_NotificationItem> _thisWeek = const [
+    _NotificationItem(
+      icon: Icons.redeem_outlined,
+      iconColor: Color(0xFF8A5B00),
+      title: 'Promo Spesial Liburan!',
+      body:
+          'Dapatkan diskon 20% untuk semua paket wisata alam khusus minggu ini...',
+      time: '1 hari yang lalu',
+      unread: true,
+    ),
+    _NotificationItem(
+      icon: Icons.star_border_rounded,
+      iconColor: Color(0xFF6B7280),
+      title: 'Beri Nilai Perjalanan Anda',
+      body: 'Bagaimana pengalaman Anda berkunjung di lembah bikp? Bagikan...',
+      time: '2 hari yang lalu',
+    ),
+  ];
+
+  int get _newCount =>
+      _today.where((n) => n.unread).length +
+      _thisWeek.where((n) => n.unread).length;
+
+  void _markAllRead() {
     setState(() {
-      for (var item in _notifications) {
-        item.isRead = true;
-      }
+      _today = _today.map((n) => _copy(n, unread: false)).toList();
+      _thisWeek = _thisWeek.map((n) => _copy(n, unread: false)).toList();
     });
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text(
-          'Semua notifikasi ditandai sebagai dibaca',
-          style: GoogleFonts.poppins(fontSize: 13, color: Colors.white),
-        ),
-        backgroundColor: const Color(0xFF2D5016),
-        behavior: SnackBarBehavior.floating,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-      ),
+  }
+
+  _NotificationItem _copy(_NotificationItem n, {required bool unread}) {
+    return _NotificationItem(
+      icon: n.icon,
+      iconColor: n.iconColor,
+      title: n.title,
+      body: n.body,
+      time: n.time,
+      unread: unread,
     );
-  }
-
-  void _toggleReadStatus(int index) {
-    setState(() {
-      _notifications[index].isRead = !_notifications[index].isRead;
-    });
-  }
-
-  void _deleteNotification(String id) {
-    setState(() {
-      _notifications.removeWhere((item) => item.id == id);
-    });
-  }
-
-  String _formatTime(DateTime dateTime) {
-    final now = DateTime.now();
-    final difference = now.difference(dateTime);
-
-    if (difference.inMinutes < 60) {
-      return '${difference.inMinutes} menit lalu';
-    } else if (difference.inHours < 24) {
-      return '${difference.inHours} jam lalu';
-    } else if (difference.inDays == 1) {
-      return 'Kemarin';
-    } else {
-      return '${dateTime.day}/${dateTime.month}/${dateTime.year}';
-    }
-  }
-
-  Color _getTypeColor(NotificationType type) {
-    switch (type) {
-      case NotificationType.update:
-        return const Color(0xFF0F75EC); // Biru untuk update
-      case NotificationType.promo:
-        return const Color(0xFFE8A020); // Amber untuk promo
-      case NotificationType.booking:
-        return const Color(0xFF2D5016); // Hijau untuk booking
-      case NotificationType.system:
-        return const Color(0xFFD32F2F); // Merah untuk system
-    }
-  }
-
-  IconData _getTypeIcon(NotificationType type) {
-    switch (type) {
-      case NotificationType.update:
-        return Icons.system_update_alt_rounded;
-      case NotificationType.promo:
-        return Icons.local_offer_outlined;
-      case NotificationType.booking:
-        return Icons.confirmation_number_outlined;
-      case NotificationType.system:
-        return Icons.error_outline_rounded;
-    }
-  }
-
-  String _getTypeLabel(NotificationType type) {
-    switch (type) {
-      case NotificationType.update:
-        return 'Update Aplikasi';
-      case NotificationType.promo:
-        return 'Promo & Penawaran';
-      case NotificationType.booking:
-        return 'Booking & Aktivitas';
-      case NotificationType.system:
-        return 'Sistem';
-    }
   }
 
   @override
   Widget build(BuildContext context) {
-    final unreadCount = _notifications.where((n) => !n.isRead).length;
-
     return Scaffold(
-      backgroundColor: const Color(0xFFF5F5F0),
+      backgroundColor: DesaKitaColors.background,
       appBar: AppBar(
-        backgroundColor: const Color(0xFFF5F5F0),
+        backgroundColor: DesaKitaColors.background,
         elevation: 0,
+        centerTitle: true,
         leading: IconButton(
           icon: const Icon(
-            Icons.arrow_back_ios_new_rounded,
-            color: Color(0xFF2D5016),
+            Icons.arrow_back_rounded,
+            color: DesaKitaColors.primary,
           ),
           onPressed: () => Navigator.pop(context),
         ),
         title: Text(
           'Notifikasi',
-          style: GoogleFonts.poppins(
-            color: const Color(0xFF1A1A1A),
-            fontWeight: FontWeight.w700,
+          style: GoogleFonts.plusJakartaSans(
             fontSize: 18,
+            fontWeight: FontWeight.w700,
+            color: DesaKitaColors.text,
           ),
         ),
-        actions: [
-          if (_notifications.isNotEmpty)
-            TextButton(
-              onPressed: _markAllAsRead,
-              child: Text(
-                'Baca Semua',
-                style: GoogleFonts.poppins(
-                  color: const Color(0xFF2D5016),
-                  fontWeight: FontWeight.w600,
-                  fontSize: 13,
+      ),
+      body: ListView(
+        padding: const EdgeInsets.fromLTRB(18, 4, 18, 24),
+        children: [
+          Row(
+            children: [
+              Expanded(
+                child: Text(
+                  _newCount == 0
+                      ? 'Tidak ada notifikasi baru'
+                      : 'Anda memiliki $_newCount notifikasi baru',
+                  style: GoogleFonts.plusJakartaSans(
+                    fontSize: 13,
+                    color: Colors.grey[600],
+                  ),
                 ),
               ),
-            ),
-        ],
-      ),
-      body: _notifications.isEmpty
-          ? _buildEmptyState()
-          : Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Padding(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 16.0,
-                    vertical: 8.0,
-                  ),
-                  child: Row(
-                    children: [
-                      Container(
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 10,
-                          vertical: 4,
-                        ),
-                        decoration: BoxDecoration(
-                          color: const Color(0xFF2D5016).withValues(alpha: 0.1),
-                          borderRadius: BorderRadius.circular(20),
-                        ),
-                        child: Text(
-                          '$unreadCount Belum Dibaca',
-                          style: GoogleFonts.poppins(
-                            color: const Color(0xFF2D5016),
-                            fontWeight: FontWeight.w600,
-                            fontSize: 11,
-                          ),
-                        ),
-                      ),
-                      const Spacer(),
-                      Text(
-                        'Geser kartu untuk menghapus',
-                        style: GoogleFonts.poppins(
-                          color: Colors.grey[500],
-                          fontSize: 11,
-                          fontStyle: FontStyle.italic,
-                        ),
-                      ),
-                    ],
+              TextButton(
+                onPressed: _newCount == 0 ? null : _markAllRead,
+                style: TextButton.styleFrom(
+                  backgroundColor: DesaKitaColors.primary,
+                  foregroundColor: Colors.white,
+                  padding: const EdgeInsets.symmetric(horizontal: 14),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(10),
                   ),
                 ),
-                Expanded(
-                  child: ListView.builder(
-                    itemCount: _notifications.length,
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 16,
-                      vertical: 8,
-                    ),
-                    itemBuilder: (context, index) {
-                      final item = _notifications[index];
-                      return Dismissible(
-                        key: Key(item.id),
-                        direction: DismissDirection.endToStart,
-                        onDismissed: (direction) {
-                          _deleteNotification(item.id);
-                          ScaffoldMessenger.of(context).showSnackBar(
-                            SnackBar(
-                              content: Text(
-                                'Notifikasi dihapus',
-                                style: GoogleFonts.poppins(
-                                  fontSize: 13,
-                                  color: Colors.white,
-                                ),
-                              ),
-                              action: SnackBarAction(
-                                label: 'Urungkan',
-                                textColor: Colors.white,
-                                onPressed: () {
-                                  setState(() {
-                                    _notifications.insert(index, item);
-                                  });
-                                },
-                              ),
-                              backgroundColor: Colors.grey[800],
-                              duration: const Duration(seconds: 3),
-                              behavior: SnackBarBehavior.floating,
-                              shape: RoundedRectangleBorder(
-                                borderRadius: BorderRadius.circular(10),
-                              ),
-                            ),
-                          );
-                        },
-                        background: Container(
-                          alignment: Alignment.centerRight,
-                          padding: const EdgeInsets.only(right: 20.0),
-                          margin: const EdgeInsets.only(bottom: 12.0),
-                          decoration: BoxDecoration(
-                            color: const Color(0xFFD32F2F),
-                            borderRadius: BorderRadius.circular(16),
-                          ),
-                          child: const Icon(
-                            Icons.delete_sweep_rounded,
-                            color: Colors.white,
-                            size: 28,
-                          ),
-                        ),
-                        child: GestureDetector(
-                          onTap: () => _toggleReadStatus(index),
-                          child: AnimatedContainer(
-                            duration: const Duration(milliseconds: 300),
-                            margin: const EdgeInsets.only(bottom: 12.0),
-                            padding: const EdgeInsets.all(16.0),
-                            decoration: BoxDecoration(
-                              color: item.isRead
-                                  ? Colors.white
-                                  : const Color(0xFFF1F6EC),
-                              borderRadius: BorderRadius.circular(16),
-                              border: Border.all(
-                                color: item.isRead
-                                    ? Colors.grey.withValues(alpha: 0.08)
-                                    : const Color(
-                                        0xFF2D5016,
-                                      ).withValues(alpha: 0.12),
-                                width: 1.5,
-                              ),
-                              boxShadow: [
-                                BoxShadow(
-                                  color: item.isRead
-                                      ? Colors.black.withValues(alpha: 0.02)
-                                      : const Color(
-                                          0xFF2D5016,
-                                        ).withValues(alpha: 0.04),
-                                  blurRadius: 8,
-                                  offset: const Offset(0, 4),
-                                ),
-                              ],
-                            ),
-                            child: Row(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                // Icon Type Badge
-                                Container(
-                                  width: 42,
-                                  height: 42,
-                                  decoration: BoxDecoration(
-                                    color: _getTypeColor(
-                                      item.type,
-                                    ).withValues(alpha: 0.1),
-                                    shape: BoxShape.circle,
-                                  ),
-                                  child: Icon(
-                                    _getTypeIcon(item.type),
-                                    color: _getTypeColor(item.type),
-                                    size: 20,
-                                  ),
-                                ),
-                                const SizedBox(width: 14),
-                                // Text Content
-                                Expanded(
-                                  child: Column(
-                                    crossAxisAlignment:
-                                        CrossAxisAlignment.start,
-                                    children: [
-                                      Row(
-                                        mainAxisAlignment:
-                                            MainAxisAlignment.spaceBetween,
-                                        children: [
-                                          Container(
-                                            padding: const EdgeInsets.symmetric(
-                                              horizontal: 8,
-                                              vertical: 2,
-                                            ),
-                                            decoration: BoxDecoration(
-                                              color: _getTypeColor(
-                                                item.type,
-                                              ).withValues(alpha: 0.12),
-                                              borderRadius:
-                                                  BorderRadius.circular(6),
-                                            ),
-                                            child: Text(
-                                              _getTypeLabel(item.type),
-                                              style: GoogleFonts.poppins(
-                                                color: _getTypeColor(item.type),
-                                                fontWeight: FontWeight.bold,
-                                                fontSize: 9,
-                                              ),
-                                            ),
-                                          ),
-                                          Text(
-                                            _formatTime(item.date),
-                                            style: GoogleFonts.poppins(
-                                              color: Colors.grey[500],
-                                              fontSize: 10,
-                                            ),
-                                          ),
-                                        ],
-                                      ),
-                                      const SizedBox(height: 6),
-                                      Text(
-                                        item.title,
-                                        style: GoogleFonts.poppins(
-                                          fontWeight: item.isRead
-                                              ? FontWeight.w600
-                                              : FontWeight.w700,
-                                          fontSize: 13.5,
-                                          color: const Color(0xFF1A1A1A),
-                                        ),
-                                      ),
-                                      const SizedBox(height: 4),
-                                      Text(
-                                        item.body,
-                                        style: GoogleFonts.poppins(
-                                          fontSize: 11.5,
-                                          color: Colors.grey[700],
-                                          height: 1.5,
-                                        ),
-                                      ),
-                                    ],
-                                  ),
-                                ),
-                                if (!item.isRead) ...[
-                                  const SizedBox(width: 8),
-                                  // Unread green dot
-                                  Container(
-                                    width: 8,
-                                    height: 8,
-                                    margin: const EdgeInsets.only(top: 24),
-                                    decoration: const BoxDecoration(
-                                      color: Color(0xFF2D5016),
-                                      shape: BoxShape.circle,
-                                    ),
-                                  ),
-                                ],
-                              ],
-                            ),
-                          ),
-                        ),
-                      );
-                    },
+                child: Text(
+                  'Tandai semua',
+                  style: GoogleFonts.plusJakartaSans(
+                    fontSize: 12,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 12),
+          _SectionLabel(label: 'Hari Ini'),
+          ..._today.map((n) => _NotificationCard(item: n)),
+          const SizedBox(height: 8),
+          _SectionLabel(label: 'Minggu Ini'),
+          ..._thisWeek.map((n) => _NotificationCard(item: n)),
+        ],
+      ),
+    );
+  }
+}
+
+class _SectionLabel extends StatelessWidget {
+  final String label;
+  const _SectionLabel({required this.label});
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.only(left: 4, top: 8, bottom: 10),
+      child: Text(
+        label,
+        style: GoogleFonts.plusJakartaSans(
+          fontSize: 16,
+          fontWeight: FontWeight.w700,
+          color: DesaKitaColors.text,
+        ),
+      ),
+    );
+  }
+}
+
+class _NotificationCard extends StatelessWidget {
+  final _NotificationItem item;
+  const _NotificationCard({required this.item});
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      margin: const EdgeInsets.only(bottom: 12),
+      padding: const EdgeInsets.all(14),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: DesaKitaColors.divider),
+      ),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Container(
+            width: 44,
+            height: 44,
+            decoration: BoxDecoration(
+              color: item.iconColor.withValues(alpha: 0.12),
+              borderRadius: BorderRadius.circular(12),
+            ),
+            child: Icon(item.icon, color: item.iconColor, size: 22),
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  item.title,
+                  style: GoogleFonts.plusJakartaSans(
+                    fontSize: 14,
+                    fontWeight: FontWeight.w700,
+                    color: DesaKitaColors.text,
+                  ),
+                ),
+                const SizedBox(height: 4),
+                Text(
+                  item.body,
+                  style: GoogleFonts.plusJakartaSans(
+                    fontSize: 12,
+                    color: Colors.grey[600],
+                    height: 1.4,
+                  ),
+                ),
+                const SizedBox(height: 8),
+                Text(
+                  item.time,
+                  style: GoogleFonts.plusJakartaSans(
+                    fontSize: 11,
+                    color: Colors.grey[500],
                   ),
                 ),
               ],
             ),
-    );
-  }
-
-  Widget _buildEmptyState() {
-    return Center(
-      child: Padding(
-        padding: const EdgeInsets.all(32.0),
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
+          ),
+          if (item.unread)
             Container(
-              width: 120,
-              height: 120,
-              decoration: BoxDecoration(
-                color: const Color(0xFFE8EDE3),
+              margin: const EdgeInsets.only(top: 4, left: 6),
+              width: 8,
+              height: 8,
+              decoration: const BoxDecoration(
                 shape: BoxShape.circle,
-              ),
-              child: const Icon(
-                Icons.notifications_off_outlined,
-                size: 60,
-                color: Color(0xFF2D5016),
+                color: DesaKitaColors.primary,
               ),
             ),
-            const SizedBox(height: 24),
-            Text(
-              'Belum ada notifikasi',
-              style: GoogleFonts.poppins(
-                fontWeight: FontWeight.w700,
-                fontSize: 18,
-                color: const Color(0xFF2D5016),
-              ),
-            ),
-            const SizedBox(height: 8),
-            Text(
-              'Semua update aplikasi, info penawaran wisata, dan status pesanan Anda akan muncul di sini.',
-              textAlign: TextAlign.center,
-              style: GoogleFonts.poppins(
-                fontSize: 12.5,
-                color: Colors.grey[600],
-                height: 1.5,
-              ),
-            ),
-          ],
-        ),
+        ],
       ),
     );
   }

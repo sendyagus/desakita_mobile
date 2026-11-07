@@ -26,6 +26,10 @@ class ErrorHandler {
           return 'Koneksi bermasalah. Periksa internet Anda';
         case 'operation-not-allowed':
           return 'Metode login tidak diizinkan. Hubungi admin';
+        case 'account-exists-with-different-credential':
+          return 'Email sudah terdaftar dengan metode login lain';
+        case 'requires-recent-login':
+          return 'Login ulang diperlukan untuk aksi ini';
         default:
           return error.message ?? 'Autentikasi gagal';
       }

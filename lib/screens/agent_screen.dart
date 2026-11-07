@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:speech_to_text/speech_to_text.dart' as stt;
 import 'package:desa_wisata/models/ai_chat_models.dart';
+import 'package:desa_wisata/screens/kita_ai_voice_screen.dart';
 import 'package:desa_wisata/screens/ticket_booking_screen.dart';
 import 'package:desa_wisata/services/ai_agent_service.dart';
 import 'package:desa_wisata/services/trip_plan_service.dart';
@@ -13,7 +14,11 @@ import 'package:desa_wisata/widgets/kita_ai_mascot.dart';
 const String _kMascotGif = 'assets/img/kita_ai_mascot.gif';
 
 class AgentScreen extends StatefulWidget {
-  const AgentScreen({super.key});
+  const AgentScreen({super.key, this.initialPrompt});
+
+  /// Bila diisi (mis. dari "Aksi Cepat" di Beranda), langsung masuk mode chat
+  /// dan mengirim prompt ini sebagai pesan pertama.
+  final String? initialPrompt;
 
   @override
   State<AgentScreen> createState() => _AgentScreenState();
@@ -72,6 +77,17 @@ class _AgentScreenState extends State<AgentScreen>
   /// Destinasi yang ditambahkan user lewat tombol "Tambahkan ke Rencana".
   final List<Map<String, dynamic>> _planned = [];
 
+  @override
+  void initState() {
+    super.initState();
+    final prompt = widget.initialPrompt;
+    if (prompt != null) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted) _enterChat(presetPrompt: prompt);
+      });
+    }
+  }
+
   void _enterChat({String? presetPrompt}) {
     setState(() {
       _showDashboard = false;
@@ -89,6 +105,17 @@ class _AgentScreenState extends State<AgentScreen>
       }
     });
     if (presetPrompt != null) _sendMessage(presetPrompt);
+  }
+
+  /// Buka layar percakapan suara KITA AI (layar penuh, mode demo • data aplikasi
+  /// yang sama dengan chat teks).
+  Future<void> _openVoiceMode() async {
+    if (_listening) await _toggleMic(); // hentikan diktasi inline dulu
+    if (!mounted) return;
+    await Navigator.push(
+      context,
+      MaterialPageRoute(builder: (_) => const KitaAiVoiceScreen()),
+    );
   }
 
   void _backToDashboard() {
@@ -428,14 +455,7 @@ class _AgentScreenState extends State<AgentScreen>
           const SizedBox(width: 8),
           _CircleMiniButton(
             icon: Icons.graphic_eq_rounded,
-            onTap: () => ScaffoldMessenger.of(context).showSnackBar(
-              const SnackBar(
-                content: Text(
-                  'Pencarian suara belum tersedia pada versi demo ini.',
-                ),
-                behavior: SnackBarBehavior.floating,
-              ),
-            ),
+            onTap: _openVoiceMode,
           ),
           const SizedBox(width: 8),
           _CircleMiniButton(
@@ -757,6 +777,17 @@ class _AgentScreenState extends State<AgentScreen>
                   ],
                 ),
               ],
+            ),
+          ),
+
+          // Mode percakapan suara (layar penuh).
+          IconButton(
+            tooltip: 'Mode suara',
+            onPressed: _openVoiceMode,
+            icon: Icon(
+              Icons.mic_rounded,
+              color: DesaKitaColors.primary,
+              size: 24,
             ),
           ),
 

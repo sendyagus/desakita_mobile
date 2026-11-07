@@ -93,6 +93,54 @@ class _RegisterScreenState extends State<RegisterScreen> {
     }
   }
 
+  /// Daftar lewat akun Google — membuat akun Firebase Auth baru jika
+  /// email Google belum terdaftar.
+  Future<void> _handleRegisterWithGoogle() async {
+    if (_isLoading) return;
+
+    setState(() => _isLoading = true);
+
+    try {
+      await AuthService.instance.signInWithGoogle();
+
+      if (!mounted) return;
+
+      // Konsisten dengan registrasi email: logout lalu arahkan ke login.
+      await AuthService.instance.signOut();
+
+      if (!mounted) return;
+
+      ErrorHandler.showSuccessSnackBar(
+        context,
+        'Akun Google berhasil dibuat! Silakan login kembali.',
+      );
+      Navigator.pushReplacementNamed(context, '/login');
+    } on FirebaseAuthException catch (error) {
+      if (error.code == 'account-exists-with-different-credential') {
+        ErrorHandler.showErrorSnackBar(
+          context,
+          'Email Google ini sudah terdaftar dengan metode login lain. '
+          'Silakan login dengan metode tersebut.',
+        );
+      } else {
+        ErrorHandler.showErrorSnackBar(
+          context,
+          ErrorHandler.getAuthErrorMessage(error),
+        );
+      }
+    } catch (error) {
+      final message = error.toString();
+      if (!message.contains('dibatalkan') && !message.contains('mengalihkan')) {
+        ErrorHandler.showErrorSnackBar(
+          context,
+          'Login Google gagal. Periksa koneksi internet Anda',
+        );
+      }
+    } finally {
+      if (mounted) setState(() => _isLoading = false);
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -300,9 +348,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
                             label: 'Google',
                             useIconWidget: true,
                             iconWidget: _googleIcon(),
-                            onPressed: () {
-                              // TODO: daftar dengan Google
-                            },
+                            onPressed: _handleRegisterWithGoogle,
                           ),
                         ),
                         const SizedBox(width: 12),
@@ -431,24 +477,15 @@ class _RegisterScreenState extends State<RegisterScreen> {
   }
 
   Widget _googleIcon() {
-    return Container(
+    return Image.asset(
+      'assets/img/google.png',
       width: 20,
       height: 20,
-      decoration: BoxDecoration(
-        shape: BoxShape.circle,
-        color: Colors.white,
-        border: Border.all(color: const Color(0xFFDDDDDD), width: 0.5),
-      ),
-      child: const Center(
-        child: Text(
-          'G',
-          textAlign: TextAlign.center,
-          style: TextStyle(
-            fontSize: 12,
-            fontWeight: FontWeight.bold,
-            color: Color(0xFF4285F4),
-          ),
-        ),
+      fit: BoxFit.contain,
+      errorBuilder: (context, error, stackTrace) => const Icon(
+        Icons.account_circle_outlined,
+        size: 20,
+        color: Color(0xFF4285F4),
       ),
     );
   }

@@ -28,6 +28,10 @@ class HomeScreen extends StatefulWidget {
 class _HomeScreenState extends State<HomeScreen> {
   int _selectedNavIndex = 0;
   int _exploreInitialType = 0;
+  // Prompt awal untuk KITA AI saat dibuka lewat "Aksi Cepat". [_agentNonce]
+  // dinaikkan tiap tap agar AgentScreen dibangun ulang dan prompt terkirim lagi.
+  String? _agentInitialPrompt;
+  int _agentNonce = 0;
   final UserService _userService = UserService();
   final BookingService _bookingService = BookingService();
   UserModel? _currentUser;
@@ -94,7 +98,10 @@ class _HomeScreenState extends State<HomeScreen> {
         key: ValueKey(_exploreInitialType),
         initialType: _exploreInitialType,
       ),
-      const AgentScreen(),
+      AgentScreen(
+        key: ValueKey(_agentNonce),
+        initialPrompt: _agentInitialPrompt,
+      ),
       const TripScreen(),
       const ProfileScreen(),
     ];
@@ -144,7 +151,7 @@ class _HomeScreenState extends State<HomeScreen> {
       builder: (context, constraints) {
         final screenWidth = constraints.maxWidth;
         final heroHeight = (screenWidth * 1.05).clamp(390.0, 460.0);
-        const quickActionsHeight = 122.0;
+        const quickActionsHeight = 130.0;
         const overlapAmount = 54.0;
 
         return Stack(
@@ -436,7 +443,8 @@ class _HomeScreenState extends State<HomeScreen> {
                     end: Alignment.centerRight,
                   ),
                   shadowColor: const Color(0x4D145E1E),
-                  onTap: () => setState(() => _selectedNavIndex = 2),
+                  onTap: () =>
+                      _openAgentWithPrompt('Rekomendasikan tempat wisata'),
                 ),
               ),
               const SizedBox(width: 12),
@@ -464,7 +472,8 @@ class _HomeScreenState extends State<HomeScreen> {
                     end: Alignment.centerRight,
                   ),
                   shadowColor: const Color(0x4D1C7A28),
-                  onTap: () => setState(() => _selectedNavIndex = 1),
+                  onTap: () =>
+                      _openAgentWithPrompt('Buatkan rencana perjalanan'),
                 ),
               ),
             ],
@@ -824,6 +833,15 @@ class _HomeScreenState extends State<HomeScreen> {
     });
   }
 
+  /// Buka tab KITA AI (indeks 2) dan kirim [prompt] sebagai pesan pertama.
+  void _openAgentWithPrompt(String prompt) {
+    setState(() {
+      _agentInitialPrompt = prompt;
+      _agentNonce++; // paksakan AgentScreen dibangun ulang agar prompt terkirim
+      _selectedNavIndex = 2;
+    });
+  }
+
   Widget _buildBottomNavigation() {
     const labels = ['Beranda', 'Explorasi', 'KITA AI', 'Trip', 'Profil'];
     const icons = [
@@ -962,7 +980,7 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 }
 
-class _QuickActionButton extends StatelessWidget {
+class _QuickActionButton extends StatefulWidget {
   final String title;
   final Widget iconWidget;
   final Gradient gradient;
@@ -978,45 +996,64 @@ class _QuickActionButton extends StatelessWidget {
   });
 
   @override
+  State<_QuickActionButton> createState() => _QuickActionButtonState();
+}
+
+class _QuickActionButtonState extends State<_QuickActionButton> {
+  bool _pressed = false;
+
+  @override
   Widget build(BuildContext context) {
+    // Target sentuh lebih besar (64dp) + umpan balik skala saat ditekan
+    // agar tombol Aksi Cepat terasa mudah diklik.
     return Material(
       color: Colors.transparent,
       child: InkWell(
-        onTap: onTap,
-        borderRadius: BorderRadius.circular(14),
-        child: Ink(
-          height: 56,
-          decoration: BoxDecoration(
-            gradient: gradient,
-            borderRadius: BorderRadius.circular(14),
-            boxShadow: [
-              BoxShadow(
-                color: shadowColor,
-                blurRadius: 12,
-                offset: const Offset(0, 5),
-              ),
-            ],
-          ),
-          child: Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 8),
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                iconWidget,
-                const SizedBox(width: 8),
-                Flexible(
-                  child: Text(
-                    title,
-                    textAlign: TextAlign.left,
-                    style: GoogleFonts.plusJakartaSans(
-                      color: Colors.white,
-                      fontSize: 11.5,
-                      height: 1.2,
-                      fontWeight: FontWeight.w700,
-                    ),
-                  ),
+        onTap: widget.onTap,
+        onTapDown: (_) => setState(() => _pressed = true),
+        onTapUp: (_) => setState(() => _pressed = false),
+        onTapCancel: () => setState(() => _pressed = false),
+        borderRadius: BorderRadius.circular(16),
+        splashColor: Colors.white.withValues(alpha: 0.18),
+        highlightColor: Colors.white.withValues(alpha: 0.10),
+        child: AnimatedScale(
+          scale: _pressed ? 0.96 : 1.0,
+          duration: const Duration(milliseconds: 110),
+          curve: Curves.easeOut,
+          child: Ink(
+            height: 64,
+            decoration: BoxDecoration(
+              gradient: widget.gradient,
+              borderRadius: BorderRadius.circular(16),
+              boxShadow: [
+                BoxShadow(
+                  color: widget.shadowColor,
+                  blurRadius: 12,
+                  offset: const Offset(0, 5),
                 ),
               ],
+            ),
+            child: Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 10),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  widget.iconWidget,
+                  const SizedBox(width: 8),
+                  Flexible(
+                    child: Text(
+                      widget.title,
+                      textAlign: TextAlign.left,
+                      style: GoogleFonts.plusJakartaSans(
+                        color: Colors.white,
+                        fontSize: 12.5,
+                        height: 1.2,
+                        fontWeight: FontWeight.w700,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
             ),
           ),
         ),

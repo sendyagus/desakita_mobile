@@ -72,6 +72,46 @@ class _LoginScreenState extends State<LoginScreen> {
     }
   }
 
+  Future<void> _handleLoginWithGoogle() async {
+    if (_isLoading) return;
+
+    setState(() => _isLoading = true);
+
+    try {
+      final user = await AuthService.instance.signInWithGoogle();
+
+      if (!mounted) return;
+
+      if (user.isAdmin) {
+        Navigator.pushReplacement(
+          context,
+          MaterialPageRoute(builder: (_) => const AdminDashboardScreen()),
+        );
+      } else {
+        Navigator.pushReplacement(
+          context,
+          MaterialPageRoute(builder: (_) => const HomeScreen()),
+        );
+      }
+    } on FirebaseAuthException catch (error) {
+      ErrorHandler.showErrorSnackBar(
+        context,
+        ErrorHandler.getAuthErrorMessage(error),
+      );
+    } catch (error) {
+      // Pembatalan login & pengalihan redirect tidak perlu memunculkan error.
+      final message = error.toString();
+      if (!message.contains('dibatalkan') && !message.contains('mengalihkan')) {
+        ErrorHandler.showErrorSnackBar(
+          context,
+          'Login Google gagal. Periksa koneksi internet Anda',
+        );
+      }
+    } finally {
+      if (mounted) setState(() => _isLoading = false);
+    }
+  }
+
   Future<void> _handleForgotPassword() async {
     final email = _emailController.text.trim();
     if (email.isEmpty) {
@@ -315,9 +355,7 @@ class _LoginScreenState extends State<LoginScreen> {
                             iconPath: '../assets/img/google.png',
                             useIconWidget: true,
                             iconWidget: _googleIcon(),
-                            onPressed: () {
-                              // TODO: login dengan Google
-                            },
+                            onPressed: _handleLoginWithGoogle,
                           ),
                         ),
                         const SizedBox(width: 12),
@@ -383,23 +421,15 @@ class _LoginScreenState extends State<LoginScreen> {
   }
 
   Widget _googleIcon() {
-    return Container(
+    return Image.asset(
+      'assets/img/google.png',
       width: 24,
       height: 24,
-      decoration: BoxDecoration(
-        shape: BoxShape.circle,
-        color: Colors.white,
-        border: Border.all(color: const Color(0xFFDDDDDD), width: 0.5),
-      ),
-      child: const Center(
-        child: Text(
-          'G',
-          style: TextStyle(
-            fontSize: 12,
-            fontWeight: FontWeight.w700,
-            color: Color(0xFF4285F4),
-          ),
-        ),
+      fit: BoxFit.contain,
+      errorBuilder: (context, error, stackTrace) => const Icon(
+        Icons.account_circle_outlined,
+        size: 24,
+        color: Color(0xFF4285F4),
       ),
     );
   }

@@ -5,7 +5,10 @@ import 'package:desa_wisata/services/auth_service.dart';
 import 'package:desa_wisata/services/user_service.dart';
 import 'package:desa_wisata/services/storage_service.dart';
 import 'package:desa_wisata/models/user_model.dart';
-import 'package:desa_wisata/screens/trip_screen.dart';
+import 'package:desa_wisata/screens/user/order_history_screen.dart';
+import 'package:desa_wisata/screens/notification_screen.dart';
+import 'package:desa_wisata/screens/language_screen.dart';
+import 'package:desa_wisata/screens/about_screen.dart';
 import 'package:desa_wisata/theme/desakita_theme.dart';
 
 class ProfileScreen extends StatefulWidget {
@@ -444,11 +447,9 @@ class _ProfileScreenState extends State<ProfileScreen> {
   // ─── Handlers ──────────────────────────────────────────────────────────────
 
   void _handleMenuTap(BuildContext context, String label) {
-    if (label == 'Riwayat Pesanan') {
-      Navigator.push(
-        context,
-        MaterialPageRoute(builder: (_) => const TripScreen()),
-      );
+    final route = _menuRouteFor(label);
+    if (route != null) {
+      Navigator.push(context, route);
       return;
     }
 
@@ -465,6 +466,22 @@ class _ProfileScreenState extends State<ProfileScreen> {
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
       ),
     );
+  }
+
+  /// Memetakan label menu ke rute tujuan. `null` bila halaman belum ada.
+  Route<dynamic>? _menuRouteFor(String label) {
+    switch (label) {
+      case 'Riwayat Pesanan':
+        return MaterialPageRoute(builder: (_) => const OrderHistoryScreen());
+      case 'Notifikasi':
+        return MaterialPageRoute(builder: (_) => const NotificationScreen());
+      case 'Bahasa':
+        return MaterialPageRoute(builder: (_) => const LanguageScreen());
+      case 'Tentang DesaKita':
+        return MaterialPageRoute(builder: (_) => const AboutScreen());
+      default:
+        return null;
+    }
   }
 
   void _confirmLogout(BuildContext context) {

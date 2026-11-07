@@ -17,7 +17,7 @@ class GoogleDriveService {
 
   final GoogleSignIn _googleSignIn = GoogleSignIn(
     scopes: _driveScopes,
-    clientId: kIsWeb ? AppConfig.webGoogleClientId : null,
+    clientId: kIsWeb ? AppConfig.driveWebGoogleClientId : null,
   );
 
   final ImagePicker _picker = ImagePicker();
